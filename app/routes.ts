@@ -5,4 +5,5 @@ export default [
   route("/home/:name", "routes/home.$name.tsx"),
   route("/login", "routes/login.tsx"),
   route("/admin", "routes/admin.tsx"),
+  route("/owner/orders", "routes/owner.orders.tsx"),
 ] satisfies RouteConfig;

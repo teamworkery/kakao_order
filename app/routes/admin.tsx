@@ -521,16 +521,24 @@ export default function AdminMenuPage() {
                 </p>
               )}
             </div>
-            <Form method="post">
-              <input type="hidden" name="actionType" value="logout" />
-              <button
-                type="submit"
-                className="bg-gray-500 hover:bg-gray-600 text-white font-medium px-4 py-2 rounded-lg transition-colors duration-200 disabled:opacity-50"
-                disabled={isSubmitting}
+            <div className="flex gap-2">
+              <a
+                href="/owner/orders"
+                className="bg-orange-500 hover:bg-orange-600 text-white font-medium px-4 py-2 rounded-lg transition-colors duration-200"
               >
-                로그아웃
-              </button>
-            </Form>
+                📋 주문 관리
+              </a>
+              <Form method="post">
+                <input type="hidden" name="actionType" value="logout" />
+                <button
+                  type="submit"
+                  className="bg-gray-500 hover:bg-gray-600 text-white font-medium px-4 py-2 rounded-lg transition-colors duration-200 disabled:opacity-50"
+                  disabled={isSubmitting}
+                >
+                  로그아웃
+                </button>
+              </Form>
+            </div>
           </div>
         </div>
       </div>

@@ -62,36 +62,34 @@ export const saveOrder = async (
   client: SupabaseClient<Database>,
   orderItems: OrderItem[],
   phoneNumber: string,
-  totalAmount: number
+  totalAmount: number,
+  profile_id: string
 ) => {
   // 1) 주문(order) 저장
-  const { data: orders, error: orderError } = await client
+  const { data: order, error: orderError } = await client
     .from("order")
     .insert([
       {
         phoneNumber,
         totalAmount,
         status: "PENDING",
+        profile_id,
       },
     ])
-    .select();
+    .select()
+    .single();
 
-  if (orderError || !orders || orders.length === 0) {
+  if (orderError || !order) {
     throw orderError || new Error("주문 저장 실패 (order 테이블)");
   }
-  const order = orders[0];
 
   // 2) 주문 아이템(orderItem) 저장 (여러개)
   const orderItemRows = orderItems.map((item: OrderItem) => ({
-    orderId: order.id,
+    orderId: order.order_id,
     menuItemId: item.id,
     quantity: item.quantity,
     price: item.price,
   }));
-
-  console.log("🧾 생성된 orderItemRows:", orderItemRows);
-  console.log("🆔 order.id:", order?.id);
-  console.log("📦 원본 orderItems:", orderItems);
 
   const { error: itemError } = await client
     .from("orderitem")
@@ -101,29 +99,37 @@ export const saveOrder = async (
     throw itemError;
   }
 
-  return order.id;
+  return order.order_id;
 };
 
 // action 함수에서 client 생성 후 주입, 화살표 함수
-export const action = async ({ request }: Route.ActionArgs) => {
+export const action = async ({ request, params }: Route.ActionArgs) => {
   try {
     const formData = await request.formData();
-
-    console.log("📦 [FormData Debug]");
-    console.log("phoneNumber:", formData.get("phoneNumber"));
-    console.log("orderItems:", formData.get("orderItems"));
-    console.log("totalAmount:", formData.get("totalAmount"));
-
     const phoneNumber = formData.get("phoneNumber") as string;
     const orderItems = JSON.parse(formData.get("orderItems") as string);
     const totalAmount = parseInt(formData.get("totalAmount") as string);
     // makeSSRclient에서 client 생성 (loader 패턴과 동일)
     const { client, headers } = makeSSRClient(request);
+
+    const name = params.name;
+    const { data: profile } = await client
+      .from("profiles")
+      .select("profile_id")
+      .eq("name", name)
+      .single();
+
+    const profile_id = profile?.profile_id;
+    if (!profile_id) {
+      throw new Error("프로필을 찾을 수 없습니다.");
+    }
+
     const orderId = await saveOrder(
       client,
       orderItems,
       phoneNumber,
-      totalAmount
+      totalAmount,
+      profile_id
     );
 
     return {
