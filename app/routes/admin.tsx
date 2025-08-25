@@ -198,6 +198,72 @@ export async function action({ request }: ActionFunctionArgs) {
         return Response.json({ success: true, type: "delete" });
       }
 
+      case "updateProfile": {
+        if (!name?.trim()) {
+          return Response.json(
+            { error: "이름은 필수입니다." },
+            { status: 400 }
+          );
+        }
+        if (!formData.get("storename")?.toString().trim()) {
+          return Response.json(
+            { error: "가게명은 필수입니다." },
+            { status: 400 }
+          );
+        }
+
+        const storename = formData.get("storename") as string;
+        const storenumber = formData.get("storenumber") as string;
+
+        // 프로필이 이미 존재하는지 확인
+        const { data: existingProfile } = await client
+          .from("profiles")
+          .select("profile_id")
+          .eq("profile_id", profile_id)
+          .single();
+
+        if (existingProfile) {
+          // 기존 프로필 업데이트
+          const { error } = await client
+            .from("profiles")
+            .update({
+              name: name.trim(),
+              storename: storename.trim(),
+              storenumber: storenumber?.trim() || null,
+            })
+            .eq("profile_id", profile_id);
+
+          if (error) {
+            console.error("프로필 업데이트 오류:", error);
+            return Response.json(
+              { error: "가게 정보 업데이트에 실패했습니다." },
+              { status: 500 }
+            );
+          }
+        } else {
+          // 새 프로필 생성
+          const { error } = await client.from("profiles").insert([
+            {
+              profile_id,
+              name: name.trim(),
+              storename: storename.trim(),
+              storenumber: storenumber?.trim() || null,
+              email: userData.user.email,
+            },
+          ]);
+
+          if (error) {
+            console.error("프로필 생성 오류:", error);
+            return Response.json(
+              { error: "가게 정보 생성에 실패했습니다." },
+              { status: 500 }
+            );
+          }
+        }
+
+        return Response.json({ success: true, type: "updateProfile" });
+      }
+
       default:
         return Response.json(
           { error: "알 수 없는 액션입니다." },
@@ -403,6 +469,8 @@ export default function AdminMenuPage() {
   const isSubmitting = navigation.state === "submitting";
   const isAdding = navigation.formData?.get("actionType") === "add";
   const isEditing = navigation.formData?.get("actionType") === "edit";
+  const isUpdatingProfile =
+    navigation.formData?.get("actionType") === "updateProfile";
 
   // Action 결과 처리
   useEffect(() => {
@@ -412,6 +480,7 @@ export default function AdminMenuPage() {
           add: "메뉴가 성공적으로 추가되었습니다.",
           edit: "메뉴가 성공적으로 수정되었습니다.",
           delete: "메뉴가 성공적으로 삭제되었습니다.",
+          updateProfile: "가게 정보가 성공적으로 저장되었습니다.",
         };
         setShowToast({
           message:
@@ -664,6 +733,77 @@ export default function AdminMenuPage() {
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
                   )}
                   {isAdding ? "추가 중..." : "메뉴 추가"}
+                </button>
+              </div>
+            </Form>
+          </div>
+        </div>
+
+        {/* 가게 정보 관리 */}
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+          <div className="bg-blue-50 px-6 py-4 border-b border-blue-100">
+            <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+              🏪 가게 정보 관리
+            </h2>
+          </div>
+          <div className="p-6">
+            <Form method="post" className="space-y-4">
+              <input name="actionType" type="hidden" value="updateProfile" />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    이름 <span className="text-blue-500">*</span>
+                  </label>
+                  <input
+                    name="name"
+                    required
+                    placeholder="예: 김철수"
+                    defaultValue={userProfile?.name || ""}
+                    className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
+                    disabled={isSubmitting || isUpdatingProfile}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    가게명 <span className="text-blue-500">*</span>
+                  </label>
+                  <input
+                    name="storename"
+                    required
+                    placeholder="예: 맛있는 족발집"
+                    defaultValue={userProfile?.storename || ""}
+                    className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
+                    disabled={isSubmitting || isUpdatingProfile}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  가게 전화번호
+                </label>
+                <input
+                  name="storenumber"
+                  placeholder="예: 02-1234-5678"
+                  defaultValue={userProfile?.storenumber || ""}
+                  className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
+                  disabled={isSubmitting || isUpdatingProfile}
+                />
+              </div>
+
+              <div className="pt-4">
+                <button
+                  type="submit"
+                  className="w-full sm:w-auto bg-blue-500 hover:bg-blue-600 text-white font-semibold px-8 py-3 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  disabled={isSubmitting || isUpdatingProfile}
+                >
+                  {isSubmitting || isUpdatingProfile ? (
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  ) : (
+                    "가게 정보 저장"
+                  )}
                 </button>
               </div>
             </Form>

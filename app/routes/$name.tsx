@@ -2,7 +2,7 @@ import { useState } from "react";
 import { data, Form } from "react-router";
 import { makeSSRClient } from "../supa_clients";
 import type { Database } from "database.types";
-import type { Route } from "./+types/home.$name";
+import type { Route } from "./+types/$name";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 type MenuItem = Database["public"]["Tables"]["menuItem"]["Row"];
@@ -115,7 +115,7 @@ export const action = async ({ request, params }: Route.ActionArgs) => {
     const name = params.name;
     const { data: profile } = await client
       .from("profiles")
-      .select("profile_id")
+      .select("profile_id, name, storename, storenumber")
       .eq("name", name)
       .single();
 
@@ -132,9 +132,55 @@ export const action = async ({ request, params }: Route.ActionArgs) => {
       profile_id
     );
 
+    const payload = {
+      event: "order.created",
+      site: {
+        pageName: name,
+        storeName: profile.storename ?? name,
+        profileId: profile_id,
+      },
+      order: {
+        id: orderId,
+        totalAmount,
+        customerPhone: phoneNumber,
+        items: orderItems, // [{id,name,price,quantity}, ...]
+        createdAt: new Date().toISOString(),
+        status: "PENDING", // 참고용
+      },
+      notify: {
+        to: "store",
+        phone: profile.storenumber ?? null, // n8n에서 문자 발송에 사용
+      },
+    };
+
+    let notified = false;
+    const hookUrl = process.env.N8N_WEBHOOK_URL_STORE;
+    if (hookUrl) {
+      try {
+        const res = await fetch(hookUrl, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            // 선택: 시크릿/멱등키 사용
+            ...(process.env.N8N_WEBHOOK_STORE_SECRET
+              ? { "x-webhook-secret": process.env.N8N_WEBHOOK_STORE_SECRET }
+              : {}),
+            "x-idempotency-key": String(orderId),
+          },
+          body: JSON.stringify(payload),
+        });
+        notified = res.ok;
+      } catch (e) {
+        console.error("store webhook error:", e);
+      }
+    } else {
+      console.error("N8N_WEBHOOK_URL_STORE is not set");
+    }
+
     return {
       success: true,
-      message: "주문이 성공적으로 저장되었습니다.",
+      message:
+        "주문이 성공적으로 접수되었습니다. 음식점 확인 시 알림톡이 발송됩니다.",
       orderId,
     };
   } catch (error) {

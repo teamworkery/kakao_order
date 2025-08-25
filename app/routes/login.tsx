@@ -103,7 +103,7 @@ export default function LoginPage({ loaderData }: Route.ComponentProps) {
             id="email"
             required
             type="email"
-            placeholder="ex) woomin@workery.org"
+            placeholder="example@example.com"
             className="rounded-lg"
           />
           <InputPair
