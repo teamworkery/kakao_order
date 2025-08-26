@@ -27,6 +27,7 @@ export const getMenuItems = async (
     .select("*")
     .eq("isActive", true)
     .eq("profile_id", profile_id)
+    .order("displayOrder", { ascending: true })
     .order("createdAt", { ascending: true });
 
   if (error) {
@@ -440,7 +441,7 @@ export default function OrderPage({
             id="phoneNumber"
             value={phoneNumber}
             onChange={(e) => setPhoneNumber(e.target.value)}
-            placeholder="010-1234-5678"
+            placeholder="01012345678 (- 없이 숫자만 입력)"
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-lg"
             required
           />

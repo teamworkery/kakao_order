@@ -21,7 +21,7 @@ type ActionData = {
   type?: string;
 };
 
-// 메뉴 데이터 조회
+// 메뉴 데이터 조회 - displayOrder 순서대로 정렬
 export const getadminMenuItems = async (
   client: SupabaseClient<Database>,
   profile_id: string
@@ -30,6 +30,7 @@ export const getadminMenuItems = async (
     .from("menuItem")
     .select("*")
     .eq("profile_id", profile_id)
+    .order("displayOrder", { ascending: true })
     .order("createdAt", { ascending: true });
 
   if (error) {
@@ -118,6 +119,14 @@ export async function action({ request }: ActionFunctionArgs) {
           );
         }
 
+        // 현재 메뉴 개수를 확인하여 순서 설정
+        const { count } = await client
+          .from("menuItem")
+          .select("*", { count: "exact", head: true })
+          .eq("profile_id", profile_id);
+
+        const displayOrder = (count || 0) + 1;
+
         const { error } = await client.from("menuItem").insert([
           {
             name: name.trim(),
@@ -127,6 +136,7 @@ export async function action({ request }: ActionFunctionArgs) {
             isActive,
             category: category?.trim() || "",
             profile_id,
+            displayOrder,
           },
         ]);
 
@@ -196,6 +206,51 @@ export async function action({ request }: ActionFunctionArgs) {
         }
 
         return Response.json({ success: true, type: "delete" });
+      }
+
+      case "reorder": {
+        const menuOrder = formData.get("menuOrder") as string;
+        if (!menuOrder) {
+          return Response.json(
+            { error: "메뉴 순서 정보가 필요합니다." },
+            { status: 400 }
+          );
+        }
+
+        try {
+          const orderData = JSON.parse(menuOrder) as Array<{
+            id: string;
+            displayOrder: number;
+          }>;
+
+          // 배치 업데이트를 위한 쿼리들
+          const updatePromises = orderData.map(({ id, displayOrder }) =>
+            client
+              .from("menuItem")
+              .update({ displayOrder })
+              .eq("id", id)
+              .eq("profile_id", profile_id)
+          );
+
+          const results = await Promise.all(updatePromises);
+          const hasError = results.some((result) => result.error);
+
+          if (hasError) {
+            console.error("메뉴 순서 업데이트 오류:", results);
+            return Response.json(
+              { error: "메뉴 순서 업데이트에 실패했습니다." },
+              { status: 500 }
+            );
+          }
+
+          return Response.json({ success: true, type: "reorder" });
+        } catch (parseError) {
+          console.error("순서 데이터 파싱 오류:", parseError);
+          return Response.json(
+            { error: "잘못된 순서 데이터입니다." },
+            { status: 400 }
+          );
+        }
       }
 
       case "updateProfile": {
@@ -356,7 +411,6 @@ function ImageUploadInput({
             className="sr-only"
           />
           <div className="flex items-center gap-2 px-4 py-2 bg-orange-50 text-orange-700 rounded-lg border border-orange-200 hover:bg-orange-100 transition-colors disabled:opacity-50">
-            <span className="text-lg">📷</span>
             <span className="text-sm font-medium">
               {uploading ? "업로드 중..." : "이미지 선택"}
             </span>
@@ -466,11 +520,23 @@ export default function AdminMenuPage() {
     category: "",
   });
 
+  // 메뉴 순서 변경을 위한 상태
+  const [isReordering, setIsReordering] = useState(false);
+  const [draggedItem, setDraggedItem] = useState<string | null>(null);
+  const [localMenuItems, setLocalMenuItems] = useState<MenuItem[]>(menuItems);
+
   const isSubmitting = navigation.state === "submitting";
   const isAdding = navigation.formData?.get("actionType") === "add";
   const isEditing = navigation.formData?.get("actionType") === "edit";
   const isUpdatingProfile =
     navigation.formData?.get("actionType") === "updateProfile";
+  const isReorderingMenu =
+    isReordering || navigation.formData?.get("actionType") === "reorder";
+
+  // menuItems가 변경될 때 localMenuItems 동기화
+  useEffect(() => {
+    setLocalMenuItems(menuItems);
+  }, [menuItems]);
 
   // Action 결과 처리
   useEffect(() => {
@@ -480,6 +546,7 @@ export default function AdminMenuPage() {
           add: "메뉴가 성공적으로 추가되었습니다.",
           edit: "메뉴가 성공적으로 수정되었습니다.",
           delete: "메뉴가 성공적으로 삭제되었습니다.",
+          reorder: "메뉴 순서가 성공적으로 변경되었습니다.",
           updateProfile: "가게 정보가 성공적으로 저장되었습니다.",
         };
         setShowToast({
@@ -499,9 +566,14 @@ export default function AdminMenuPage() {
             isActive: "true",
             category: "",
           });
+          // 메뉴 추가 후 localMenuItems 동기화
+          window.location.reload();
         } else if (actionData.type === "edit") {
           setEditingId(null);
           setEditForm({});
+        } else if (actionData.type === "delete") {
+          // 메뉴 삭제 후 localMenuItems 동기화
+          window.location.reload();
         }
       } else if (actionData.error) {
         setShowToast({ message: actionData.error, type: "error" });
@@ -563,6 +635,106 @@ export default function AdminMenuPage() {
     setEditForm((prev) => ({ ...prev, image: url }));
   };
 
+  // 메뉴 순서 변경 함수들
+  const handleDragStart = (e: React.DragEvent, itemId: string) => {
+    setDraggedItem(itemId);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetItemId: string) => {
+    e.preventDefault();
+
+    if (!draggedItem || draggedItem === targetItemId) {
+      setDraggedItem(null);
+      return;
+    }
+
+    setIsReordering(true);
+
+    try {
+      // 현재 메뉴 순서를 가져와서 순서 변경
+      const currentOrder = localMenuItems.map((item, index) => ({
+        id: item.id,
+        displayOrder: index + 1,
+      }));
+
+      // 드래그된 아이템과 타겟 아이템의 위치를 찾기
+      const draggedIndex = currentOrder.findIndex(
+        (item) => item.id === draggedItem
+      );
+      const targetIndex = currentOrder.findIndex(
+        (item) => item.id === targetItemId
+      );
+
+      if (draggedIndex === -1 || targetIndex === -1) return;
+
+      // 순서 재배열
+      const reorderedItems = [...currentOrder];
+      const [draggedItemOrder] = reorderedItems.splice(draggedIndex, 1);
+
+      if (draggedIndex < targetIndex) {
+        // 아래로 드래그한 경우
+        reorderedItems.splice(targetIndex, 0, draggedItemOrder);
+      } else {
+        // 위로 드래그한 경우
+        reorderedItems.splice(targetIndex, 0, draggedItemOrder);
+      }
+
+      // 새로운 순서로 displayOrder 업데이트
+      const updatedOrder = reorderedItems.map((item, index) => ({
+        ...item,
+        displayOrder: index + 1,
+      }));
+
+      // 로컬 상태를 즉시 업데이트하여 UI 반영
+      const reorderedMenuItems = [...localMenuItems];
+      const [draggedMenuItem] = reorderedMenuItems.splice(draggedIndex, 1);
+      reorderedMenuItems.splice(targetIndex, 0, draggedMenuItem);
+
+      // displayOrder 업데이트
+      const updatedMenuItems = reorderedMenuItems.map((item, index) => ({
+        ...item,
+        displayOrder: index + 1,
+      }));
+
+      setLocalMenuItems(updatedMenuItems);
+
+      // FormData를 사용하여 순서 업데이트 요청
+      const formData = new FormData();
+      formData.append("actionType", "reorder");
+      formData.append("menuOrder", JSON.stringify(updatedOrder));
+
+      const response = await fetch(window.location.href, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error("순서 변경에 실패했습니다.");
+      }
+    } catch (error) {
+      console.error("순서 변경 오류:", error);
+      setShowToast({
+        message: "메뉴 순서 변경에 실패했습니다.",
+        type: "error",
+      });
+      // 실패 시 원래 순서로 복원
+      setLocalMenuItems(menuItems);
+    } finally {
+      setIsReordering(false);
+      setDraggedItem(null);
+    }
+  };
+
+  const handleDragEnd = () => {
+    setDraggedItem(null);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {showToast && (
@@ -579,7 +751,7 @@ export default function AdminMenuPage() {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                🍴 메뉴 관리
+                메뉴 관리
               </h1>
               {userProfile && (
                 <p className="text-sm text-gray-600 mt-1">
@@ -595,7 +767,7 @@ export default function AdminMenuPage() {
                 href="/owner/orders"
                 className="bg-orange-500 hover:bg-orange-600 text-white font-medium px-4 py-2 rounded-lg transition-colors duration-200"
               >
-                📋 주문 관리
+                주문 관리
               </a>
               <Form method="post">
                 <input type="hidden" name="actionType" value="logout" />
@@ -617,7 +789,7 @@ export default function AdminMenuPage() {
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
           <div className="bg-orange-50 px-6 py-4 border-b border-orange-100">
             <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-              ➕ 새 메뉴 추가
+              새 메뉴 추가
             </h2>
           </div>
           <div className="p-6">
@@ -743,7 +915,7 @@ export default function AdminMenuPage() {
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
           <div className="bg-blue-50 px-6 py-4 border-b border-blue-100">
             <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-              🏪 가게 정보 관리
+              가게 정보 관리
             </h2>
           </div>
           <div className="p-6">
@@ -812,16 +984,21 @@ export default function AdminMenuPage() {
 
         {/* 메뉴 목록 */}
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-          <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-              📋 메뉴 목록
-            </h2>
-            <span className="bg-orange-100 text-orange-800 text-sm font-medium px-3 py-1 rounded-full">
-              {menuItems.length}개
-            </span>
+          <div className="bg-gray-50 px-6 py-4 border-b border-gray-100">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                메뉴 목록
+              </h2>
+              <span className="bg-orange-100 text-orange-800 text-sm font-medium px-3 py-1 rounded-full">
+                {localMenuItems.length}개
+              </span>
+            </div>
+            <p className="text-sm text-gray-600">
+              💡 메뉴를 드래그하여 순서를 변경할 수 있습니다
+            </p>
           </div>
 
-          {menuItems.length === 0 ? (
+          {localMenuItems.length === 0 ? (
             <div className="p-12 text-center">
               <div className="text-6xl mb-4">🍽️</div>
               <h3 className="text-lg font-medium text-gray-900 mb-2">
@@ -831,8 +1008,20 @@ export default function AdminMenuPage() {
             </div>
           ) : (
             <div className="divide-y divide-gray-100">
+              {/* 순서 변경 중 로딩 표시 */}
+              {isReorderingMenu && (
+                <div className="p-6 text-center bg-blue-50 border-l-4 border-blue-500">
+                  <div className="flex items-center justify-center gap-3">
+                    <div className="animate-spin rounded-full h-6 w-6 border-2 border-blue-200 border-t-blue-500"></div>
+                    <p className="text-blue-700 font-medium">
+                      메뉴 순서를 변경하는 중...
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* 메뉴 아이템들 */}
-              {menuItems.map((item: MenuItem) =>
+              {localMenuItems.map((item: MenuItem) =>
                 editingId === item.id ? (
                   // 편집 모드
                   <div
@@ -1001,9 +1190,33 @@ export default function AdminMenuPage() {
                   // 일반 보기 모드
                   <div
                     key={item.id}
-                    className="p-6 hover:bg-gray-50 transition-colors"
+                    className={`p-6 hover:bg-gray-50 transition-all duration-200 ${
+                      draggedItem === item.id
+                        ? "opacity-50 scale-95 shadow-lg"
+                        : draggedItem && draggedItem !== item.id
+                        ? "opacity-80"
+                        : ""
+                    }`}
+                    draggable={!isReordering}
+                    onDragStart={(e) => handleDragStart(e, item.id)}
+                    onDragOver={handleDragOver}
+                    onDrop={(e) => handleDrop(e, item.id)}
+                    onDragEnd={handleDragEnd}
                   >
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+                      {/* 드래그 핸들 */}
+                      <div className="lg:col-span-1 flex items-center justify-center">
+                        <div className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 transition-colors">
+                          <svg
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                          >
+                            <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" />
+                          </svg>
+                        </div>
+                      </div>
                       <div className="lg:col-span-2">
                         {item.image ? (
                           <img
@@ -1020,7 +1233,7 @@ export default function AdminMenuPage() {
                         )}
                       </div>
 
-                      <div className="lg:col-span-4">
+                      <div className="lg:col-span-3">
                         <div className="mb-2">
                           <h3 className="font-semibold text-gray-900 text-lg">
                             {item.name}
