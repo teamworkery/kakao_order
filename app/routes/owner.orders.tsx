@@ -1,7 +1,7 @@
 // routes/owner.orders.tsx
 import type { Database } from "database.types";
-import { useEffect, useMemo, useState } from "react";
-import { Form, useLoaderData } from "react-router";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Form, useLoaderData, useRevalidator } from "react-router";
 import {
   redirect,
   type LoaderFunctionArgs,
@@ -16,6 +16,7 @@ type OrderRow = {
   totalAmount: number | null;
   createdat: string | null;
   profile_id: string | null;
+  status: string | null; // 주문 상태 추가
 };
 
 type OrderItemWithMenu = {
@@ -40,6 +41,7 @@ type LoaderData = {
   storename: string | null;
   name: string | null;
   storenumber: string | null;
+  profileId: string;
 };
 
 /** ===================== ACTION ===================== */
@@ -145,9 +147,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
   // --- 프로필 조회 (profiles.profile_id 기준) ---
   const { data: profile } = await client
     .from("profiles")
-    .select("email, name, storename, storenumber")
+    .select("profile_id, email, name, storename, storenumber")
     .eq("profile_id", user.id)
     .maybeSingle();
+
+  const profileId = profile?.profile_id ?? user.id; // 안전 매핑
 
   // 빈문자열 정규화 + 이메일 폴백
   const storename = profile?.storename?.trim() || null;
@@ -185,7 +189,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
   // 페이지 데이터 (로그인 유저 한정)
   const dataQ = client
     .from("order")
-    .select("id:order_id, phoneNumber, totalAmount, createdat, profile_id")
+    .select(
+      "id:order_id, phoneNumber, totalAmount, createdat, profile_id, status"
+    )
     .eq("profile_id", user.id)
     .gte("createdat", dateFrom)
     .lte("createdat", dateTo);
@@ -211,6 +217,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       storename,
       name,
       storenumber,
+      profileId,
     } satisfies LoaderData),
     { headers: { "Content-Type": "application/json" } }
   );
@@ -219,7 +226,34 @@ export async function loader({ request }: LoaderFunctionArgs) {
 /** ===================== PAGE (Client) ===================== */
 export default function OwnerOrdersPage() {
   const data = useLoaderData<LoaderData>();
-  const { userEmail } = data;
+  const { userEmail, profileId } = data;
+
+  const revalidator = useRevalidator();
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [soundOn, setSoundOn] = useState(false);
+  const [soundReady, setSoundReady] = useState(false);
+  const toggleSound = async () => {
+    try {
+      if (soundOn) {
+        // 이미 켜져 있으면 끔
+        setSoundOn(false);
+        return;
+      }
+      // 켜기: 최초 한 번은 사용자 제스처로 재생/중지하여 정책 해제
+      if (!audioRef.current) {
+        audioRef.current = new Audio("/notify.mp3");
+        audioRef.current.preload = "auto";
+      }
+      await audioRef.current.play();
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      setSoundReady(true);
+      setSoundOn(true);
+    } catch (e) {
+      console.warn("사운드 활성화 실패:", e);
+      setSoundReady(false);
+    }
+  };
 
   const orders: OrderRow[] = Array.isArray(data?.orders)
     ? data.orders.filter(Boolean)
@@ -280,6 +314,55 @@ export default function OwnerOrdersPage() {
     })();
   }, [openId]);
 
+  /** Realtime: 새 주문/상태변경 → 소리 + 로더 재검증 */
+  useEffect(() => {
+    const ch = browserClient
+      .channel(`orders:${profileId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "order",
+          filter: `profile_id=eq.${profileId}`,
+        },
+        (payload) => {
+          const row = payload.new as {
+            createdat: string;
+            phoneNumber: string | null;
+          };
+          const createdIso = new Date(row.createdat).toISOString();
+          const inRange = createdIso >= dateFrom && createdIso <= dateTo;
+          const phoneOk =
+            !phone || String(row.phoneNumber ?? "").includes(phone);
+          if (inRange && phoneOk) {
+            if (soundOn && audioRef.current) {
+              audioRef.current.currentTime = 0;
+              audioRef.current.play().catch(() => {});
+            }
+            revalidator.revalidate();
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "order",
+          filter: `profile_id=eq.${profileId}`,
+        },
+        () => {
+          revalidator.revalidate();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      browserClient.removeChannel(ch);
+    };
+  }, [profileId, dateFrom, dateTo, phone, soundOn, revalidator]);
+
   /** 필터 적용 → URL 반영(SSR 재로딩) */
   const applyFilters = () => {
     const params = new URLSearchParams({
@@ -306,18 +389,32 @@ export default function OwnerOrdersPage() {
     <div className="p-4 max-w-6xl mx-auto">
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-xl font-bold">주문 목록</h1>
-
-        {/* 서버 액션 기반 로그아웃 */}
-        <Form method="post">
-          <input type="hidden" name="actionType" value="logout" />
+        <div className="flex items-center gap-2">
           <button
-            type="submit"
-            className="border px-3 py-1 rounded hover:bg-gray-50"
-            title="로그아웃"
+            onClick={toggleSound}
+            aria-pressed={soundOn}
+            className={`border px-3 py-1 rounded ${
+              soundOn ? "bg-green-50" : ""
+            }`}
+            title="소리 알림 활성화"
           >
-            로그아웃
+            {soundOn
+              ? "소리 켜짐(클릭해 끄기)"
+              : soundReady
+              ? "소리 꺼짐(클릭해 켜기)"
+              : "소리 사용 준비"}
           </button>
-        </Form>
+          <Form method="post">
+            <input type="hidden" name="actionType" value="logout" />
+            <button
+              type="submit"
+              className="border px-3 py-1 rounded hover:bg-gray-50"
+              title="로그아웃"
+            >
+              로그아웃
+            </button>
+          </Form>
+        </div>
       </div>
 
       {/* Filters */}
@@ -383,20 +480,26 @@ export default function OwnerOrdersPage() {
               <th className="px-3 py-2 text-left">주문ID</th>
               <th className="px-3 py-2 text-left">전화</th>
               <th className="px-3 py-2 text-right">총액</th>
+              <th className="px-3 py-2 text-center">상태</th>
               <th className="px-3 py-2">액션</th>
             </tr>
           </thead>
           <tbody>
             {orders.length === 0 ? (
               <tr>
-                <td className="px-3 py-4" colSpan={5}>
+                <td className="px-3 py-4" colSpan={6}>
                   데이터 없음
                 </td>
               </tr>
             ) : (
               orders.map((o) =>
                 o ? (
-                  <tr key={o.id} className="border-t">
+                  <tr
+                    key={o.id}
+                    className={`border-t ${
+                      o.status === "ACCEPT" ? "bg-green-50" : ""
+                    }`}
+                  >
                     <td className="px-3 py-2">
                       {o.createdat ? fmtKST(o.createdat) : "-"}
                     </td>
@@ -404,6 +507,17 @@ export default function OwnerOrdersPage() {
                     <td className="px-3 py-2">{o.phoneNumber ?? "-"}</td>
                     <td className="px-3 py-2 text-right">
                       {o.totalAmount?.toLocaleString() ?? "-"}
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      {o.status === "ACCEPT" ? (
+                        <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                          주문접수
+                        </span>
+                      ) : (
+                        <span className="bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                          대기중
+                        </span>
+                      )}
                     </td>
                     <td className="px-3 py-2">
                       <button
@@ -458,6 +572,21 @@ export default function OwnerOrdersPage() {
                 닫기
               </button>
             </div>
+
+            {/* 주문 상태 표시 */}
+            <div className="mb-3 p-2 bg-gray-50 rounded">
+              <span className="text-sm font-medium">주문 상태: </span>
+              {orders.find((o) => o.id === openId)?.status === "ACCEPT" ? (
+                <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                  주문접수
+                </span>
+              ) : (
+                <span className="bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                  대기중
+                </span>
+              )}
+            </div>
+
             {itemsLoading ? (
               <p>로딩 중…</p>
             ) : items.length === 0 ? (
@@ -488,6 +617,19 @@ export default function OwnerOrdersPage() {
                     </tr>
                   ))}
                 </tbody>
+                <tfoot>
+                  <tr className="border-t-2 font-bold bg-gray-50">
+                    <td className="px-2 py-2" colSpan={3}>
+                      총 금액
+                    </td>
+                    <td className="px-2 py-2 text-right">
+                      {items
+                        .reduce((sum, it) => sum + it.price * it.quantity, 0)
+                        .toLocaleString()}
+                      원
+                    </td>
+                  </tr>
+                </tfoot>
               </table>
             )}
 
@@ -497,9 +639,18 @@ export default function OwnerOrdersPage() {
               <input type="hidden" name="orderId" value={openId ?? ""} />
               <button
                 type="submit"
-                className="border px-3 py-1 rounded bg-black text-white"
+                disabled={
+                  orders.find((o) => o.id === openId)?.status === "ACCEPT"
+                }
+                className={`px-3 py-1 rounded text-white ${
+                  orders.find((o) => o.id === openId)?.status === "ACCEPT"
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-black hover:bg-gray-800"
+                }`}
               >
-                주문접수
+                {orders.find((o) => o.id === openId)?.status === "ACCEPT"
+                  ? "접수완료"
+                  : "주문접수"}
               </button>
             </Form>
           </div>
@@ -515,8 +666,7 @@ function short(id: string) {
 }
 function fmtKST(iso: string) {
   const d = new Date(iso);
-  const kst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
-  return kst.toLocaleString("ko-KR", { hour12: false });
+  return d.toLocaleString("ko-KR", { timeZone: "Asia/Seoul", hour12: false });
 }
 function toLocalInputValue(iso: string) {
   const d = new Date(iso);
