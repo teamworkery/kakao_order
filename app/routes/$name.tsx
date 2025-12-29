@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { data, Form } from "react-router";
-import { makeSSRClient } from "../supa_clients";
+import { useState, useEffect } from "react";
+import { Form, useLocation } from "react-router";
+import { makeSSRClient, browserClient } from "../supa_clients";
 import type { Database } from "database.types";
 import type { Route } from "./+types/$name";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -56,7 +56,12 @@ export const loader = async ({ request, params }: MyLoaderArgs) => {
 
   const profile_id = profile.profile_id;
   const menuItems = await getMenuItems(client, profile_id);
-  return { menuItems };
+  
+  // 인증 상태 확인
+  const { data: userData } = await client.auth.getUser();
+  const user = userData?.user || null;
+
+  return { menuItems, user, name };
 };
 
 export const saveOrder = async (
@@ -106,12 +111,23 @@ export const saveOrder = async (
 // action 함수에서 client 생성 후 주입, 화살표 함수
 export const action = async ({ request, params }: Route.ActionArgs) => {
   try {
+    // makeSSRclient에서 client 생성 (loader 패턴과 동일)
+    const { client, headers } = makeSSRClient(request);
+    
+    // 인증 상태 확인 - 주문 시 카카오 로그인 필수
+    const { data: userData, error: authError } = await client.auth.getUser();
+    if (authError || !userData?.user) {
+      return {
+        success: false,
+        message: "주문하려면 카카오 로그인이 필요합니다.",
+        requiresAuth: true,
+      };
+    }
+
     const formData = await request.formData();
     const phoneNumber = formData.get("phoneNumber") as string;
     const orderItems = JSON.parse(formData.get("orderItems") as string);
     const totalAmount = parseInt(formData.get("totalAmount") as string);
-    // makeSSRclient에서 client 생성 (loader 패턴과 동일)
-    const { client, headers } = makeSSRClient(request);
 
     const name = params.name;
     const { data: profile } = await client
@@ -209,10 +225,46 @@ export default function OrderPage({
   loaderData,
   actionData,
 }: Route.ComponentProps) {
-  const { menuItems } = loaderData;
+  const { menuItems, user: initialUser, name } = loaderData;
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [user, setUser] = useState(initialUser);
+  const location = useLocation();
+
+  // 인증 상태 실시간 확인
+  useEffect(() => {
+    async function checkAuth() {
+      const { data: { user: currentUser } } = await browserClient.auth.getUser();
+      setUser(currentUser);
+    }
+    checkAuth();
+    
+    // 인증 상태 변경 감지
+    const { data: { subscription } } = browserClient.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  // 카카오 로그인 함수
+  const handleKakaoLogin = async () => {
+    const currentUrl = `${window.location.origin}${location.pathname}`;
+    const { error } = await browserClient.auth.signInWithOAuth({
+      provider: "kakao",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(currentUrl)}`,
+      },
+    });
+
+    if (error) {
+      console.error("카카오 로그인 오류:", error);
+      alert("카카오 로그인 중 오류가 발생했습니다. 다시 시도해주세요.");
+    }
+  };
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("ko-KR").format(price);
@@ -269,7 +321,8 @@ export default function OrderPage({
     (sum, item) => sum + item.price * item.quantity,
     0
   );
-  const canOrder = orderItems.length > 0 && phoneNumber.trim() !== "";
+  const isAuthenticated = !!user;
+  const canOrder = orderItems.length > 0 && phoneNumber.trim() !== "" && isAuthenticated;
 
   const handleSubmit = (e: React.FormEvent) => {
     if (!canOrder) {
@@ -318,6 +371,38 @@ export default function OrderPage({
             {actionData.success && actionData.orderId && (
               <p className="text-sm mt-1">주문번호: {actionData.orderId}</p>
             )}
+            {actionData.requiresAuth && (
+              <button
+                onClick={handleKakaoLogin}
+                className="mt-3 w-full py-2 px-4 bg-yellow-400 text-black rounded-lg font-semibold hover:bg-yellow-500 transition-colors"
+              >
+                카카오로 로그인하기
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 로그인 상태 표시 */}
+      {!isAuthenticated && (
+        <div className="max-w-sm mx-auto px-4 py-2">
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3 mb-4">
+            <p className="text-sm text-yellow-800 mb-2">
+              주문하려면 카카오 로그인이 필요합니다.
+            </p>
+            <button
+              onClick={handleKakaoLogin}
+              className="w-full py-2 px-4 bg-yellow-400 text-black rounded-lg font-semibold hover:bg-yellow-500 transition-colors flex items-center justify-center gap-2"
+            >
+              <svg
+                className="w-5 h-5"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path d="M12 3c5.799 0 10.5 3.664 10.5 8.185 0 4.52-4.701 8.184-10.5 8.184a13.5 13.5 0 0 1-1.727-.11l-4.408 2.883c-.501.265-.678.236-.472-.413l.892-3.678c-2.88-1.46-4.785-3.99-4.785-6.866C1.5 6.665 6.201 3 12 3z" />
+              </svg>
+              카카오로 로그인
+            </button>
           </div>
         </div>
       )}
@@ -477,27 +562,45 @@ export default function OrderPage({
               </span>
             </div>
 
-            <Form method="post" onSubmit={handleSubmit}>
-              <input
-                type="hidden"
-                name="orderItems"
-                value={JSON.stringify(orderItems)}
-              />
-              <input type="hidden" name="totalAmount" value={totalAmount} />
-              <input type="hidden" name="phoneNumber" value={phoneNumber} />
+            {isAuthenticated ? (
+              <Form method="post" onSubmit={handleSubmit}>
+                <input
+                  type="hidden"
+                  name="orderItems"
+                  value={JSON.stringify(orderItems)}
+                />
+                <input type="hidden" name="totalAmount" value={totalAmount} />
+                <input type="hidden" name="phoneNumber" value={phoneNumber} />
 
+                <button
+                  type="submit"
+                  disabled={!canOrder}
+                  className={`w-full py-4 rounded-lg font-semibold text-lg transition-colors ${
+                    canOrder
+                      ? "bg-orange-500 text-white hover:bg-orange-600"
+                      : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  }`}
+                >
+                  {canOrder
+                    ? "주문하기"
+                    : "메뉴 선택 및 전화번호 입력"}
+                </button>
+              </Form>
+            ) : (
               <button
-                type="submit"
-                disabled={!canOrder}
-                className={`w-full py-4 rounded-lg font-semibold text-lg transition-colors ${
-                  canOrder
-                    ? "bg-orange-500 text-white hover:bg-orange-600"
-                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                }`}
+                onClick={handleKakaoLogin}
+                className="w-full py-4 rounded-lg font-semibold text-lg transition-colors bg-yellow-400 text-black hover:bg-yellow-500 flex items-center justify-center gap-2"
               >
-                {canOrder ? "주문하기" : "메뉴 선택 및 전화번호 입력"}
+                <svg
+                  className="w-6 h-6"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
+                  <path d="M12 3c5.799 0 10.5 3.664 10.5 8.185 0 4.52-4.701 8.184-10.5 8.184a13.5 13.5 0 0 1-1.727-.11l-4.408 2.883c-.501.265-.678.236-.472-.413l.892-3.678c-2.88-1.46-4.785-3.99-4.785-6.866C1.5 6.665 6.201 3 12 3z" />
+                </svg>
+                카카오로 로그인하여 주문하기
               </button>
-            </Form>
+            )}
           </div>
         </div>
       )}

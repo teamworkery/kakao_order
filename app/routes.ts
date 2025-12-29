@@ -7,4 +7,5 @@ export default [
   route("/login", "routes/login.tsx"),
   route("/admin", "routes/admin.tsx"),
   route("/owner/orders", "routes/owner.orders.tsx"),
+  route("/auth/callback", "routes/auth/callback.tsx"),
 ] satisfies RouteConfig;
