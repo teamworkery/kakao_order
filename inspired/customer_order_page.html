@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Burger House - Mobile Order</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              primary: "#ee7c2b",
+              "background-light": "#f8f7f6",
+              "background-dark": "#221810",
+              kakao: "#FEE500",
+              "kakao-text": "#3C1E1E",
+            },
+            fontFamily: {
+              display: ["Plus Jakarta Sans", "sans-serif"],
+            },
+            borderRadius: {
+              DEFAULT: "0.5rem",
+              lg: "1rem",
+              xl: "1.5rem",
+              full: "9999px",
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      /* Hide scrollbar for clean UI */
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+    </style>
+  </head>
+  <body
+    class="bg-gray-200 font-display flex justify-center items-start min-h-screen"
+  >
+    <!-- Mobile App Container -->
+    <!-- Simulates a mobile device on desktop, responsive on actual mobile -->
+    <div
+      class="w-full max-w-[480px] bg-background-light dark:bg-background-dark min-h-screen shadow-2xl relative pb-40 flex flex-col"
+    >
+      <!-- Top Navigation Bar -->
+      <header
+        class="flex items-center justify-between px-4 py-3 bg-white/90 backdrop-blur-md sticky top-0 z-40 border-b border-gray-100 dark:border-gray-800 dark:bg-background-dark/90 transition-colors"
+      >
+        <button
+          class="size-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-800 dark:text-white transition-colors"
+        >
+          <span class="material-symbols-outlined">arrow_back</span>
+        </button>
+        <h1
+          class="text-lg font-bold text-gray-900 dark:text-white tracking-tight"
+        >
+          Burger House
+        </h1>
+        <div class="flex gap-1">
+          <button
+            class="size-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-800 dark:text-white transition-colors"
+          >
+            <span class="material-symbols-outlined">search</span>
+          </button>
+          <button
+            class="size-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-800 dark:text-white transition-colors"
+          >
+            <span class="material-symbols-outlined">share</span>
+          </button>
+        </div>
+      </header>
+      <!-- Restaurant Hero Section -->
+      <div class="p-4 bg-white dark:bg-background-dark">
+        <div
+          class="relative w-full aspect-video rounded-xl overflow-hidden mb-4 bg-gray-200 group"
+        >
+          <!-- Image Placeholder with gradient overlay -->
+          <div
+            class="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
+            data-alt="Close up of a juicy cheeseburger with lettuce and tomato"
+            style="
+              background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCiir8QHpkksdfdDlg5QX18Ow9sz67hr-WCyez5S4fwu7Qu5AftJE38sEd2mtQaz-8jj90oFF0qHAYnXINTK2reL3IJX4yZSLfWjeS9HCejlHupG53jLspSewd3lAjnAE8invdgpsfp11YuWjUEcVO_AKFQi0wfA4MrTjc2MLYt7VMprwfuPCSaCJGAsa5_g86rYBVVNQGWCCeWwn5ZgUX3otGXSYpFi47SUQKORzeLFmqCIccyKGBQf71JUcLsrho1ktbdjVqdW6M');
+            "
+          ></div>
+          <div
+            class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"
+          ></div>
+          <div class="absolute bottom-4 left-4 right-4 text-white">
+            <h2 class="text-3xl font-extrabold tracking-tight mb-1">
+              Burger House
+            </h2>
+            <div class="flex items-center flex-wrap gap-3 text-sm font-medium">
+              <span
+                class="flex items-center gap-1 bg-white/20 backdrop-blur-sm px-2 py-1 rounded-lg"
+              >
+                <span
+                  class="material-symbols-outlined text-yellow-400 text-lg fill-1"
+                  >star</span
+                >
+                4.8 (500+)
+              </span>
+              <span
+                class="flex items-center gap-1 bg-white/20 backdrop-blur-sm px-2 py-1 rounded-lg"
+              >
+                <span class="material-symbols-outlined text-white text-lg"
+                  >schedule</span
+                >
+                20-30 min
+              </span>
+              <span class="bg-primary px-2 py-1 rounded-lg text-white"
+                >Free Delivery</span
+              >
+            </div>
+          </div>
+        </div>
+        <p
+          class="text-gray-500 dark:text-gray-400 text-sm leading-relaxed px-1"
+        >
+          Authentic American smash burgers made with 100% premium beef patties,
+          brioche buns, and fresh locally sourced vegetables.
+        </p>
+      </div>
+      <!-- Sticky Category Navigation -->
+      <div
+        class="sticky top-[64px] z-30 bg-white dark:bg-background-dark border-b border-gray-100 dark:border-gray-800 shadow-sm"
+      >
+        <nav class="flex overflow-x-auto no-scrollbar px-4 gap-8 py-0">
+          <a
+            class="relative flex flex-col items-center gap-3 pt-4 pb-3 min-w-max group"
+            href="#"
+          >
+            <span class="text-primary font-bold text-sm tracking-wide"
+              >Signature</span
+            >
+            <span
+              class="absolute bottom-0 w-full h-1 rounded-t-full bg-primary"
+            ></span>
+          </a>
+          <a
+            class="relative flex flex-col items-center gap-3 pt-4 pb-3 min-w-max group"
+            href="#"
+          >
+            <span
+              class="text-gray-500 dark:text-gray-400 font-bold text-sm tracking-wide group-hover:text-gray-900 dark:group-hover:text-gray-200 transition-colors"
+              >Chicken</span
+            >
+            <span
+              class="absolute bottom-0 w-full h-1 rounded-t-full bg-transparent group-hover:bg-gray-200 dark:group-hover:bg-gray-700 transition-colors"
+            ></span>
+          </a>
+          <a
+            class="relative flex flex-col items-center gap-3 pt-4 pb-3 min-w-max group"
+            href="#"
+          >
+            <span
+              class="text-gray-500 dark:text-gray-400 font-bold text-sm tracking-wide group-hover:text-gray-900 dark:group-hover:text-gray-200 transition-colors"
+              >Vegan</span
+            >
+            <span
+              class="absolute bottom-0 w-full h-1 rounded-t-full bg-transparent group-hover:bg-gray-200 dark:group-hover:bg-gray-700 transition-colors"
+            ></span>
+          </a>
+          <a
+            class="relative flex flex-col items-center gap-3 pt-4 pb-3 min-w-max group"
+            href="#"
+          >
+            <span
+              class="text-gray-500 dark:text-gray-400 font-bold text-sm tracking-wide group-hover:text-gray-900 dark:group-hover:text-gray-200 transition-colors"
+              >Sides</span
+            >
+            <span
+              class="absolute bottom-0 w-full h-1 rounded-t-full bg-transparent group-hover:bg-gray-200 dark:group-hover:bg-gray-700 transition-colors"
+            ></span>
+          </a>
+          <a
+            class="relative flex flex-col items-center gap-3 pt-4 pb-3 min-w-max group"
+            href="#"
+          >
+            <span
+              class="text-gray-500 dark:text-gray-400 font-bold text-sm tracking-wide group-hover:text-gray-900 dark:group-hover:text-gray-200 transition-colors"
+              >Drinks</span
+            >
+            <span
+              class="absolute bottom-0 w-full h-1 rounded-t-full bg-transparent group-hover:bg-gray-200 dark:group-hover:bg-gray-700 transition-colors"
+            ></span>
+          </a>
+        </nav>
+      </div>
+      <!-- Menu Content -->
+      <main
+        class="flex flex-col p-4 gap-8 bg-background-light dark:bg-background-dark"
+      >
+        <!-- Section 1: Signature Burgers -->
+        <section>
+          <div class="flex items-center justify-between mb-4">
+            <h3
+              class="text-xl font-bold text-gray-900 dark:text-white tracking-tight"
+            >
+              Signature Burgers
+            </h3>
+          </div>
+          <div class="flex flex-col gap-5">
+            <!-- Featured Item Card (Large) -->
+            <div
+              class="flex flex-col bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-gray-100 dark:border-zinc-800 overflow-hidden hover:shadow-md transition-shadow"
+            >
+              <div
+                class="relative h-56 w-full bg-gray-100 dark:bg-zinc-800 bg-cover bg-center"
+                data-alt="Double beef patty burger with melted cheddar"
+                style="
+                  background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDBmGBTj-sITmgSawkIu0rXuXnpo29vKazES5VC5H1i5cuL1ItgB0ugWc6fgTyyYaTmrS66wfmKUrq_XPn26lgXw5nMp2AnaexHH40CjsV-wNZ2baoALdDj5gTsWDga9UC5hIrdwDSNLFOt9EDnbe-IDkopfMfe3PzQFq9KWqI4Q8l6Fdp0V23q4XNFA-cRGrSOeZqfO-cY7evaP1KA8YWgU3xnLhtUKFS4VIrSfxhzwNIgYJ67X81x4zV4bw8mtV-waEoPk_Clhtg');
+                "
+              >
+                <span
+                  class="absolute top-3 left-3 bg-primary text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-sm"
+                  >Bestseller</span
+                >
+              </div>
+              <div class="p-5 flex flex-col gap-3">
+                <div class="flex justify-between items-start">
+                  <h4
+                    class="text-lg font-bold text-gray-900 dark:text-white leading-tight"
+                  >
+                    Double Cheeseburger
+                  </h4>
+                  <span class="text-lg font-bold text-gray-900 dark:text-white"
+                    >$12.00</span
+                  >
+                </div>
+                <p
+                  class="text-gray-500 dark:text-gray-400 text-sm leading-relaxed"
+                >
+                  Two 100% beef patties, cheddar cheese, lettuce, tomato,
+                  pickles, and house sauce on a toasted brioche bun.
+                </p>
+                <!-- Quantity Control for Featured Item -->
+                <div class="mt-2 flex items-center justify-end">
+                  <div
+                    class="flex items-center bg-gray-100 dark:bg-zinc-800 rounded-lg p-1"
+                  >
+                    <button
+                      class="size-9 flex items-center justify-center bg-white dark:bg-zinc-700 rounded-md shadow-sm text-gray-600 dark:text-gray-300 hover:text-primary active:scale-95 transition-all"
+                    >
+                      <span class="material-symbols-outlined text-xl"
+                        >remove</span
+                      >
+                    </button>
+                    <span
+                      class="w-10 text-center font-bold text-gray-900 dark:text-white text-base"
+                      >1</span
+                    >
+                    <button
+                      class="size-9 flex items-center justify-center bg-white dark:bg-zinc-700 rounded-md shadow-sm text-gray-600 dark:text-gray-300 hover:text-primary active:scale-95 transition-all"
+                    >
+                      <span class="material-symbols-outlined text-xl">add</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Regular Item Card (Row) -->
+            <div
+              class="group flex bg-white dark:bg-zinc-900 rounded-xl p-3 shadow-sm border border-gray-100 dark:border-zinc-800 gap-4 hover:shadow-md transition-all"
+            >
+              <div
+                class="size-28 rounded-lg bg-gray-100 dark:bg-zinc-800 bg-cover bg-center shrink-0"
+                data-alt="Burger with bacon strips and bbq sauce"
+                style="
+                  background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCyRRJJv83MGbLlI0ayGWFxjnXBR934uDfxvzzPZU_Q4OG0hsSQQVRkX-StdxEI-CZBHXGAPTEL9UsL86Tdv37MnfmWt2fWRA1aUIbcl5_wyH5Wb3BXffgwTiN8GxEfaa4dQcecas4VW1gSBhVLE2kqNmURs-DCy_ks97FpHX6i-tenvXEqf14yUehHqZiB40sJcb2YRH1KhubqeQR0LJBW8KxlcG-nw77Jj0Aa621iuy-e3HjJsXrZIFWDcH9RqwVHWqMNsEqzQTI');
+                "
+              ></div>
+              <div class="flex flex-col flex-1 justify-between py-0.5">
+                <div>
+                  <h4
+                    class="text-base font-bold text-gray-900 dark:text-white group-hover:text-primary transition-colors"
+                  >
+                    Bacon Deluxe
+                  </h4>
+                  <p
+                    class="text-gray-500 dark:text-gray-400 text-xs mt-1.5 leading-relaxed line-clamp-2"
+                  >
+                    Crispy bacon, onion rings, smokey BBQ sauce, and cheddar.
+                  </p>
+                </div>
+                <div class="flex items-center justify-between mt-3">
+                  <span class="font-bold text-gray-900 dark:text-white text-lg"
+                    >$14.50</span
+                  >
+                  <button
+                    class="bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 text-gray-900 dark:text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-1.5 transition-colors"
+                  >
+                    Add
+                    <span class="material-symbols-outlined text-sm font-bold"
+                      >add</span
+                    >
+                  </button>
+                </div>
+              </div>
+            </div>
+            <!-- Regular Item Card (Row) -->
+            <div
+              class="group flex bg-white dark:bg-zinc-900 rounded-xl p-3 shadow-sm border border-gray-100 dark:border-zinc-800 gap-4 hover:shadow-md transition-all"
+            >
+              <div
+                class="size-28 rounded-lg bg-gray-100 dark:bg-zinc-800 bg-cover bg-center shrink-0"
+                data-alt="Classic beef burger with lettuce"
+                style="
+                  background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDCTLruvZ7qeriSSe5zZH3TQZxzileEIwZkT8SS4YLLjDmutmf2MrhMLoDqTbNwc2q18pYd1DjZepsK47vb7tKg2iFcBMEpfZsnox4MPaiMZN42RWRYx2wN4OKNG99eb8rY6IY2-e4VViiC2g7wTkquMOYSl_vT-JNcTcmo7y8vaxI9abg7rXzVbw7LzPvPNKFqD5D0nFVMbED-GgLyXCDNsQ10gG5qWm3c6isQtJmF2Vu2YpHz7e42hJJ43aOSZqRggpX7QLgrC50');
+                "
+              ></div>
+              <div class="flex flex-col flex-1 justify-between py-0.5">
+                <div>
+                  <h4
+                    class="text-base font-bold text-gray-900 dark:text-white group-hover:text-primary transition-colors"
+                  >
+                    Classic Single
+                  </h4>
+                  <p
+                    class="text-gray-500 dark:text-gray-400 text-xs mt-1.5 leading-relaxed line-clamp-2"
+                  >
+                    A timeless classic with fresh lettuce, tomato, and mayo.
+                  </p>
+                </div>
+                <div class="flex items-center justify-between mt-3">
+                  <span class="font-bold text-gray-900 dark:text-white text-lg"
+                    >$10.00</span
+                  >
+                  <button
+                    class="bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 text-gray-900 dark:text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-1.5 transition-colors"
+                  >
+                    Add
+                    <span class="material-symbols-outlined text-sm font-bold"
+                      >add</span
+                    >
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+        <!-- Section 2: Sides -->
+        <section>
+          <div class="flex items-center justify-between mb-4 mt-2">
+            <h3
+              class="text-xl font-bold text-gray-900 dark:text-white tracking-tight"
+            >
+              Sides &amp; Snacks
+            </h3>
+          </div>
+          <div class="flex flex-col gap-4">
+            <!-- Item with Natural Placeholder -->
+            <div
+              class="group flex bg-white dark:bg-zinc-900 rounded-xl p-3 shadow-sm border border-gray-100 dark:border-zinc-800 gap-4"
+            >
+              <!-- Missing Photo State: Placeholder Icon -->
+              <div
+                class="size-28 rounded-lg bg-gray-50 dark:bg-zinc-800 shrink-0 flex items-center justify-center text-gray-300 dark:text-zinc-600"
+              >
+                <span class="material-symbols-outlined text-[40px]"
+                  >lunch_dining</span
+                >
+              </div>
+              <div class="flex flex-col flex-1 justify-between py-0.5">
+                <div>
+                  <h4 class="text-base font-bold text-gray-900 dark:text-white">
+                    Seasoned Fries
+                  </h4>
+                  <p
+                    class="text-gray-500 dark:text-gray-400 text-xs mt-1.5 leading-relaxed line-clamp-2"
+                  >
+                    Crispy fries tossed in our secret cajun spice blend.
+                  </p>
+                </div>
+                <div class="flex items-center justify-between mt-3">
+                  <span class="font-bold text-gray-900 dark:text-white text-lg"
+                    >$4.50</span
+                  >
+                  <!-- Active Quantity State (Items added) -->
+                  <div
+                    class="flex items-center bg-gray-100 dark:bg-zinc-800 rounded-lg p-1 h-9"
+                  >
+                    <button
+                      class="w-8 h-full flex items-center justify-center text-gray-600 dark:text-gray-300 hover:text-primary active:text-primary transition-colors"
+                    >
+                      <span class="material-symbols-outlined text-lg"
+                        >remove</span
+                      >
+                    </button>
+                    <span
+                      class="w-7 text-center font-bold text-gray-900 dark:text-white text-sm"
+                      >2</span
+                    >
+                    <button
+                      class="w-8 h-full flex items-center justify-center text-gray-600 dark:text-gray-300 hover:text-primary active:text-primary transition-colors"
+                    >
+                      <span class="material-symbols-outlined text-lg">add</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Item 4 -->
+            <div
+              class="group flex bg-white dark:bg-zinc-900 rounded-xl p-3 shadow-sm border border-gray-100 dark:border-zinc-800 gap-4"
+            >
+              <div
+                class="size-28 rounded-lg bg-gray-100 dark:bg-zinc-800 bg-cover bg-center shrink-0"
+                data-alt="Golden fried onion rings in a basket"
+                style="
+                  background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBPVlk_rh0tX_B4lLcGtcZb9lAxQF23hz9eE_a4A7YrRUI0OlVWp8O--MvMZNYSlHnAF62jDxEaNfqFFTkJQTL--bmtDecKP0KLdvC9fsMVj3TcQhy0nSMMJFwSVWAHF72FPQ6PItsCG7pBblYuHYe1vzC-nXypNqR_SlXHUOPtSUL0gnBFbDUDFr5AyEhUBXf-LV7grWQ2rxGuoi0GeE8I3nNbyEUZY_QPbhB5bAdTzWUqfNCI333pSrI4t2Ti81uB8o93JTRKNt0');
+                "
+              ></div>
+              <div class="flex flex-col flex-1 justify-between py-0.5">
+                <div>
+                  <h4 class="text-base font-bold text-gray-900 dark:text-white">
+                    Onion Rings
+                  </h4>
+                  <p
+                    class="text-gray-500 dark:text-gray-400 text-xs mt-1.5 leading-relaxed line-clamp-2"
+                  >
+                    Beer battered thick cut onion rings.
+                  </p>
+                </div>
+                <div class="flex items-center justify-between mt-3">
+                  <span class="font-bold text-gray-900 dark:text-white text-lg"
+                    >$5.50</span
+                  >
+                  <button
+                    class="bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 text-gray-900 dark:text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-1.5 transition-colors"
+                  >
+                    Add
+                    <span class="material-symbols-outlined text-sm font-bold"
+                      >add</span
+                    >
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+      <!-- Fixed Bottom Order Bar -->
+      <!-- Fixed positioning logic customized for desktop "mobile app" view constraints -->
+      <div class="fixed bottom-0 z-50 w-full max-w-[480px]">
+        <!-- Gradient fade for smooth scroll off -->
+        <div
+          class="h-8 bg-gradient-to-b from-transparent to-white/10 w-full pointer-events-none"
+        ></div>
+        <div
+          class="bg-white dark:bg-zinc-900 border-t border-gray-100 dark:border-zinc-800 shadow-[0_-8px_30px_rgba(0,0,0,0.12)] p-4 rounded-t-2xl"
+        >
+          <div class="flex flex-col gap-3">
+            <!-- Kakao Login Prompt -->
+            <!-- Providing a seamless social login experience -->
+            <button
+              class="flex items-center justify-center gap-2.5 w-full bg-[#FEE500] hover:bg-[#fdd800] text-[#3C1E1E] font-semibold py-3.5 rounded-xl transition-colors shadow-sm"
+            >
+              <span class="material-symbols-outlined text-[20px] fill-current"
+                >chat_bubble</span
+              >
+              <span class="text-[15px]">Log in with Kakao to save points</span>
+            </button>
+            <!-- Order Summary & Checkout Action -->
+            <div class="flex items-center gap-4">
+              <div class="flex flex-col pl-1">
+                <span
+                  class="text-xs text-gray-500 dark:text-gray-400 font-medium"
+                  >Total (3 items)</span
+                >
+                <span
+                  class="text-2xl font-bold text-gray-900 dark:text-white tracking-tight"
+                  >$21.00</span
+                >
+              </div>
+              <button
+                class="flex-1 bg-primary hover:bg-orange-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-orange-500/30 flex items-center justify-between px-6 transition-all group active:scale-[0.98]"
+              >
+                <span class="text-[15px]">Place Order</span>
+                <span
+                  class="bg-white/20 group-hover:bg-white/30 text-white text-xs font-bold px-2.5 py-1 rounded-md transition-colors"
+                  >3</span
+                >
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

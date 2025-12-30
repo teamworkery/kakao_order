@@ -279,6 +279,13 @@ export default function OwnerOrdersPage() {
   const [items, setItems] = useState<OrderItemWithMenu[]>([]);
   const [itemsLoading, setItemsLoading] = useState(false);
 
+  // 새 주문 감지 (실시간 알림용)
+  const [newOrderNotification, setNewOrderNotification] = useState<{
+    orderId: string;
+    items: number;
+    amount: number;
+  } | null>(null);
+
   const totalPages = useMemo(
     () => Math.max(1, Math.ceil(totalCount / pageSize)),
     [totalCount, pageSize]
@@ -326,16 +333,33 @@ export default function OwnerOrdersPage() {
           table: "order",
           filter: `profile_id=eq.${profileId}`,
         },
-        (payload) => {
+        async (payload) => {
           const row = payload.new as {
+            order_id: string;
             createdat: string;
             phoneNumber: string | null;
+            totalAmount: number | null;
           };
           const createdIso = new Date(row.createdat).toISOString();
           const inRange = createdIso >= dateFrom && createdIso <= dateTo;
           const phoneOk =
             !phone || String(row.phoneNumber ?? "").includes(phone);
           if (inRange && phoneOk) {
+            // Get order items count
+            const { data: orderItems } = await browserClient
+              .from("orderitem")
+              .select("id")
+              .eq("orderId", row.order_id);
+
+            setNewOrderNotification({
+              orderId: row.order_id,
+              items: orderItems?.length || 0,
+              amount: row.totalAmount || 0,
+            });
+
+            // Auto-hide notification after 10 seconds
+            setTimeout(() => setNewOrderNotification(null), 10000);
+
             if (soundOn && audioRef.current) {
               audioRef.current.currentTime = 0;
               audioRef.current.play().catch(() => {});
@@ -386,273 +410,476 @@ export default function OwnerOrdersPage() {
   };
 
   return (
-    <div className="p-4 max-w-6xl mx-auto">
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-bold">주문 목록</h1>
-        <div className="flex items-center gap-2">
+    <div className="font-display bg-background-light overflow-hidden h-screen flex flex-col">
+      {/* Top Navigation Bar */}
+      <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-border bg-white px-6 py-3 h-16 shrink-0 z-20">
+        <div className="flex items-center gap-4">
+          <div className="size-8 flex items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <span className="material-symbols-outlined text-2xl">
+              restaurant_menu
+            </span>
+          </div>
+          <h2 className="text-foreground text-lg font-bold leading-tight tracking-[-0.015em]">
+            Gourmet Admin
+          </h2>
+        </div>
+        <div className="flex flex-1 justify-end gap-6 items-center">
+          {/* Sound Toggle */}
           <button
             onClick={toggleSound}
             aria-pressed={soundOn}
-            className={`border px-3 py-1 rounded ${
-              soundOn ? "bg-green-50" : ""
+            className={`flex cursor-pointer items-center justify-center rounded-full h-10 w-10 transition-colors ${
+              soundOn
+                ? "bg-primary/10 text-primary"
+                : "bg-[#f4f2f0] text-foreground hover:bg-primary/10 hover:text-primary"
             }`}
             title="소리 알림 활성화"
           >
-            {soundOn
-              ? "소리 켜짐(클릭해 끄기)"
-              : soundReady
-              ? "소리 꺼짐(클릭해 켜기)"
-              : "소리 사용 준비"}
-          </button>
-          <Form method="post">
-            <input type="hidden" name="actionType" value="logout" />
-            <button
-              type="submit"
-              className="border px-3 py-1 rounded hover:bg-gray-50"
-              title="로그아웃"
+            <span
+              className="material-symbols-outlined"
+              style={{
+                fontVariationSettings: soundOn ? "'FILL' 1" : "'FILL' 0",
+              }}
             >
-              로그아웃
-            </button>
-          </Form>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <section className="flex flex-wrap gap-2 items-end mb-4 justify-between">
-        <div>
-          <label className="text-sm">전화번호</label>
-          <br />
-          <input
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="010..."
-            className="border px-2 py-1 rounded"
-          />
-        </div>
-        <div>
-          <label className="text-sm">From</label>
-          <br />
-          <input
-            type="datetime-local"
-            value={toLocalInputValue(dateFrom)}
-            onChange={(e) =>
-              setDateFrom(new Date(e.target.value).toISOString())
-            }
-            className="border px-2 py-1 rounded"
-          />
-        </div>
-        <div>
-          <label className="text-sm">To</label>
-          <br />
-          <input
-            type="datetime-local"
-            value={toLocalInputValue(dateTo)}
-            onChange={(e) => setDateTo(new Date(e.target.value).toISOString())}
-            className="border px-2 py-1 rounded"
-          />
-        </div>
-        <button onClick={applyFilters} className="border px-3 py-1 rounded">
-          적용
-        </button>
-
-        {(data.userEmail ||
-          data.storename ||
-          data.name ||
-          data.storenumber) && (
-          <div className="text-sm">
-            <span>관리자: </span>
-            <span className="font-bold">{data.userEmail ?? "-"}</span>
-            <span className="ml-3 text-gray-600">
-              {data.storename?.trim?.() || "가게명 미설정"} @{" "}
-              {data.name?.trim?.() || "domain 미설정"} @{" "}
-              {data.storenumber?.trim?.() || "가게번호 미설정"}
+              volume_up
+            </span>
+          </button>
+          {/* Store Status Toggle */}
+          <div className="flex items-center gap-2 bg-[#f4f2f0] rounded-full p-1 pr-4">
+            <div className="h-8 px-3 flex items-center justify-center bg-white rounded-full shadow-sm text-green-600 text-xs font-bold uppercase tracking-wider">
+              Open
+            </div>
+            <span className="text-xs font-medium text-gray-500">
+              Auto-close at 22:00
             </span>
           </div>
-        )}
-      </section>
-
-      {/* Table */}
-      <div className="overflow-x-auto border rounded">
-        <table className="min-w-full text-sm">
-          <thead>
-            <tr className="bg-gray-50">
-              <th className="px-3 py-2 text-left">시간</th>
-              <th className="px-3 py-2 text-left">주문ID</th>
-              <th className="px-3 py-2 text-left">전화</th>
-              <th className="px-3 py-2 text-right">총액</th>
-              <th className="px-3 py-2 text-center">상태</th>
-              <th className="px-3 py-2">액션</th>
-            </tr>
-          </thead>
-          <tbody>
-            {orders.length === 0 ? (
-              <tr>
-                <td className="px-3 py-4" colSpan={6}>
-                  데이터 없음
-                </td>
-              </tr>
-            ) : (
-              orders.map((o) =>
-                o ? (
-                  <tr
-                    key={o.id}
-                    className={`border-t ${
-                      o.status === "ACCEPT" ? "bg-green-50" : ""
-                    }`}
+          {/* Profile (Kakao Style) */}
+          <div className="flex items-center gap-3 pl-4 border-l border-gray-100">
+            <div className="hidden sm:flex flex-col items-end">
+              <span className="text-sm font-bold text-foreground">
+                {data.userEmail || "Manager"}
+              </span>
+              <span className="text-xs text-gray-500">
+                {data.storename || "Store"}
+              </span>
+            </div>
+            <div className="relative">
+              <div className="bg-primary/10 rounded-full size-10 ring-2 ring-transparent hover:ring-primary/50 transition-all cursor-pointer flex items-center justify-center">
+                <span className="material-symbols-outlined text-primary">
+                  person
+                </span>
+              </div>
+              <div
+                className="absolute -bottom-1 -right-1 bg-[#FEE500] rounded-full p-0.5 border-2 border-white flex items-center justify-center"
+                title="Kakao Linked"
+              >
+                <span className="material-symbols-outlined text-black text-[10px]">
+                  chat_bubble
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+      <div className="flex flex-1 overflow-hidden">
+        {/* Side Navigation */}
+        <nav className="w-64 bg-white border-r border-border flex-col hidden md:flex shrink-0">
+          <div className="p-4 flex flex-col gap-2">
+            <a
+              className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-foreground font-medium transition-colors"
+              href="/admin"
+            >
+              <span className="material-symbols-outlined text-[22px]">
+                restaurant
+              </span>
+              <span>Menu Mgmt</span>
+            </a>
+            <a
+              className="flex items-center gap-3 px-4 py-3 rounded-xl bg-primary/10 text-primary font-medium transition-colors"
+              href="/owner/orders"
+            >
+              <span className="material-symbols-outlined text-[22px]">
+                receipt_long
+              </span>
+              <span>All Orders</span>
+            </a>
+            <a
+              className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-foreground font-medium transition-colors"
+              href="#"
+            >
+              <span className="material-symbols-outlined text-[22px]">
+                analytics
+              </span>
+              <span>Reports</span>
+            </a>
+          </div>
+          <div className="mt-auto p-4 border-t border-border">
+            <Form method="post">
+              <input type="hidden" name="actionType" value="logout" />
+              <button
+                type="submit"
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-foreground font-medium transition-colors"
+              >
+                <span className="material-symbols-outlined text-[22px]">
+                  logout
+                </span>
+                <span>Logout</span>
+              </button>
+            </Form>
+          </div>
+        </nav>
+        {/* Main Content Area */}
+        <main className="flex-1 flex flex-col relative overflow-hidden bg-background-light">
+          {/* Real-time Notification Banner */}
+          {newOrderNotification && (
+            <div className="bg-primary/10 border-b border-primary/20 px-6 py-3 flex items-center justify-between animate-fade-in-down">
+              <div className="flex items-center gap-3 text-primary">
+                <div className="relative flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+                </div>
+                <span className="font-bold text-sm">
+                  New Order #{newOrderNotification.orderId.slice(-4)} just
+                  arrived!
+                </span>
+                <span className="text-sm text-primary/80 ml-2">
+                  {newOrderNotification.items} items • ₩
+                  {newOrderNotification.amount.toLocaleString()}
+                </span>
+              </div>
+              <button
+                onClick={() => {
+                  setOpenId(newOrderNotification.orderId);
+                  setNewOrderNotification(null);
+                }}
+                className="text-xs font-bold bg-primary text-white px-4 py-1.5 rounded-full hover:bg-primary/90 transition-colors shadow-sm"
+              >
+                View Now
+              </button>
+            </div>
+          )}
+          {/* Content Container */}
+          <div className="flex-1 flex flex-col p-6 min-w-0 overflow-hidden">
+            {/* Page Header & Filters */}
+            <div className="flex flex-col gap-5 mb-6 shrink-0">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h1 className="text-2xl font-bold text-foreground">
+                    Incoming Orders
+                  </h1>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Manage today's orders in real-time
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="flex items-center gap-2 px-4 py-2 bg-white border border-border rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition shadow-sm"
                   >
-                    <td className="px-3 py-2">
-                      {o.createdat ? fmtKST(o.createdat) : "-"}
-                    </td>
-                    <td className="px-3 py-2">{short(o.id)}</td>
-                    <td className="px-3 py-2">{o.phoneNumber ?? "-"}</td>
-                    <td className="px-3 py-2 text-right">
-                      {o.totalAmount?.toLocaleString() ?? "-"}
-                    </td>
-                    <td className="px-3 py-2 text-center">
-                      {o.status === "ACCEPT" ? (
-                        <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                          주문접수
-                        </span>
-                      ) : (
-                        <span className="bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                          대기중
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2">
-                      <button
-                        className="border px-2 py-1 rounded"
+                    <span className="material-symbols-outlined text-lg">
+                      refresh
+                    </span>
+                    <span>Refresh</span>
+                  </button>
+                </div>
+              </div>
+              {/* Filter Bar */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-4 bg-white p-4 rounded-xl shadow-sm border border-border">
+                <div className="md:col-span-4 relative">
+                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                    search
+                  </span>
+                  <input
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-sm transition-all bg-gray-50 focus:bg-white"
+                    placeholder="Search by phone number..."
+                    type="text"
+                  />
+                </div>
+                <div className="md:col-span-3">
+                  <div className="relative">
+                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                      calendar_today
+                    </span>
+                    <input
+                      type="datetime-local"
+                      value={toLocalInputValue(dateFrom)}
+                      onChange={(e) =>
+                        setDateFrom(new Date(e.target.value).toISOString())
+                      }
+                      className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 bg-gray-50 text-sm cursor-pointer hover:bg-gray-100 transition-colors text-gray-700"
+                    />
+                  </div>
+                </div>
+                <div className="md:col-span-3">
+                  <div className="relative">
+                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                      calendar_today
+                    </span>
+                    <input
+                      type="datetime-local"
+                      value={toLocalInputValue(dateTo)}
+                      onChange={(e) =>
+                        setDateTo(new Date(e.target.value).toISOString())
+                      }
+                      className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 bg-gray-50 text-sm cursor-pointer hover:bg-gray-100 transition-colors text-gray-700"
+                    />
+                  </div>
+                </div>
+                <div className="md:col-span-2">
+                  <button
+                    onClick={applyFilters}
+                    className="w-full h-full flex items-center justify-center gap-2 bg-foreground text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition shadow-sm"
+                  >
+                    Apply Filter
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* High Density Table */}
+            <div className="bg-white border border-border rounded-xl shadow-sm flex flex-col flex-1 overflow-hidden">
+              {/* Table Header */}
+              <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-gray-50 border-b border-border text-xs font-bold text-gray-500 uppercase tracking-wider shrink-0">
+                <div className="col-span-1">ID</div>
+                <div className="col-span-2">Time</div>
+                <div className="col-span-2">Customer</div>
+                <div className="col-span-4">Items Summary</div>
+                <div className="col-span-1 text-right">Amount</div>
+                <div className="col-span-2 text-center">Status</div>
+              </div>
+              {/* Table Body */}
+              <div className="overflow-y-auto custom-scrollbar flex-1">
+                {orders.length === 0 ? (
+                  <div className="p-12 text-center">
+                    <p className="text-muted-foreground">데이터 없음</p>
+                  </div>
+                ) : (
+                  orders.map((o) =>
+                    o ? (
+                      <div
+                        key={o.id}
+                        className={`grid grid-cols-12 gap-4 px-6 py-4 border-b border-[#f4f2f0] items-center hover:bg-orange-50/30 transition-colors cursor-pointer group ${
+                          o.status === "ACCEPT" ? "bg-green-50/30" : ""
+                        }`}
                         onClick={() => setOpenId(o.id)}
                       >
-                        상세
-                      </button>
-                    </td>
-                  </tr>
-                ) : null
-              )
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Pagination */}
-      <div className="flex items-center gap-2 mt-3">
-        <button
-          disabled={curPage <= 1}
-          onClick={() => goPage(curPage - 1)}
-          className="border px-2 py-1 rounded disabled:opacity-50"
-        >
-          이전
-        </button>
-        <span>
-          {curPage} / {Math.max(1, Math.ceil(totalCount / pageSize))}
-        </span>
-        <button
-          disabled={curPage >= Math.max(1, Math.ceil(totalCount / pageSize))}
-          onClick={() => goPage(curPage + 1)}
-          className="border px-2 py-1 rounded disabled:opacity-50"
-        >
-          다음
-        </button>
+                        <div className="col-span-1 font-bold text-foreground">
+                          #{short(o.id)}
+                        </div>
+                        <div className="col-span-2 flex flex-col">
+                          <span className="font-bold text-foreground text-sm">
+                            {o.createdat
+                              ? fmtKST(o.createdat).split(" ")[1]
+                              : "-"}
+                          </span>
+                          <span className="text-xs text-primary font-medium">
+                            {o.createdat
+                              ? fmtKST(o.createdat).split(" ")[0]
+                              : ""}
+                          </span>
+                        </div>
+                        <div className="col-span-2 flex flex-col">
+                          <span className="text-sm font-medium text-foreground">
+                            {o.phoneNumber ?? "-"}
+                          </span>
+                        </div>
+                        <div className="col-span-4 text-sm text-gray-600 truncate pr-4">
+                          {/* Items summary will be loaded in modal */}
+                          <span className="font-medium text-foreground">
+                            주문 상세 보기
+                          </span>
+                        </div>
+                        <div className="col-span-1 text-right font-bold text-primary text-sm">
+                          ₩{o.totalAmount?.toLocaleString() ?? "-"}
+                        </div>
+                        <div className="col-span-2 flex justify-center">
+                          {o.status === "ACCEPT" ? (
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-600">
+                              Completed
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-primary/10 text-primary">
+                              New Order
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ) : null
+                  )
+                )}
+              </div>
+              {/* Pagination Footer */}
+              <div className="bg-gray-50 border-t border-border px-6 py-3 flex items-center justify-between text-xs text-gray-500 shrink-0">
+                <span>
+                  Showing {(page - 1) * pageSize + 1}-
+                  {Math.min(page * pageSize, totalCount)} of {totalCount} orders
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    disabled={curPage <= 1}
+                    onClick={() => goPage(curPage - 1)}
+                    className="size-8 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-400 hover:text-primary disabled:opacity-50"
+                  >
+                    <span className="material-symbols-outlined text-sm">
+                      chevron_left
+                    </span>
+                  </button>
+                  <span className="font-medium text-gray-700">
+                    Page {curPage}
+                  </span>
+                  <button
+                    disabled={curPage >= totalPages}
+                    onClick={() => goPage(curPage + 1)}
+                    className="size-8 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 hover:text-primary hover:border-primary transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-sm">
+                      chevron_right
+                    </span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
       </div>
 
       {/* Detail Modal */}
       {openId && (
         <div
-          className="fixed inset-0 bg-black/40 flex items-center justify-center"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
           onClick={() => setOpenId(null)}
         >
           <div
-            className="bg-white rounded p-4 w-full max-w-lg"
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex justify-between items-center mb-2">
-              <h2 className="font-bold">주문 상세: {short(openId)}</h2>
-              <button onClick={() => setOpenId(null)} className="text-sm">
-                닫기
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-border flex items-center justify-between bg-white sticky top-0">
+              <div className="flex flex-col">
+                <h3 className="text-xl font-bold text-foreground">
+                  Order #{short(openId)}
+                </h3>
+                <span className="text-sm text-gray-500">
+                  {orders.find((o) => o.id === openId)?.createdat
+                    ? fmtKST(orders.find((o) => o.id === openId)!.createdat!)
+                    : "Placed today"}
+                </span>
+              </div>
+              <button
+                onClick={() => setOpenId(null)}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <span className="material-symbols-outlined">close</span>
               </button>
             </div>
-
             {/* 주문 상태 표시 */}
-            <div className="mb-3 p-2 bg-gray-50 rounded">
-              <span className="text-sm font-medium">주문 상태: </span>
-              {orders.find((o) => o.id === openId)?.status === "ACCEPT" ? (
-                <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                  주문접수
-                </span>
-              ) : (
-                <span className="bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                  대기중
-                </span>
-              )}
+            <div className="px-6 py-2 border-b border-border bg-white">
+              <span className="px-3 py-1 bg-primary/10 text-primary text-sm font-bold rounded-full border border-primary/20">
+                {orders.find((o) => o.id === openId)?.status === "ACCEPT"
+                  ? "Pending Acceptance"
+                  : "New Order"}
+              </span>
             </div>
 
-            {itemsLoading ? (
-              <p>로딩 중…</p>
-            ) : items.length === 0 ? (
-              <p>아이템 없음</p>
-            ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-gray-50">
-                    <th className="text-left px-2 py-1">메뉴</th>
-                    <th className="text-right px-2 py-1">수량</th>
-                    <th className="text-right px-2 py-1">가격</th>
-                    <th className="text-right px-2 py-1">합계</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((it) => (
-                    <tr key={it.id} className="border-t">
-                      <td className="px-2 py-1">
-                        {it.menuItem?.name ?? `#${it.menuItemId}`}
-                      </td>
-                      <td className="px-2 py-1 text-right">{it.quantity}</td>
-                      <td className="px-2 py-1 text-right">
-                        {it.price.toLocaleString()}
-                      </td>
-                      <td className="px-2 py-1 text-right">
-                        {(it.price * it.quantity).toLocaleString()}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="border-t-2 font-bold bg-gray-50">
-                    <td className="px-2 py-2" colSpan={3}>
-                      총 금액
-                    </td>
-                    <td className="px-2 py-2 text-right">
+            {/* Modal Body (Scrollable) */}
+            <div className="p-6 overflow-y-auto custom-scrollbar bg-background-light">
+              {/* Customer Info Card */}
+              <div className="bg-white p-4 rounded-xl border border-border mb-4 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
+                    <span className="material-symbols-outlined">person</span>
+                  </div>
+                  <div>
+                    <p className="font-bold text-foreground">
+                      {orders.find((o) => o.id === openId)?.phoneNumber || "-"}
+                    </p>
+                    <p className="text-sm text-gray-500">Customer</p>
+                  </div>
+                </div>
+              </div>
+              {/* Order Items */}
+              {itemsLoading ? (
+                <div className="p-8 text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent mx-auto"></div>
+                  <p className="mt-2 text-muted-foreground">로딩 중…</p>
+                </div>
+              ) : items.length === 0 ? (
+                <p className="text-muted-foreground">아이템 없음</p>
+              ) : (
+                <div className="bg-white rounded-xl border border-border shadow-sm overflow-hidden">
+                  <div className="px-4 py-2 bg-gray-50 border-b border-border text-xs font-bold text-gray-500 uppercase">
+                    Order Items
+                  </div>
+                  <div className="divide-y divide-gray-100">
+                    {items.map((it) => (
+                      <div key={it.id} className="p-4 flex gap-4">
+                        <div className="size-16 bg-gray-100 rounded-lg bg-cover bg-center shrink-0"></div>
+                        <div className="flex-1">
+                          <div className="flex justify-between items-start">
+                            <h4 className="font-bold text-foreground">
+                              {it.menuItem?.name ?? `#${it.menuItemId}`}
+                            </h4>
+                            <span className="font-medium text-foreground">
+                              ₩{it.price.toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="font-bold text-lg text-primary self-center">
+                          x{it.quantity}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="bg-gray-50 p-4 border-t border-border flex justify-between items-center">
+                    <span className="font-bold text-gray-600">
+                      Total Amount
+                    </span>
+                    <span className="text-xl font-bold text-primary">
+                      ₩
                       {items
                         .reduce((sum, it) => sum + it.price * it.quantity, 0)
                         .toLocaleString()}
-                      원
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-            )}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
 
-            {/* 주문접수 버튼 → 서버 action으로 POST */}
-            <Form method="post" replace className="mt-3">
-              <input type="hidden" name="actionType" value="accept" />
-              <input type="hidden" name="orderId" value={openId ?? ""} />
-              <button
-                type="submit"
-                disabled={
-                  orders.find((o) => o.id === openId)?.status === "ACCEPT"
-                }
-                className={`px-3 py-1 rounded text-white ${
-                  orders.find((o) => o.id === openId)?.status === "ACCEPT"
-                    ? "bg-gray-400 cursor-not-allowed"
-                    : "bg-black hover:bg-gray-800"
-                }`}
-              >
-                {orders.find((o) => o.id === openId)?.status === "ACCEPT"
-                  ? "접수완료"
-                  : "주문접수"}
-              </button>
-            </Form>
+            {/* Modal Footer (Actions) */}
+            <div className="p-4 border-t border-border bg-white sticky bottom-0">
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setOpenId(null)}
+                  className="flex-1 py-3 px-4 rounded-xl border border-gray-300 text-gray-700 font-bold hover:bg-gray-50 transition-colors"
+                >
+                  Close
+                </button>
+                <Form method="post" replace className="flex-[2]">
+                  <input type="hidden" name="actionType" value="accept" />
+                  <input type="hidden" name="orderId" value={openId ?? ""} />
+                  <button
+                    type="submit"
+                    disabled={
+                      orders.find((o) => o.id === openId)?.status === "ACCEPT"
+                    }
+                    className={`w-full py-3 px-4 rounded-xl font-bold transition-all shadow-lg shadow-primary/30 flex items-center justify-center gap-2 ${
+                      orders.find((o) => o.id === openId)?.status === "ACCEPT"
+                        ? "bg-gray-400 cursor-not-allowed text-white"
+                        : "bg-primary text-white hover:bg-primary/90"
+                    }`}
+                  >
+                    <span className="material-symbols-outlined">
+                      check_circle
+                    </span>
+                    {orders.find((o) => o.id === openId)?.status === "ACCEPT"
+                      ? "접수완료"
+                      : "Accept Order"}
+                  </button>
+                </Form>
+              </div>
+            </div>
           </div>
         </div>
       )}

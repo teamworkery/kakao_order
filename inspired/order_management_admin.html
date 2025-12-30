@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Order Management Admin</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ee7c2b",
+                        "background-light": "#f8f7f6",
+                        "background-dark": "#221810",
+                    },
+                    fontFamily: {
+                        "display": ["Plus Jakarta Sans", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom scrollbar for table body if needed */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #e5e7eb;
+            border-radius: 20px;
+        }
+        .custom-scrollbar:hover::-webkit-scrollbar-thumb {
+            background-color: #d1d5db;
+        }
+    </style>
+</head>
+<body class="font-display bg-background-light dark:bg-background-dark text-[#181411] overflow-hidden h-screen flex flex-col">
+<!-- Top Navigation Bar -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-[#e6e0db] bg-white px-6 py-3 h-16 shrink-0 z-20">
+<div class="flex items-center gap-4">
+<div class="size-8 flex items-center justify-center rounded-lg bg-primary/10 text-primary">
+<span class="material-symbols-outlined text-2xl">restaurant_menu</span>
+</div>
+<h2 class="text-[#181411] text-lg font-bold leading-tight tracking-[-0.015em]">Gourmet Admin</h2>
+</div>
+<div class="flex flex-1 justify-end gap-6 items-center">
+<!-- Sound Toggle -->
+<button class="flex cursor-pointer items-center justify-center rounded-full h-10 w-10 bg-[#f4f2f0] hover:bg-primary/10 hover:text-primary transition-colors text-[#181411]">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1">volume_up</span>
+</button>
+<!-- Store Status Toggle -->
+<div class="flex items-center gap-2 bg-[#f4f2f0] rounded-full p-1 pr-4">
+<div class="h-8 px-3 flex items-center justify-center bg-white rounded-full shadow-sm text-green-600 text-xs font-bold uppercase tracking-wider">
+                    Open
+                </div>
+<span class="text-xs font-medium text-gray-500">Auto-close at 22:00</span>
+</div>
+<!-- Profile (Kakao Style) -->
+<div class="flex items-center gap-3 pl-4 border-l border-gray-100">
+<div class="flex flex-col items-end hidden sm:flex">
+<span class="text-sm font-bold text-[#181411]">Manager Kim</span>
+<span class="text-xs text-gray-500">Seoul Branch</span>
+</div>
+<div class="relative">
+<div class="bg-center bg-no-repeat bg-cover rounded-full size-10 ring-2 ring-transparent hover:ring-primary/50 transition-all cursor-pointer" data-alt="User profile avatar showing a smiling person" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBTGc_JDrRiOL7BqLGVq7vYwPv4JSmlzPPJUutUNVzSpk3_7ifBGHsOAGcA6mkA5f3QVwH6XIjccsxasr1J-omrLlRZAzOANdGmCjHglRQ4t5Qg0NtjnFwLB8vCFXpKtuuSpjXRqTrw-BYgOJZ4doLgw36Us9knWubBv_0W5vLo6aSgqyTJuP7p6552tp5v6V32CxD_9qp3ZwmWC4My-8QeB8mvLwlkvMSVykClAc7ShEg9fvJbaziuDbjavwp0J5ArTo2whAF7f_E");'></div>
+<div class="absolute -bottom-1 -right-1 bg-[#FEE500] rounded-full p-0.5 border-2 border-white flex items-center justify-center" title="Kakao Linked">
+<span class="material-symbols-outlined text-black text-[10px]">chat_bubble</span>
+</div>
+</div>
+</div>
+</div>
+</header>
+<div class="flex flex-1 overflow-hidden">
+<!-- Side Navigation -->
+<nav class="w-64 bg-white border-r border-[#e6e0db] flex-col hidden md:flex shrink-0">
+<div class="p-4 flex flex-col gap-2">
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl bg-primary/10 text-primary font-medium transition-colors" href="#">
+<span class="material-symbols-outlined text-[22px]">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-[#181411] font-medium transition-colors" href="#">
+<span class="material-symbols-outlined text-[22px]">receipt_long</span>
+<span>All Orders</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-[#181411] font-medium transition-colors" href="#">
+<span class="material-symbols-outlined text-[22px]">restaurant</span>
+<span>Menu Mgmt</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-[#181411] font-medium transition-colors" href="#">
+<span class="material-symbols-outlined text-[22px]">analytics</span>
+<span>Reports</span>
+</a>
+</div>
+<div class="mt-auto p-4 border-t border-[#e6e0db]">
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-[#181411] font-medium transition-colors" href="#">
+<span class="material-symbols-outlined text-[22px]">settings</span>
+<span>Settings</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col relative overflow-hidden bg-background-light">
+<!-- Real-time Notification Banner -->
+<div class="bg-primary/10 border-b border-primary/20 px-6 py-3 flex items-center justify-between animate-fade-in-down">
+<div class="flex items-center gap-3 text-primary">
+<div class="relative flex h-3 w-3">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+<span class="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+</div>
+<span class="font-bold text-sm">New Order #1029 just arrived!</span>
+<span class="text-sm text-primary/80 ml-2">2 items • ₩28,500</span>
+</div>
+<button class="text-xs font-bold bg-primary text-white px-4 py-1.5 rounded-full hover:bg-primary/90 transition-colors shadow-sm">
+                    View Now
+                </button>
+</div>
+<!-- Content Container -->
+<div class="flex-1 flex flex-col p-6 min-w-0 overflow-hidden">
+<!-- Page Header & Filters -->
+<div class="flex flex-col gap-5 mb-6 shrink-0">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+<div>
+<h1 class="text-2xl font-bold text-[#181411]">Incoming Orders</h1>
+<p class="text-sm text-gray-500 mt-1">Manage today's orders in real-time</p>
+</div>
+<div class="flex items-center gap-3">
+<button class="flex items-center gap-2 px-4 py-2 bg-white border border-[#e6e0db] rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition shadow-sm">
+<span class="material-symbols-outlined text-lg">refresh</span>
+<span>Refresh</span>
+</button>
+</div>
+</div>
+<!-- Filter Bar -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-4 bg-white p-4 rounded-xl shadow-sm border border-[#e6e0db]">
+<div class="md:col-span-4 relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
+<input class="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-sm transition-all bg-gray-50 focus:bg-white" placeholder="Search by phone number..." type="text"/>
+</div>
+<div class="md:col-span-3">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">calendar_today</span>
+<input class="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 bg-gray-50 text-sm cursor-pointer hover:bg-gray-100 transition-colors text-gray-700" readonly="" type="text" value="Today, Oct 24"/>
+</div>
+</div>
+<div class="md:col-span-3">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">filter_list</span>
+<select class="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary outline-none text-sm appearance-none cursor-pointer">
+<option>All Statuses</option>
+<option>Pending</option>
+<option>Preparing</option>
+<option>Completed</option>
+</select>
+</div>
+</div>
+<div class="md:col-span-2">
+<button class="w-full h-full flex items-center justify-center gap-2 bg-[#181411] text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition shadow-sm">
+                                Apply Filter
+                            </button>
+</div>
+</div>
+</div>
+<!-- High Density Table -->
+<div class="bg-white border border-[#e6e0db] rounded-xl shadow-sm flex flex-col flex-1 overflow-hidden">
+<!-- Table Header -->
+<div class="grid grid-cols-12 gap-4 px-6 py-3 bg-gray-50 border-b border-[#e6e0db] text-xs font-bold text-gray-500 uppercase tracking-wider shrink-0">
+<div class="col-span-1">ID</div>
+<div class="col-span-2">Time</div>
+<div class="col-span-2">Customer</div>
+<div class="col-span-4">Items Summary</div>
+<div class="col-span-1 text-right">Amount</div>
+<div class="col-span-2 text-center">Status</div>
+</div>
+<!-- Table Body -->
+<div class="overflow-y-auto custom-scrollbar flex-1">
+<!-- New Order Row (Highlighted) -->
+<div class="grid grid-cols-12 gap-4 px-6 py-4 border-b border-[#f4f2f0] items-center hover:bg-orange-50/30 transition-colors cursor-pointer group bg-orange-50/10">
+<div class="col-span-1 font-bold text-[#181411]">#1029</div>
+<div class="col-span-2 flex flex-col">
+<span class="font-bold text-[#181411] text-sm">12:45 PM</span>
+<span class="text-xs text-primary font-medium">Just now</span>
+</div>
+<div class="col-span-2 flex flex-col">
+<span class="text-sm font-medium text-[#181411]">010-9876-5432</span>
+<span class="text-xs text-gray-400">New Customer</span>
+</div>
+<div class="col-span-4 text-sm text-gray-600 truncate pr-4">
+<span class="font-medium text-[#181411]">Spicy Chicken Set</span> x1, Cheese Ball...
+                            </div>
+<div class="col-span-1 text-right font-bold text-primary text-sm">₩28,500</div>
+<div class="col-span-2 flex justify-center">
+<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-primary/10 text-primary">
+                                    New Order
+                                </span>
+</div>
+</div>
+<!-- Order Row 2 -->
+<div class="grid grid-cols-12 gap-4 px-6 py-4 border-b border-[#f4f2f0] items-center hover:bg-gray-50 transition-colors cursor-pointer group">
+<div class="col-span-1 font-medium text-gray-600">#1028</div>
+<div class="col-span-2 flex flex-col">
+<span class="font-medium text-[#181411] text-sm">12:42 PM</span>
+<span class="text-xs text-gray-400">3 min ago</span>
+</div>
+<div class="col-span-2 flex flex-col">
+<span class="text-sm font-medium text-[#181411]">010-1234-5678</span>
+</div>
+<div class="col-span-4 text-sm text-gray-600 truncate pr-4">
+<span class="font-medium text-[#181411]">Beef Burger Deluxe</span> x2, Cola Zero...
+                            </div>
+<div class="col-span-1 text-right font-bold text-[#181411] text-sm">₩32,000</div>
+<div class="col-span-2 flex justify-center">
+<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-600">
+                                    Preparing
+                                </span>
+</div>
+</div>
+<!-- Order Row 3 -->
+<div class="grid grid-cols-12 gap-4 px-6 py-4 border-b border-[#f4f2f0] items-center hover:bg-gray-50 transition-colors cursor-pointer group">
+<div class="col-span-1 font-medium text-gray-600">#1027</div>
+<div class="col-span-2 flex flex-col">
+<span class="font-medium text-[#181411] text-sm">12:30 PM</span>
+<span class="text-xs text-gray-400">15 min ago</span>
+</div>
+<div class="col-span-2 flex flex-col">
+<span class="text-sm font-medium text-[#181411]">010-5555-4444</span>
+</div>
+<div class="col-span-4 text-sm text-gray-600 truncate pr-4">
+<span class="font-medium text-[#181411]">Pasta Carbonara</span> x1
+                            </div>
+<div class="col-span-1 text-right font-bold text-[#181411] text-sm">₩14,000</div>
+<div class="col-span-2 flex justify-center">
+<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-600">
+                                    Completed
+                                </span>
+</div>
+</div>
+<!-- Order Row 4 -->
+<div class="grid grid-cols-12 gap-4 px-6 py-4 border-b border-[#f4f2f0] items-center hover:bg-gray-50 transition-colors cursor-pointer group">
+<div class="col-span-1 font-medium text-gray-600">#1026</div>
+<div class="col-span-2 flex flex-col">
+<span class="font-medium text-[#181411] text-sm">12:15 PM</span>
+<span class="text-xs text-gray-400">30 min ago</span>
+</div>
+<div class="col-span-2 flex flex-col">
+<span class="text-sm font-medium text-[#181411]">010-2222-3333</span>
+</div>
+<div class="col-span-4 text-sm text-gray-600 truncate pr-4">
+<span class="font-medium text-[#181411]">Classic Fries</span> x3, Lemonade...
+                            </div>
+<div class="col-span-1 text-right font-bold text-[#181411] text-sm">₩18,000</div>
+<div class="col-span-2 flex justify-center">
+<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-600">
+                                    Completed
+                                </span>
+</div>
+</div>
+<!-- Order Row 5 (Cancelled) -->
+<div class="grid grid-cols-12 gap-4 px-6 py-4 border-b border-[#f4f2f0] items-center hover:bg-gray-50 transition-colors cursor-pointer group opacity-60">
+<div class="col-span-1 font-medium text-gray-600">#1025</div>
+<div class="col-span-2 flex flex-col">
+<span class="font-medium text-[#181411] text-sm">12:00 PM</span>
+<span class="text-xs text-gray-400">45 min ago</span>
+</div>
+<div class="col-span-2 flex flex-col">
+<span class="text-sm font-medium text-[#181411]">010-9999-8888</span>
+</div>
+<div class="col-span-4 text-sm text-gray-600 truncate pr-4">
+<span class="font-medium text-[#181411]">Pizza Pepperoni</span> x1
+                            </div>
+<div class="col-span-1 text-right font-bold text-[#181411] text-sm">₩22,000</div>
+<div class="col-span-2 flex justify-center">
+<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-red-50 text-red-600">
+                                    Cancelled
+                                </span>
+</div>
+</div>
+</div>
+<!-- Pagination Footer -->
+<div class="bg-gray-50 border-t border-[#e6e0db] px-6 py-3 flex items-center justify-between text-xs text-gray-500 shrink-0">
+<span>Showing 1-5 of 24 orders today</span>
+<div class="flex items-center gap-2">
+<button class="size-8 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-400 hover:text-primary disabled:opacity-50">
+<span class="material-symbols-outlined text-sm">chevron_left</span>
+</button>
+<span class="font-medium text-gray-700">Page 1</span>
+<button class="size-8 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 hover:text-primary hover:border-primary transition-colors">
+<span class="material-symbols-outlined text-sm">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Modal Overlay (Simulated as positioned absolute for this single page view) -->
+<div class="absolute inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+<div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+<!-- Modal Header -->
+<div class="px-6 py-4 border-b border-[#e6e0db] flex items-center justify-between bg-white sticky top-0">
+<div class="flex flex-col">
+<h3 class="text-xl font-bold text-[#181411]">Order #1029</h3>
+<span class="text-sm text-gray-500">Placed at 12:45 PM today</span>
+</div>
+<span class="px-3 py-1 bg-primary/10 text-primary text-sm font-bold rounded-full border border-primary/20 animate-pulse">
+                            Pending Acceptance
+                        </span>
+</div>
+<!-- Modal Body (Scrollable) -->
+<div class="p-6 overflow-y-auto custom-scrollbar bg-background-light">
+<!-- Customer Info Card -->
+<div class="bg-white p-4 rounded-xl border border-[#e6e0db] mb-4 shadow-sm">
+<div class="flex items-start gap-3">
+<div class="p-2 bg-blue-50 rounded-lg text-blue-600">
+<span class="material-symbols-outlined">person</span>
+</div>
+<div>
+<p class="font-bold text-[#181411]">010-9876-5432</p>
+<p class="text-sm text-gray-500">First time ordering</p>
+<div class="mt-2 flex items-center gap-2 text-xs text-gray-500 bg-gray-50 p-2 rounded">
+<span class="material-symbols-outlined text-sm">sticky_note_2</span>
+<span>"Please leave it at the front door. Doorbell is broken."</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Order Items -->
+<div class="bg-white rounded-xl border border-[#e6e0db] shadow-sm overflow-hidden">
+<div class="px-4 py-2 bg-gray-50 border-b border-[#e6e0db] text-xs font-bold text-gray-500 uppercase">
+                                Order Items
+                            </div>
+<div class="divide-y divide-gray-100">
+<!-- Item 1 -->
+<div class="p-4 flex gap-4">
+<div class="size-16 bg-gray-100 rounded-lg bg-cover bg-center shrink-0" data-alt="Close up of spicy chicken dish" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAYIsoyqiCYt5TuZQlsqaChvu1Xd9BIRT8kZFSTuyeh0-x3cqRfYvqxkED3PGegUGFQsikUHe_2NFD_kJ76lhM_VVfExomKrEvdON0UTmdw1H-yp0T845_TXTZzOTJupjRdJG7oLCQJY2MwrALbmkThCGkNwbr_qqstmFbtlrddcHxGZVHDmdExCkihyVnUtmL3kS61u1m1QgqEOYfGRtvmPsOGVjnWl0SKsI8neoPIPa3NPhmYg9nXj7m02iZte78Gnd34v8hJ_Ek')"></div>
+<div class="flex-1">
+<div class="flex justify-between items-start">
+<h4 class="font-bold text-[#181411]">Spicy Chicken Set</h4>
+<span class="font-medium text-[#181411]">₩18,000</span>
+</div>
+<div class="text-sm text-gray-500 mt-1">
+<p>• Extra Spicy</p>
+<p>• No Pickles</p>
+</div>
+</div>
+<div class="font-bold text-lg text-primary self-center">x1</div>
+</div>
+<!-- Item 2 -->
+<div class="p-4 flex gap-4">
+<div class="size-16 bg-gray-100 rounded-lg bg-cover bg-center shrink-0" data-alt="Close up of cheese balls" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuA2hOn6Biu8gv5ZXlAYzvbv4shkzNcT2k4oDvXRhyOQPOcIGcPwX-s6XfHRLTLgtEQVn4EMjjdF9Y3r09XpytxYFxqWqtgK0ifOz72DlnSifkoxhYkF-8oFPeG4HtvD56RsV2yu_KUOFRrAXY9GFAIzCSj9kddQFme3UfIeILqo3uvUR5RhYOvsSkH2vpp80CbGUCJ3533Ju0phbLEcpvgJcwOz9Pou3ghWUpVewVh9Wbh_P9c6bDlphIPD-vGzgNtFznxJofTFyFA')"></div>
+<div class="flex-1">
+<div class="flex justify-between items-start">
+<h4 class="font-bold text-[#181411]">Cheese Ball (5pcs)</h4>
+<span class="font-medium text-[#181411]">₩6,000</span>
+</div>
+<div class="text-sm text-gray-500 mt-1">
+<p>• Honey Mustard Dip</p>
+</div>
+</div>
+<div class="font-bold text-lg text-primary self-center">x1</div>
+</div>
+<!-- Item 3 -->
+<div class="p-4 flex gap-4">
+<div class="size-16 bg-gray-100 rounded-lg bg-cover bg-center shrink-0" data-alt="Can of cola" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDVYMIm2TH0mRS6wKocUZweY2-u84GhXHQKnBA2BCH4dlq-orGhwPaGb8mTOSmur0rg0vrvPU2qxkyuM6Y1dc3I5R_404gZpJlJTuqvsSGnBboeNDAFqeXQ8jCwRpCJSgemAECHYo9g1nzXqg4JbIcxT-wUd_mmbw8GgKxC6DYfXsYJOqs99mjkqkTvNt2qzkcF8h-dolldHzHiKPt9r4Xq-6fbGJTIa8eDplAyTnQEUY7SnXoy9cdRE3BTZpI9ZpxFd-yl8SyNSMM')"></div>
+<div class="flex-1">
+<div class="flex justify-between items-start">
+<h4 class="font-bold text-[#181411]">Coca Cola Zero</h4>
+<span class="font-medium text-[#181411]">₩2,500</span>
+</div>
+</div>
+<div class="font-bold text-lg text-primary self-center">x1</div>
+</div>
+</div>
+<div class="bg-gray-50 p-4 border-t border-[#e6e0db] flex justify-between items-center">
+<span class="font-bold text-gray-600">Total Amount</span>
+<span class="text-xl font-bold text-primary">₩26,500</span>
+</div>
+</div>
+</div>
+<!-- Modal Footer (Actions) -->
+<div class="p-4 border-t border-[#e6e0db] bg-white sticky bottom-0">
+<div class="flex gap-3">
+<button class="flex-1 py-3 px-4 rounded-xl border border-gray-300 text-gray-700 font-bold hover:bg-gray-50 transition-colors">
+                                Reject Order
+                            </button>
+<button class="flex-[2] py-3 px-4 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/30 flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">check_circle</span>
+                                Accept Order (15 min)
+                            </button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

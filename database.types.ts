@@ -141,25 +141,34 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string;
+          customernumber: string | null;
           email: string | null;
           name: string | null;
           profile_id: string;
+          role: Database["public"]["Enums"]["user_role"];
+          store_image: string | null;
           storename: string | null;
           storenumber: string | null;
         };
         Insert: {
           created_at?: string;
+          customernumber?: string | null;
           email?: string | null;
           name?: string | null;
           profile_id: string;
+          role?: Database["public"]["Enums"]["user_role"];
+          store_image?: string | null;
           storename?: string | null;
           storenumber?: string | null;
         };
         Update: {
           created_at?: string;
+          customernumber?: string | null;
           email?: string | null;
           name?: string | null;
           profile_id?: string;
+          role?: Database["public"]["Enums"]["user_role"];
+          store_image?: string | null;
           storename?: string | null;
           storenumber?: string | null;
         };
@@ -174,6 +183,7 @@ export type Database = {
     };
     Enums: {
       kakao_order: "PENDING" | "ACCEPT" | "CANCEL";
+      user_role: "customer" | "owner" | "admin";
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -305,6 +315,7 @@ export const Constants = {
   public: {
     Enums: {
       kakao_order: ["PENDING", "ACCEPT", "CANCEL"],
+      user_role: ["customer", "owner", "admin"],
     },
   },
 } as const;
