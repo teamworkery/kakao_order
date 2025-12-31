@@ -32,7 +32,18 @@ export async function loader({ request }: any) {
   const serverclient = makeSSRClient(request);
   const userResponse = await serverclient.client.auth.getUser();
   if (userResponse.data?.user) {
-    throw redirect("/admin", { headers: serverclient.headers });
+    // 프로필 확인하여 role에 따라 리다이렉트
+    const { data: profile } = await serverclient.client
+      .from("profiles")
+      .select("role")
+      .eq("profile_id", userResponse.data.user.id)
+      .maybeSingle();
+
+    if (profile?.role === "customer") {
+      throw redirect("/", { headers: serverclient.headers });
+    } else {
+      throw redirect("/admin", { headers: serverclient.headers });
+    }
   }
 
   return {

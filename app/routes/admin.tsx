@@ -60,6 +60,16 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
         .order("display_order", { ascending: true }),
     ]);
 
+    // Check if profile exists
+    if (profileResult.error || !profileResult.data) {
+      throw redirect("/login");
+    }
+
+    // Check if user is customer - redirect to index
+    if (profileResult.data.role === "customer") {
+      throw redirect("/");
+    }
+
     return {
       menuItems,
       userProfile: profileResult.data,
