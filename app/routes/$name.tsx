@@ -24,7 +24,7 @@ export const getMenuItems = async (
 ) => {
   const { data, error } = await client
     .from("menuItem")
-    .select("*")
+    .select("*, categories:category_id(id, name, display_order)")
     .eq("isActive", true)
     .eq("profile_id", profile_id)
     .order("displayOrder", { ascending: true })
@@ -45,7 +45,7 @@ export const loader = async ({ request, params }: MyLoaderArgs) => {
   const { client } = makeSSRClient(request);
   const { data: profile, error } = await client
     .from("profiles")
-    .select("profile_id, storename, store_image")
+    .select("profile_id, storename, store_image, store_description")
     .eq("name", name)
     .single();
 
@@ -57,6 +57,13 @@ export const loader = async ({ request, params }: MyLoaderArgs) => {
   const profile_id = profile.profile_id;
   const menuItems = await getMenuItems(client, profile_id);
 
+  // 카테고리 목록 가져오기
+  const { data: categories } = await client
+    .from("categories")
+    .select("*")
+    .eq("profile_id", profile_id)
+    .order("display_order", { ascending: true });
+
   // 인증 상태 확인
   const { data: userData } = await client.auth.getUser();
   const user = userData?.user || null;
@@ -64,6 +71,7 @@ export const loader = async ({ request, params }: MyLoaderArgs) => {
   // 로그인한 사용자의 프로필 정보 가져오기
   let userProfile = null;
   let needsPhoneNumber = false;
+  let userPhoneNumber = null;
   if (user) {
     const { data: profileData } = await client
       .from("profiles")
@@ -76,16 +84,24 @@ export const loader = async ({ request, params }: MyLoaderArgs) => {
     if (profileData?.role === "customer" && !profileData?.customernumber) {
       needsPhoneNumber = true;
     }
+
+    // 사용자 전화번호 저장
+    if (profileData?.customernumber) {
+      userPhoneNumber = profileData.customernumber;
+    }
   }
 
   return {
     menuItems,
+    categories: categories || [],
     user,
     userEmail: userProfile?.email || user?.email || null,
     name,
     storename: profile.storename || name,
     store_image: profile.store_image || null,
+    store_description: profile.store_description || null,
     needsPhoneNumber, // 전화번호 입력 필요 플래그
+    userPhoneNumber, // 사용자 전화번호
   };
 };
 
@@ -204,8 +220,8 @@ export const action = async ({ request, params }: Route.ActionArgs) => {
     const totalAmount = parseInt(formData.get("totalAmount") as string);
     const autoOrder = formData.get("autoOrder") === "true"; // 자동 주문 플래그
 
-    // 자동 주문인 경우 프로필에서 전화번호 가져오기
-    if (autoOrder && (!phoneNumber || phoneNumber.trim() === "")) {
+    // 전화번호가 없으면 프로필에서 가져오기
+    if (!phoneNumber || phoneNumber.trim() === "") {
       const { data: userProfile } = await client
         .from("profiles")
         .select("customernumber")
@@ -315,12 +331,15 @@ export default function OrderPage({
 }: Route.ComponentProps) {
   const {
     menuItems,
+    categories,
     user: initialUser,
     userEmail,
     name,
     storename,
     store_image,
+    store_description,
     needsPhoneNumber,
+    userPhoneNumber,
   } = loaderData;
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -329,6 +348,9 @@ export default function OrderPage({
   const [showPhoneModal, setShowPhoneModal] = useState(needsPhoneNumber);
   const [phoneInput, setPhoneInput] = useState("");
   const location = useLocation();
+
+  // 프로필에서 가져온 전화번호가 있으면 사용, 없으면 입력한 전화번호 사용
+  const effectivePhoneNumber = userPhoneNumber || phoneNumber;
 
   // 인증 상태 실시간 확인
   useEffect(() => {
@@ -380,7 +402,7 @@ export default function OrderPage({
         orderItems,
         totalAmount,
         storeName: name,
-        phoneNumber: phoneNumber.trim() || null,
+        phoneNumber: effectivePhoneNumber.trim() || null,
       };
       sessionStorage.setItem("pendingOrder", JSON.stringify(orderData));
     }
@@ -391,29 +413,44 @@ export default function OrderPage({
     // 주문 정보를 sessionStorage에 저장
     saveOrderToSession();
 
-    const currentUrl = `${window.location.origin}${location.pathname}`;
-    const { error } = await browserClient.auth.signInWithOAuth({
+    // 환경 변수가 있으면 사용, 없으면 window.location.origin 사용
+    const baseUrl = import.meta.env.VITE_APP_URL || window.location.origin;
+
+    // 현재 페이지 경로 (상대 경로만 - pathname + search)
+    const currentPath = location.pathname;
+    const currentSearch = location.search;
+    const nextPath = `${currentPath}${currentSearch}`; // 상대 경로만
+
+    // callback URL 생성 (redirectTo는 절대 URL, next는 상대 경로)
+    const callbackUrl = `${baseUrl}/auth/callback?next=${encodeURIComponent(
+      nextPath
+    )}`;
+
+    console.log("OAuth redirectTo:", callbackUrl); // 디버깅용
+    console.log("Next path (relative):", nextPath); // 디버깅용
+
+    const { data, error } = await browserClient.auth.signInWithOAuth({
       provider: "kakao",
       options: {
-        redirectTo: `${
-          window.location.origin
-        }/auth/callback?next=${encodeURIComponent(currentUrl)}`,
+        redirectTo: callbackUrl,
       },
     });
 
     if (error) {
       console.error("카카오 로그인 오류:", error);
       alert("카카오 로그인 중 오류가 발생했습니다. 다시 시도해주세요.");
+      return;
+    }
+
+    // data.url이 있으면 수동으로 리다이렉트 (필요한 경우)
+    if (data?.url) {
+      window.location.href = data.url;
     }
   };
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("ko-KR").format(price);
   };
-
-  const categories = Array.from(
-    new Set(menuItems.map((item: MenuItem) => item.category).filter(Boolean))
-  );
 
   const increaseQuantity = (menuItem: MenuItem) => {
     setOrderItems((prev) => {
@@ -464,12 +501,18 @@ export default function OrderPage({
   );
   const isAuthenticated = !!user;
   const canOrder =
-    orderItems.length > 0 && phoneNumber.trim() !== "" && isAuthenticated;
+    orderItems.length > 0 &&
+    effectivePhoneNumber.trim() !== "" &&
+    isAuthenticated;
 
   const handleSubmit = (e: React.FormEvent) => {
     if (!canOrder) {
       e.preventDefault();
-      alert("메뉴를 선택하고 전화번호를 입력해주세요.");
+      if (!userPhoneNumber && !phoneNumber.trim()) {
+        alert("메뉴를 선택하고 전화번호를 입력해주세요.");
+      } else {
+        alert("메뉴를 선택해주세요.");
+      }
       return;
     }
     // 주문 정보를 sessionStorage에 저장 (전화번호 입력 후 자동 주문을 위해)
@@ -494,16 +537,18 @@ export default function OrderPage({
   // 첫 번째 메뉴 아이템 (Featured로 표시)
   const featuredItem = menuItems.find(
     (item: MenuItem) =>
-      selectedCategory === null || item.category === selectedCategory
+      selectedCategory === null ||
+      (item as any).category_id === selectedCategory
   );
   const regularItems = menuItems.filter(
     (item: MenuItem) =>
-      (selectedCategory === null || item.category === selectedCategory) &&
+      (selectedCategory === null ||
+        (item as any).category_id === selectedCategory) &&
       item.id !== featuredItem?.id
   );
 
   return (
-    <div className="w-full max-w-[480px] bg-background-light min-h-screen shadow-2xl relative pb-40 flex flex-col mx-auto">
+    <div className="w-full max-w-[480px] bg-background-light min-h-screen shadow-2xl relative pb-46 flex flex-col mx-auto">
       {/* 전화번호 입력 모달 */}
       {showPhoneModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -520,7 +565,7 @@ export default function OrderPage({
               />
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  전화번호 *
+                  전화번호 *최초 한번만 입력하면 다음부터 자동으로 저장됩니다.
                 </label>
                 <input
                   type="tel"
@@ -667,9 +712,16 @@ export default function OrderPage({
             </div>
           </div>
         </div>
-        <p className="text-gray-500 text-sm leading-relaxed px-1">
-          맛있는 음식을 빠르고 편리하게 주문하세요.
-        </p>
+        {store_description && (
+          <p className="text-gray-500 text-sm leading-relaxed px-1">
+            {store_description}
+          </p>
+        )}
+        {!store_description && (
+          <p className="text-gray-500 text-sm leading-relaxed px-1">
+            맛있는 음식을 빠르고 편리하게 주문하세요.
+          </p>
+        )}
       </div>
 
       {/* Sticky Category Navigation */}
@@ -692,24 +744,24 @@ export default function OrderPage({
               }`}
             ></span>
           </button>
-          {categories.map((cat) => (
+          {categories.map((cat: any) => (
             <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
+              key={cat.id}
+              onClick={() => setSelectedCategory(cat.id)}
               className="relative flex flex-col items-center gap-3 pt-4 pb-3 min-w-max group"
             >
               <span
                 className={`text-sm tracking-wide font-bold transition-colors ${
-                  selectedCategory === cat
+                  selectedCategory === cat.id
                     ? "text-primary"
                     : "text-gray-500 group-hover:text-gray-900"
                 }`}
               >
-                {cat}
+                {cat.name}
               </span>
               <span
                 className={`absolute bottom-0 w-full h-1 rounded-t-full transition-colors ${
-                  selectedCategory === cat
+                  selectedCategory === cat.id
                     ? "bg-primary"
                     : "bg-transparent group-hover:bg-gray-200"
                 }`}
@@ -726,7 +778,9 @@ export default function OrderPage({
           <section>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-bold text-gray-900 tracking-tight">
-                {featuredItem.category || "추천 메뉴"}
+                {categories.find(
+                  (c: any) => c.id === (featuredItem as any).category_id
+                )?.name || "추천 메뉴"}
               </h3>
             </div>
             <div className="flex flex-col gap-5">
@@ -881,24 +935,21 @@ export default function OrderPage({
         {/* Gradient fade */}
         <div className="h-8 bg-gradient-to-b from-transparent to-white/10 w-full pointer-events-none"></div>
         <div className="bg-white border-t border-gray-100 shadow-[0_-8px_30px_rgba(0,0,0,0.12)] p-4 rounded-t-2xl">
-          <div className="flex flex-col gap-3">
-            {/* Kakao Login Prompt */}
-            {!isAuthenticated && (
+          {!isAuthenticated ? (
+            /* Kakao Login Button - Always shown when not authenticated */
+            <div className="flex justify-center">
               <button
                 onClick={handleKakaoLogin}
-                className="flex items-center justify-center gap-2.5 w-full bg-[#FEE500] hover:bg-[#fdd800] text-[#3C1E1E] font-semibold py-3.5 rounded-xl transition-colors shadow-sm"
+                className="w-full max-w-xs bg-[#FEE500] hover:bg-[#fdd800] text-[#3C1E1E] font-bold py-4 rounded-xl shadow-lg transition-all group active:scale-[0.98]"
               >
-                <span className="material-symbols-outlined text-[20px] fill-current">
-                  chat_bubble
-                </span>
-                <span className="text-[15px]">카카오톡으로 로그인하기</span>
+                <span className="text-[15px]">카카오로 로그인하기</span>
               </button>
-            )}
-
-            {/* Order Summary & Checkout Action */}
-            {orderItems.length > 0 && (
-              <div className="flex flex-col gap-3">
-                {/* Phone Number Input */}
+            </div>
+          ) : (
+            /* Order Summary & Checkout Action - Always shown when authenticated */
+            <div className="flex flex-col gap-3">
+              {/* Phone Number Input - only show if user doesn't have phone number in profile */}
+              {!userPhoneNumber && (
                 <div className="bg-gray-50 rounded-lg p-3">
                   <label
                     htmlFor="phoneNumber"
@@ -923,71 +974,45 @@ export default function OrderPage({
                     />
                   </div>
                 </div>
+              )}
 
-                <div className="flex items-center gap-4">
-                  <div className="flex flex-col pl-1">
-                    <span className="text-xs text-gray-500 font-medium">
-                      Total (
-                      {orderItems.reduce((sum, item) => sum + item.quantity, 0)}{" "}
-                      items)
-                    </span>
-                    <span className="text-2xl font-bold text-gray-900 tracking-tight">
-                      {formatPrice(totalAmount)}원
-                    </span>
-                  </div>
-                  {isAuthenticated ? (
-                    <Form
-                      method="post"
-                      className="flex-1"
-                      onSubmit={handleSubmit}
-                    >
-                      <input
-                        type="hidden"
-                        name="orderItems"
-                        value={JSON.stringify(orderItems)}
-                      />
-                      <input
-                        type="hidden"
-                        name="totalAmount"
-                        value={totalAmount}
-                      />
-                      <input
-                        type="hidden"
-                        name="phoneNumber"
-                        value={phoneNumber}
-                      />
-                      <button
-                        type="submit"
-                        disabled={!canOrder}
-                        className="w-full bg-primary hover:bg-orange-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-orange-500/30 flex items-center justify-between px-6 transition-all group active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <span className="text-[15px]">Place Order</span>
-                        <span className="bg-white/20 group-hover:bg-white/30 text-white text-xs font-bold px-2.5 py-1 rounded-md transition-colors">
-                          {orderItems.reduce(
-                            (sum, item) => sum + item.quantity,
-                            0
-                          )}
-                        </span>
-                      </button>
-                    </Form>
-                  ) : (
-                    <button
-                      onClick={handleKakaoLogin}
-                      className="flex-1 bg-primary hover:bg-orange-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-orange-500/30 flex items-center justify-between px-6 transition-all group active:scale-[0.98]"
-                    >
-                      <span className="text-[15px]">Place Order</span>
-                      <span className="bg-white/20 group-hover:bg-white/30 text-white text-xs font-bold px-2.5 py-1 rounded-md transition-colors">
-                        {orderItems.reduce(
-                          (sum, item) => sum + item.quantity,
-                          0
-                        )}
-                      </span>
-                    </button>
-                  )}
+              <div className="flex items-center gap-4">
+                <div className="flex flex-col pl-1">
+                  <span className="text-xs text-gray-500 font-medium">
+                    Total (
+                    {orderItems.reduce((sum, item) => sum + item.quantity, 0)}{" "}
+                    items)
+                  </span>
+                  <span className="text-2xl font-bold text-gray-900 tracking-tight">
+                    {formatPrice(totalAmount)}원
+                  </span>
                 </div>
+                <Form method="post" className="flex-1" onSubmit={handleSubmit}>
+                  <input
+                    type="hidden"
+                    name="orderItems"
+                    value={JSON.stringify(orderItems)}
+                  />
+                  <input type="hidden" name="totalAmount" value={totalAmount} />
+                  <input
+                    type="hidden"
+                    name="phoneNumber"
+                    value={effectivePhoneNumber}
+                  />
+                  <button
+                    type="submit"
+                    disabled={!canOrder}
+                    className="w-full bg-primary hover:bg-orange-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-orange-500/30 flex items-center justify-between px-6 transition-all group active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <span className="text-[15px]">주문하기</span>
+                    <span className="bg-white/20 group-hover:bg-white/30 text-white text-xs font-bold px-2.5 py-1 rounded-md transition-colors">
+                      {orderItems.reduce((sum, item) => sum + item.quantity, 0)}
+                    </span>
+                  </button>
+                </Form>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

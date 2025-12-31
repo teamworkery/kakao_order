@@ -50,15 +50,21 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
     }
 
     const userId = userData.user.id;
-    const [menuItems, profileResult] = await Promise.all([
+    const [menuItems, profileResult, categoriesResult] = await Promise.all([
       getadminMenuItems(client, userId),
       client.from("profiles").select("*").eq("profile_id", userId).single(),
+      client
+        .from("categories")
+        .select("*")
+        .eq("profile_id", userId)
+        .order("display_order", { ascending: true }),
     ]);
 
     return {
       menuItems,
       userProfile: profileResult.data,
       userId,
+      categories: categoriesResult.data || [],
     };
   } catch (error) {
     console.error("Loader 오류:", error);
@@ -92,7 +98,7 @@ export async function action({ request }: ActionFunctionArgs) {
     const priceStr = formData.get("price") as string;
     const image = formData.get("image") as string;
     const isActive = formData.get("isActive") === "true";
-    const category = formData.get("category") as string;
+    const categoryId = formData.get("category_id") as string;
     const id = formData.get("id") as string;
 
     // 가격 검증
@@ -134,7 +140,8 @@ export async function action({ request }: ActionFunctionArgs) {
             price,
             image: image.trim(),
             isActive,
-            category: category?.trim() || "",
+            category_id:
+              categoryId && categoryId.trim() !== "" ? categoryId : null,
             profile_id,
             displayOrder,
           },
@@ -167,7 +174,8 @@ export async function action({ request }: ActionFunctionArgs) {
             price,
             image: image?.trim() || "",
             isActive,
-            category: category?.trim() || "",
+            category_id:
+              categoryId && categoryId.trim() !== "" ? categoryId : null,
           })
           .eq("id", id)
           .eq("profile_id", profile_id); // 보안: 자신의 메뉴만 수정 가능
@@ -253,6 +261,134 @@ export async function action({ request }: ActionFunctionArgs) {
         }
       }
 
+      case "addCategory": {
+        const categoryName = formData.get("categoryName") as string;
+        if (!categoryName?.trim()) {
+          return Response.json(
+            { error: "카테고리 이름을 입력해주세요." },
+            { status: 400 }
+          );
+        }
+
+        // 현재 카테고리 개수를 확인하여 순서 설정
+        const { count } = await client
+          .from("categories")
+          .select("*", { count: "exact", head: true })
+          .eq("profile_id", profile_id);
+
+        const display_order = (count || 0) + 1;
+
+        const { error } = await client.from("categories").insert([
+          {
+            profile_id,
+            name: categoryName.trim(),
+            display_order,
+          },
+        ]);
+
+        if (error) {
+          console.error("카테고리 추가 오류:", error);
+          if (error.code === "23505") {
+            // Unique constraint violation
+            return Response.json(
+              { error: "이미 존재하는 카테고리입니다." },
+              { status: 400 }
+            );
+          }
+          return Response.json(
+            { error: "카테고리 추가에 실패했습니다." },
+            { status: 500 }
+          );
+        }
+
+        return Response.json({ success: true, type: "addCategory" });
+      }
+
+      case "deleteCategory": {
+        const categoryId = formData.get("categoryId") as string;
+        if (!categoryId) {
+          return Response.json(
+            { error: "카테고리 ID가 필요합니다." },
+            { status: 400 }
+          );
+        }
+
+        // 해당 카테고리를 사용하는 메뉴 아이템이 있는지 확인
+        const { count } = await client
+          .from("menuItem")
+          .select("*", { count: "exact", head: true })
+          .eq("category_id", categoryId);
+
+        if (count && count > 0) {
+          return Response.json(
+            {
+              error: `이 카테고리를 사용하는 메뉴 아이템이 ${count}개 있습니다. 먼저 메뉴의 카테고리를 변경해주세요.`,
+            },
+            { status: 400 }
+          );
+        }
+
+        const { error } = await client
+          .from("categories")
+          .delete()
+          .eq("id", categoryId)
+          .eq("profile_id", profile_id); // 보안: 자신의 카테고리만 삭제 가능
+
+        if (error) {
+          console.error("카테고리 삭제 오류:", error);
+          return Response.json(
+            { error: "카테고리 삭제에 실패했습니다." },
+            { status: 500 }
+          );
+        }
+
+        return Response.json({ success: true, type: "deleteCategory" });
+      }
+
+      case "reorderCategories": {
+        const categoryOrder = formData.get("categoryOrder") as string;
+        if (!categoryOrder) {
+          return Response.json(
+            { error: "카테고리 순서 정보가 필요합니다." },
+            { status: 400 }
+          );
+        }
+
+        try {
+          const orderData = JSON.parse(categoryOrder) as Array<{
+            id: string;
+            display_order: number;
+          }>;
+
+          const updatePromises = orderData.map(({ id, display_order }) =>
+            client
+              .from("categories")
+              .update({ display_order })
+              .eq("id", id)
+              .eq("profile_id", profile_id)
+          );
+
+          const results = await Promise.all(updatePromises);
+          const hasError = results.some((result) => result.error);
+
+          if (hasError) {
+            console.error("카테고리 순서 업데이트 오류:", results);
+            return Response.json(
+              { error: "카테고리 순서 업데이트에 실패했습니다." },
+              { status: 500 }
+            );
+          }
+
+          return Response.json({ success: true, type: "reorderCategories" });
+        } catch (parseError) {
+          console.error("순서 데이터 파싱 오류:", parseError);
+          return Response.json(
+            { error: "잘못된 순서 데이터입니다." },
+            { status: 400 }
+          );
+        }
+      }
+
       case "updateProfile": {
         if (!name?.trim()) {
           return Response.json(
@@ -270,6 +406,7 @@ export async function action({ request }: ActionFunctionArgs) {
         const storename = formData.get("storename") as string;
         const storenumber = formData.get("storenumber") as string;
         const store_image = formData.get("store_image") as string;
+        const store_description = formData.get("store_description") as string;
 
         // 프로필이 이미 존재하는지 확인
         const { data: existingProfile } = await client
@@ -287,6 +424,10 @@ export async function action({ request }: ActionFunctionArgs) {
               storename: storename.trim(),
               storenumber: storenumber?.trim() || null,
               store_image: store_image?.trim() || null,
+              store_description:
+                store_description?.trim() && store_description.trim().length > 0
+                  ? store_description.trim().slice(0, 500)
+                  : null,
             })
             .eq("profile_id", profile_id);
 
@@ -306,6 +447,10 @@ export async function action({ request }: ActionFunctionArgs) {
               storename: storename.trim(),
               storenumber: storenumber?.trim() || null,
               store_image: store_image?.trim() || null,
+              store_description:
+                store_description?.trim() && store_description.trim().length > 0
+                  ? store_description.trim().slice(0, 500)
+                  : null,
               email: userData.user.email,
             },
           ]);
@@ -507,7 +652,7 @@ function Toast({
 
 // 메인 컴포넌트
 export default function AdminMenuPage() {
-  const { menuItems, userProfile } = useLoaderData<typeof loader>();
+  const { menuItems, userProfile, categories } = useLoaderData<typeof loader>();
   const actionData = useActionData<ActionData>();
   const navigation = useNavigation();
 
@@ -524,8 +669,13 @@ export default function AdminMenuPage() {
     price: "",
     image: "",
     isActive: "true",
-    category: "",
+    category_id: "",
   });
+
+  const [categoryName, setCategoryName] = useState("");
+  const [localCategories, setLocalCategories] = useState(categories || []);
+  const [draggedCategory, setDraggedCategory] = useState<string | null>(null);
+  const [isReorderingCategories, setIsReorderingCategories] = useState(false);
 
   // 프로필 이미지 상태
   const [storeImage, setStoreImage] = useState<string>(
@@ -550,6 +700,11 @@ export default function AdminMenuPage() {
     setLocalMenuItems(menuItems);
   }, [menuItems]);
 
+  // categories가 변경될 때 localCategories 동기화
+  useEffect(() => {
+    setLocalCategories(categories || []);
+  }, [categories]);
+
   // userProfile이 변경될 때 storeImage 동기화
   useEffect(() => {
     if (userProfile?.store_image) {
@@ -567,6 +722,9 @@ export default function AdminMenuPage() {
           delete: "메뉴가 성공적으로 삭제되었습니다.",
           reorder: "메뉴 순서가 성공적으로 변경되었습니다.",
           updateProfile: "가게 정보가 성공적으로 저장되었습니다.",
+          addCategory: "카테고리가 성공적으로 추가되었습니다.",
+          deleteCategory: "카테고리가 성공적으로 삭제되었습니다.",
+          reorderCategories: "카테고리 순서가 성공적으로 변경되었습니다.",
         };
         setShowToast({
           message:
@@ -583,7 +741,7 @@ export default function AdminMenuPage() {
             price: "",
             image: "",
             isActive: "true",
-            category: "",
+            category_id: "",
           });
           // 메뉴 추가 후 localMenuItems 동기화
           window.location.reload();
@@ -592,6 +750,13 @@ export default function AdminMenuPage() {
           setEditForm({});
         } else if (actionData.type === "delete") {
           // 메뉴 삭제 후 localMenuItems 동기화
+          window.location.reload();
+        } else if (actionData.type === "addCategory") {
+          setCategoryName("");
+          window.location.reload();
+        } else if (actionData.type === "deleteCategory") {
+          window.location.reload();
+        } else if (actionData.type === "reorderCategories") {
           window.location.reload();
         }
       } else if (actionData.error) {
@@ -632,7 +797,7 @@ export default function AdminMenuPage() {
       editName: "name",
       editDescription: "description",
       editPrice: "price",
-      editCategory: "category",
+      editCategoryId: "category_id",
       editIsActive: "isActive",
     };
 
@@ -758,21 +923,14 @@ export default function AdminMenuPage() {
     setDraggedItem(null);
   };
 
-  // 카테고리 목록 추출
-  const categories = Array.from(
-    new Set(
-      localMenuItems
-        .map((item) => item.category)
-        .filter((cat): cat is string => Boolean(cat))
-    )
-  );
-
-  // 선택된 카테고리 상태 (사이드바에서 사용)
+  // 선택된 카테고리 상태 (사이드바에서 사용 - category_id)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   // 선택된 카테고리의 메뉴만 필터링
   const filteredMenuItems = selectedCategory
-    ? localMenuItems.filter((item) => item.category === selectedCategory)
+    ? localMenuItems.filter(
+        (item) => (item as any).category_id === selectedCategory
+      )
     : localMenuItems;
 
   return (
@@ -944,33 +1102,43 @@ export default function AdminMenuPage() {
                 </div>
               </div>
               {/* Category Items */}
-              {categories.map((cat) => (
-                <div
-                  key={cat}
-                  className={`group flex items-center justify-between px-3 py-2.5 rounded-xl transition-colors cursor-pointer ${
-                    selectedCategory === cat
-                      ? "bg-primary text-white shadow-md shadow-primary/20"
-                      : "text-foreground hover:bg-background-light border border-transparent hover:border-border"
-                  }`}
-                  onClick={() => setSelectedCategory(cat)}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="material-symbols-outlined text-[20px]">
-                      lunch_dining
-                    </span>
-                    <span
-                      className={`text-sm ${
-                        selectedCategory === cat ? "font-bold" : "font-medium"
-                      }`}
-                    >
-                      {cat}
+              {localCategories.map((cat: any) => {
+                const categoryName =
+                  selectedCategory === cat.id
+                    ? cat.name
+                    : selectedCategory === null
+                    ? "All Items"
+                    : null;
+                return (
+                  <div
+                    key={cat.id}
+                    className={`group flex items-center justify-between px-3 py-2.5 rounded-xl transition-colors cursor-pointer ${
+                      selectedCategory === cat.id
+                        ? "bg-primary text-white shadow-md shadow-primary/20"
+                        : "text-foreground hover:bg-background-light border border-transparent hover:border-border"
+                    }`}
+                    onClick={() => setSelectedCategory(cat.id)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="material-symbols-outlined text-[20px]">
+                        lunch_dining
+                      </span>
+                      <span
+                        className={`text-sm ${
+                          selectedCategory === cat.id
+                            ? "font-bold"
+                            : "font-medium"
+                        }`}
+                      >
+                        {cat.name}
+                      </span>
+                    </div>
+                    <span className="material-symbols-outlined text-[18px] opacity-50 cursor-grab active:cursor-grabbing">
+                      drag_indicator
                     </span>
                   </div>
-                  <span className="material-symbols-outlined text-[18px] opacity-50 cursor-grab active:cursor-grabbing">
-                    drag_indicator
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
           <div className="mt-auto p-6 border-t border-border">
@@ -1058,14 +1226,20 @@ export default function AdminMenuPage() {
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           카테고리
                         </label>
-                        <input
-                          name="category"
-                          placeholder="예: 버거, 음료, 사이드"
-                          value={addForm.category}
+                        <select
+                          name="category_id"
+                          value={addForm.category_id}
                           onChange={handleAddChange}
                           className="w-full border border-border px-4 py-3 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent text-base"
                           disabled={isSubmitting}
-                        />
+                        >
+                          <option value="">카테고리 선택</option>
+                          {localCategories.map((cat: any) => (
+                            <option key={cat.id} value={cat.id}>
+                              {cat.name}
+                            </option>
+                          ))}
+                        </select>
                       </div>
 
                       <div>
@@ -1117,6 +1291,103 @@ export default function AdminMenuPage() {
                       </button>
                     </div>
                   </Form>
+                </div>
+              </div>
+
+              {/* 카테고리 관리 */}
+              <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+                <div className="bg-green-50 px-6 py-4 border-b border-green-100">
+                  <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
+                    카테고리 관리
+                  </h2>
+                </div>
+                <div className="p-6">
+                  <div className="space-y-4">
+                    {/* 카테고리 추가 */}
+                    <Form method="post" className="flex gap-3">
+                      <input
+                        type="hidden"
+                        name="actionType"
+                        value="addCategory"
+                      />
+                      <div className="flex-1">
+                        <input
+                          type="text"
+                          name="categoryName"
+                          value={categoryName}
+                          onChange={(e) => setCategoryName(e.target.value)}
+                          placeholder="새 카테고리 이름 (예: 버거, 음료, 사이드)"
+                          className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-base"
+                          disabled={isSubmitting}
+                        />
+                      </div>
+                      <button
+                        type="submit"
+                        className="bg-green-500 hover:bg-green-600 text-white font-semibold px-6 py-3 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={isSubmitting || !categoryName.trim()}
+                      >
+                        추가
+                      </button>
+                    </Form>
+
+                    {/* 카테고리 목록 */}
+                    <div className="border-t border-gray-200 pt-4">
+                      <h3 className="text-sm font-medium text-gray-700 mb-3">
+                        카테고리 목록 ({localCategories.length}개)
+                      </h3>
+                      {localCategories.length === 0 ? (
+                        <p className="text-gray-500 text-sm py-4">
+                          등록된 카테고리가 없습니다.
+                        </p>
+                      ) : (
+                        <div className="space-y-2">
+                          {localCategories.map((cat: any, index: number) => (
+                            <div
+                              key={cat.id}
+                              className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
+                            >
+                              <div className="flex items-center gap-3">
+                                <span className="text-gray-400 text-sm font-medium w-6">
+                                  {index + 1}
+                                </span>
+                                <span className="font-medium text-gray-900">
+                                  {cat.name}
+                                </span>
+                              </div>
+                              <Form method="post" className="inline">
+                                <input
+                                  type="hidden"
+                                  name="actionType"
+                                  value="deleteCategory"
+                                />
+                                <input
+                                  type="hidden"
+                                  name="categoryId"
+                                  value={cat.id}
+                                />
+                                <button
+                                  type="submit"
+                                  className="text-red-500 hover:text-red-700 text-sm font-medium disabled:opacity-50"
+                                  disabled={isSubmitting}
+                                  onClick={(e) => {
+                                    if (
+                                      !confirm(
+                                        `"${cat.name}" 카테고리를 삭제하시겠습니까?\n\n이 카테고리를 사용하는 메뉴가 있으면 삭제할 수 없습니다.`
+                                      )
+                                    ) {
+                                      e.preventDefault();
+                                    }
+                                  }}
+                                >
+                                  삭제
+                                </button>
+                              </Form>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -1196,6 +1467,27 @@ export default function AdminMenuPage() {
                       />
                     </div>
 
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        가게 설명
+                      </label>
+                      <textarea
+                        name="store_description"
+                        placeholder="가게에 대한 설명을 입력하세요 (최대 500자)"
+                        defaultValue={
+                          (userProfile as any)?.store_description || ""
+                        }
+                        maxLength={500}
+                        rows={4}
+                        className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base resize-none"
+                        disabled={isSubmitting || isUpdatingProfile}
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        {((userProfile as any)?.store_description || "").length}
+                        /500자
+                      </p>
+                    </div>
+
                     <div className="pt-4">
                       <button
                         type="submit"
@@ -1224,11 +1516,19 @@ export default function AdminMenuPage() {
                           chevron_right
                         </span>
                         <span className="text-primary">
-                          {selectedCategory || "All Items"}
+                          {selectedCategory
+                            ? localCategories.find(
+                                (c: any) => c.id === selectedCategory
+                              )?.name || "All Items"
+                            : "All Items"}
                         </span>
                       </div>
                       <h1 className="text-3xl font-bold text-foreground tracking-tight">
-                        {selectedCategory || "All Items"}
+                        {selectedCategory
+                          ? localCategories.find(
+                              (c: any) => c.id === selectedCategory
+                            )?.name || "All Items"
+                          : "All Items"}
                       </h1>
                       <p className="text-muted-foreground text-sm max-w-2xl">
                         Manage your menu items here. Prices include VAT.
@@ -1367,8 +1667,8 @@ export default function AdminMenuPage() {
                               />
                               <input
                                 type="hidden"
-                                name="category"
-                                value={editForm.category || ""}
+                                name="category_id"
+                                value={(editForm as any).category_id || ""}
                               />
                             </Form>
 
@@ -1425,14 +1725,20 @@ export default function AdminMenuPage() {
                                   <label className="block text-sm font-medium text-gray-700 mb-1">
                                     카테고리
                                   </label>
-                                  <input
-                                    value={editForm.category || ""}
+                                  <select
+                                    value={(editForm as any).category_id || ""}
                                     onChange={handleEditChange}
-                                    name="editCategory"
-                                    placeholder="카테고리"
+                                    name="editCategoryId"
                                     className="w-full border border-border px-3 py-2 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                                     disabled={isSubmitting}
-                                  />
+                                  >
+                                    <option value="">카테고리 선택</option>
+                                    {localCategories.map((cat: any) => (
+                                      <option key={cat.id} value={cat.id}>
+                                        {cat.name}
+                                      </option>
+                                    ))}
+                                  </select>
                                 </div>
                               </div>
 
@@ -1592,8 +1898,8 @@ export default function AdminMenuPage() {
                                   item.image || ""
                                 }" />
                                 <input type="hidden" name="isActive" value="${!item.isActive}" />
-                                <input type="hidden" name="category" value="${
-                                  item.category || ""
+                                <input type="hidden" name="category_id" value="${
+                                  (item as any).category_id || ""
                                 }" />
                               `;
                                       document.body.appendChild(form);
