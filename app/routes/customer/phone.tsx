@@ -5,8 +5,8 @@ import { makeSSRClient } from "~/supa_clients";
 import type { Database } from "database.types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { Button } from "~/common/components/ui/button";
-import { Input } from "~/common/components/ui/input";
 import { Label } from "~/common/components/ui/label";
+import PhoneInput, { getRawPhoneNumber, validatePhoneNumber } from "~/common/components/phone-input";
 
 
 interface OrderItem {
@@ -274,29 +274,32 @@ export default function PhoneInputPage({
 
             <Form method="post" className="space-y-4">
               <div>
-                <Label htmlFor="phoneNumber">전화번호 *</Label>
-                <Input
+                <Label htmlFor="phoneNumber" className="mb-2 block">전화번호 *</Label>
+                <PhoneInput
                   id="phoneNumber"
-                  name="phoneNumber"
-                  type="tel"
                   value={phoneNumber}
-                  onChange={(e) => {
-                    setPhoneNumber(e.target.value);
+                  onChange={(value) => {
+                    setPhoneNumber(value);
                     setError(null);
                   }}
-                  placeholder="010-1234-5678"
-                  required
-                  className="mt-1"
+                  autoFocus
                 />
+                {/* 서버로 전송할 때는 하이픈 제거된 번호 사용 */}
+                <input type="hidden" name="phoneNumber" value={getRawPhoneNumber(phoneNumber)} />
               </div>
 
               {error && (
-                <div className="text-red-500 text-sm bg-red-50 p-3 rounded">
+                <div className="text-red-500 text-sm bg-red-50 p-3 rounded flex items-center gap-2">
+                  <span className="material-symbols-outlined text-base">error</span>
                   {error}
                 </div>
               )}
 
-              <Button type="submit" className="w-full" disabled={isProcessing}>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={isProcessing || !validatePhoneNumber(phoneNumber).isValid}
+              >
                 저장하기
               </Button>
             </Form>

@@ -1,8 +1,9 @@
 // routes/customer/orders.tsx
+import { useState, useEffect } from "react";
 import { Link } from "react-router";
 import { redirect } from "react-router";
 import type { LoaderFunctionArgs } from "react-router";
-import { makeSSRClient } from "~/supa_clients";
+import { makeSSRClient, browserClient } from "~/supa_clients";
 import { STATUS_LABELS, STATUS_COLORS, type OrderStatus, isActiveStatus } from "~/lib/order-status";
 import { Button } from "~/common/components/ui/button";
 
@@ -107,7 +108,64 @@ interface LoaderReturnType {
 }
 
 export default function CustomerOrdersPage({ loaderData }: { loaderData: LoaderReturnType }) {
-  const { orders, hasPhone } = loaderData;
+  const { orders: initialOrders, hasPhone } = loaderData;
+  const [orders, setOrders] = useState<OrderData[]>(initialOrders);
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+
+  // Supabase Realtime 구독 - 주문 상태 변경 감지
+  useEffect(() => {
+    if (!hasPhone || initialOrders.length === 0) return;
+
+    // 활성 주문의 ID 목록
+    const activeOrderIds = initialOrders
+      .filter((o) => o.status && isActiveStatus(o.status))
+      .map((o) => o.order_id);
+
+    if (activeOrderIds.length === 0) return;
+
+    // Realtime 채널 구독
+    const channel = browserClient
+      .channel("order-status-changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "order",
+          filter: `order_id=in.(${activeOrderIds.join(",")})`,
+        },
+        (payload) => {
+          const updatedOrder = payload.new as {
+            order_id: string;
+            status: OrderStatus;
+            estimated_pickup_time: string | null;
+          };
+
+          setOrders((prevOrders) =>
+            prevOrders.map((order) =>
+              order.order_id === updatedOrder.order_id
+                ? {
+                    ...order,
+                    status: updatedOrder.status,
+                    estimated_pickup_time: updatedOrder.estimated_pickup_time,
+                  }
+                : order
+            )
+          );
+          setLastUpdate(new Date());
+        }
+      )
+      .subscribe();
+
+    return () => {
+      browserClient.removeChannel(channel);
+    };
+  }, [hasPhone, initialOrders]);
+
+  // initialOrders가 변경되면 orders 상태도 업데이트
+  useEffect(() => {
+    setOrders(initialOrders);
+  }, [initialOrders]);
 
   // 전화번호가 없는 경우
   if (!hasPhone) {
@@ -183,7 +241,15 @@ export default function CustomerOrdersPage({ loaderData }: { loaderData: LoaderR
           <Link to="/" className="p-2 -ml-2 hover:bg-gray-100 rounded-lg">
             <span className="material-symbols-outlined">arrow_back</span>
           </Link>
-          <h1 className="font-bold text-lg">내 주문 내역</h1>
+          <div className="text-center">
+            <h1 className="font-bold text-lg">내 주문 내역</h1>
+            {activeOrders.length > 0 && (
+              <p className="text-xs text-green-600 flex items-center justify-center gap-1">
+                <span className="inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                실시간 업데이트 중
+              </p>
+            )}
+          </div>
           <div className="w-10"></div>
         </div>
       </header>

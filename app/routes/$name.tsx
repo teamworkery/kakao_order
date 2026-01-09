@@ -4,6 +4,7 @@ import { makeSSRClient, browserClient } from "../supa_clients";
 import type { Database } from "database.types";
 import type { Route } from "./+types/$name";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import PhoneInput, { getRawPhoneNumber, validatePhoneNumber } from "~/common/components/phone-input";
 
 type MenuItem = Database["public"]["Tables"]["menuItem"]["Row"];
 type MyLoaderArgs = {
@@ -351,8 +352,10 @@ export default function OrderPage({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const location = useLocation();
 
-  // 프로필에서 가져온 전화번호가 있으면 사용, 없으면 입력한 전화번호 사용
-  const effectivePhoneNumber = userPhoneNumber || phoneNumber;
+  // 프로필에서 가져온 전화번호가 있으면 사용, 없으면 입력한 전화번호 사용 (하이픈 제거)
+  const rawPhoneNumber = getRawPhoneNumber(phoneNumber);
+  const effectivePhoneNumber = userPhoneNumber || rawPhoneNumber;
+  const isPhoneValid = userPhoneNumber ? true : validatePhoneNumber(phoneNumber).isValid;
 
   // 인증 상태 실시간 확인
   useEffect(() => {
@@ -504,7 +507,7 @@ export default function OrderPage({
   const isAuthenticated = !!user;
   const canOrder =
     orderItems.length > 0 &&
-    effectivePhoneNumber.trim() !== "" &&
+    isPhoneValid &&
     isAuthenticated;
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -601,27 +604,26 @@ export default function OrderPage({
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   전화번호 *최초 한번만 입력하면 다음부터 자동으로 저장됩니다.
                 </label>
-                <input
-                  type="tel"
-                  name="phoneNumber"
+                <PhoneInput
                   value={phoneInput}
-                  onChange={(e) => setPhoneInput(e.target.value)}
-                  placeholder="010-1234-5678"
-                  required
-                  className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                  onChange={setPhoneInput}
+                  autoFocus
                 />
+                <input type="hidden" name="phoneNumber" value={getRawPhoneNumber(phoneInput)} />
               </div>
               {actionData &&
                 "error" in actionData &&
                 typeof actionData.error === "string" && (
-                  <div className="text-red-500 text-sm bg-red-50 p-3 rounded-lg">
+                  <div className="text-red-500 text-sm bg-red-50 p-3 rounded-lg flex items-center gap-2">
+                    <span className="material-symbols-outlined text-base">error</span>
                     {actionData.error}
                   </div>
                 )}
               <div className="flex gap-2">
                 <button
                   type="submit"
-                  className="flex-1 bg-primary hover:bg-orange-600 text-white font-bold py-3 rounded-lg transition-colors"
+                  disabled={!validatePhoneNumber(phoneInput).isValid}
+                  className="flex-1 bg-primary hover:bg-orange-600 text-white font-bold py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   저장하기
                 </button>
@@ -1100,22 +1102,13 @@ export default function OrderPage({
                   >
                     전화번호 *
                   </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                      <span className="material-symbols-outlined text-[18px]">
-                        phone
-                      </span>
-                    </span>
-                    <input
-                      type="tel"
-                      id="phoneNumber"
-                      value={phoneNumber}
-                      onChange={(e) => setPhoneNumber(e.target.value)}
-                      placeholder="01012345678"
-                      className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg bg-white text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
-                      required
-                    />
-                  </div>
+                  <PhoneInput
+                    id="phoneNumber"
+                    value={phoneNumber}
+                    onChange={setPhoneNumber}
+                    className="text-sm py-2"
+                    required
+                  />
                 </div>
               )}
 
