@@ -108,28 +108,40 @@ export type Database = {
       }
       order: {
         Row: {
+          actual_pickup_time: string | null
           createdat: string | null
+          estimated_pickup_time: string | null
+          notes: string | null
           order_id: string
           phoneNumber: string | null
           profile_id: string | null
           status: Database["public"]["Enums"]["kakao_order"] | null
           totalAmount: number | null
+          updated_at: string | null
         }
         Insert: {
+          actual_pickup_time?: string | null
           createdat?: string | null
+          estimated_pickup_time?: string | null
+          notes?: string | null
           order_id?: string
           phoneNumber?: string | null
           profile_id?: string | null
           status?: Database["public"]["Enums"]["kakao_order"] | null
           totalAmount?: number | null
+          updated_at?: string | null
         }
         Update: {
+          actual_pickup_time?: string | null
           createdat?: string | null
+          estimated_pickup_time?: string | null
+          notes?: string | null
           order_id?: string
           phoneNumber?: string | null
           profile_id?: string | null
           status?: Database["public"]["Enums"]["kakao_order"] | null
           totalAmount?: number | null
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -138,6 +150,51 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      order_status_history: {
+        Row: {
+          changed_by: string | null
+          created_at: string | null
+          from_status: string | null
+          id: string
+          notes: string | null
+          order_id: string | null
+          to_status: string
+        }
+        Insert: {
+          changed_by?: string | null
+          created_at?: string | null
+          from_status?: string | null
+          id?: string
+          notes?: string | null
+          order_id?: string | null
+          to_status: string
+        }
+        Update: {
+          changed_by?: string | null
+          created_at?: string | null
+          from_status?: string | null
+          id?: string
+          notes?: string | null
+          order_id?: string | null
+          to_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_status_history_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "order_status_history_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order"
+            referencedColumns: ["order_id"]
           },
         ]
       }
@@ -227,7 +284,14 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      kakao_order: "PENDING" | "ACCEPT" | "CANCEL"
+      kakao_order:
+        | "PENDING"
+        | "ACCEPT"
+        | "CANCEL"
+        | "PREPARING"
+        | "READY"
+        | "COMPLETED"
+        | "REFUNDED"
       user_role: "customer" | "owner" | "admin"
     }
     CompositeTypes: {
@@ -356,7 +420,15 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      kakao_order: ["PENDING", "ACCEPT", "CANCEL"],
+      kakao_order: [
+        "PENDING",
+        "ACCEPT",
+        "CANCEL",
+        "PREPARING",
+        "READY",
+        "COMPLETED",
+        "REFUNDED",
+      ],
       user_role: ["customer", "owner", "admin"],
     },
   },

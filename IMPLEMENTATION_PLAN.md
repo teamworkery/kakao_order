@@ -2,8 +2,17 @@
 ## Kakao Order v3 → Production-Ready Platform
 
 **Phase**: 1 of 4 (P0 - Critical)
-**Duration**: 6-8 weeks
 **Goal**: Transform MVP into production-ready commercial platform
+
+---
+
+## 🌐 Language Requirements
+
+> **IMPORTANT**: 이 프로젝트는 한국 고객을 대상으로 합니다.
+> - 모든 UI 텍스트, 에러 메시지, 알림은 **한국어**로 표시되어야 합니다.
+> - 프롬프트와 코드 주석은 영어로 작성되어 있지만, 사용자에게 보이는 모든 결과물은 한국어로 작성합니다.
+> - 날짜/시간 형식: 한국 표준 (YYYY년 MM월 DD일, 오전/오후 HH:MM)
+> - 통화: 원화 (₩) 표시
 
 ---
 
@@ -21,42 +30,45 @@
 
 ### Phase 1 Objectives
 Make the platform **commercially viable** by implementing:
-1. **Payment Integration** - Toss Payments for actual transactions
-2. **Security Foundation** - Row-Level Security (RLS) + validation
-3. **Complete Order Workflow** - 8 statuses (PENDING → COMPLETED)
-4. **GDPR Compliance** - Privacy policy, data export/deletion
-5. **Rate Limiting** - Prevent abuse and attacks
+1. **Complete Order Workflow** - 8 statuses (PENDING → COMPLETED)
+2. **Database Foundation** - Order status extension, status history
+3. **GDPR Compliance** - Privacy policy, data export/deletion
+4. **Security Foundation** - Row-Level Security (RLS) + validation *(later)*
+5. **Payment Integration** - Toss Payments for actual transactions *(later)*
 
 ---
 
 ## 📅 Implementation Roadmap
 
-### **Milestone 1: Database Foundation** (Week 1-2)
-- Create payment tables (payments, payment_logs)
-- Extend order status enum (8 statuses)
-- Implement Row-Level Security (RLS) policies
-- Add rate limiting tables
-
-### **Milestone 2: Security Hardening** (Week 2-3)
-- Create validation utilities (Zod schemas)
-- Implement rate limiter logic
-- Apply validation to all routes
-
-### **Milestone 3: Payment Integration** (Week 3-5)
-- Integrate Toss Payments SDK
-- Create payment routes (checkout, success, fail)
-- Update order flow with payment
-
-### **Milestone 4: Extended Order Workflow** (Week 5-6)
-- Implement order status transitions
+### **Milestone 1: Extended Order Workflow** (Priority: HIGH)
+- Implement order status transitions (8 statuses)
 - Update owner dashboard with new statuses
 - Add customer notifications
+- Create order status manager utility
 
-### **Milestone 5: GDPR Compliance** (Week 6-8)
+### **Milestone 2: Database Foundation** (Priority: HIGH)
+- Extend order status enum (8 statuses)
+- Create order_status_history table
+- Add order metadata columns (pickup time, notes, etc.)
+
+### **Milestone 3: GDPR Compliance** (Priority: MEDIUM)
 - Create privacy policy & terms of service
 - Implement data export feature
 - Implement account deletion
 - Add cookie consent banner
+
+### **Milestone 4: Security Hardening** (Priority: DEFERRED)
+- Create validation utilities (Zod schemas)
+- Implement Row-Level Security (RLS) policies
+- Implement rate limiter logic
+- Apply validation to all routes
+- Add rate limiting tables
+
+### **Milestone 5: Payment Integration** (Priority: DEFERRED)
+- Create payment tables (payments, payment_logs)
+- Integrate Toss Payments SDK
+- Create payment routes (checkout, success, fail)
+- Update order flow with payment
 
 ---
 

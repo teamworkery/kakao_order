@@ -8,6 +8,15 @@ import {
   type ActionFunctionArgs,
 } from "react-router";
 import { makeSSRClient, browserClient } from "~/supa_clients";
+import {
+  type OrderStatus,
+  STATUS_LABELS,
+  STATUS_COLORS,
+  STATUS_ACTION_LABELS,
+  getNextStatuses,
+  canTransition,
+  isActiveStatus,
+} from "~/lib/order-status";
 
 /** ---- Types ---- */
 type OrderRow = {
@@ -16,7 +25,7 @@ type OrderRow = {
   totalAmount: number | null;
   createdat: string | null;
   profile_id: string | null;
-  status: string | null; // 주문 상태 추가
+  status: OrderStatus | null;
 };
 
 type OrderItemWithMenu = {
@@ -56,23 +65,50 @@ export async function action({ request }: ActionFunctionArgs) {
     return redirect("/login");
   }
 
-  // (B) 주문접수 + n8n 웹훅
-  if (actionType === "accept") {
+  // (B) 주문 상태 변경 + n8n 웹훅
+  if (actionType === "updateStatus") {
     const orderId = String(form.get("orderId") ?? "");
-    if (!orderId) return redirect("/owner/orders");
+    const newStatus = form.get("newStatus") as OrderStatus;
+    if (!orderId || !newStatus) return redirect("/owner/orders");
 
     // 인증 확인
     const { data: userRes } = await client.auth.getUser();
     const user = userRes?.user;
     if (!user) throw redirect("/login");
 
+    // 현재 주문 상태 확인
+    const { data: currentOrder } = await client
+      .from("order")
+      .select("status")
+      .eq("order_id", orderId)
+      .eq("profile_id", user.id)
+      .maybeSingle();
+
+    if (!currentOrder) {
+      return { error: "주문을 찾을 수 없습니다" };
+    }
+
+    // 상태 전환 가능 여부 확인
+    const currentStatus = currentOrder.status as OrderStatus;
+    if (!canTransition(currentStatus, newStatus)) {
+      return { error: `${STATUS_LABELS[currentStatus]}에서 ${STATUS_LABELS[newStatus]}(으)로 변경할 수 없습니다` };
+    }
+
     // 내 가게 주문만 상태 변경
     const { error: upErr } = await client
       .from("order")
-      .update({ status: "ACCEPT" })
+      .update({ status: newStatus })
       .eq("order_id", orderId)
       .eq("profile_id", user.id);
     if (upErr) throw upErr;
+
+    // 상태 변경 이력 기록
+    await client.from("order_status_history").insert({
+      order_id: orderId,
+      from_status: currentStatus,
+      to_status: newStatus,
+      changed_by: user.id,
+    });
 
     // 페이로드용 데이터 조회
     const { data: order } = await client
@@ -99,7 +135,8 @@ export async function action({ request }: ActionFunctionArgs) {
 
     const payload = {
       orderId,
-      status: "ACCEPT",
+      status: newStatus,
+      previousStatus: currentStatus,
       order: {
         phoneNumber: order?.phoneNumber ?? null,
         totalAmount: order?.totalAmount ?? null,
@@ -123,14 +160,18 @@ export async function action({ request }: ActionFunctionArgs) {
       timestamp: new Date().toISOString(),
     };
 
-    const hookUrl = process.env.N8N_WEBHOOK_URL;
-    if (hookUrl) {
-      await fetch(hookUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+    // 고객에게 알림 (ACCEPT, READY 상태일 때)
+    if (newStatus === "ACCEPT" || newStatus === "READY") {
+      const hookUrl = process.env.N8N_WEBHOOK_URL;
+      if (hookUrl) {
+        await fetch(hookUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      }
     }
+
     return redirect("/owner/orders");
   }
 
@@ -661,8 +702,8 @@ export default function OwnerOrdersPage() {
                       <div
                         key={o.id}
                         className={`grid grid-cols-12 gap-4 px-6 py-4 border-b border-[#f4f2f0] items-center hover:bg-orange-50/30 transition-colors cursor-pointer group ${
-                          o.status === "ACCEPT" ? "bg-green-50/30" : ""
-                        }`}
+                          o.status && isActiveStatus(o.status) ? "" : "bg-gray-50/50"
+                        } ${o.status === "PENDING" ? "bg-yellow-50/30" : ""}`}
                         onClick={() => setOpenId(o.id)}
                       >
                         <div className="col-span-1 font-bold text-foreground">
@@ -695,13 +736,11 @@ export default function OwnerOrdersPage() {
                           ₩{o.totalAmount?.toLocaleString() ?? "-"}
                         </div>
                         <div className="col-span-2 flex justify-center">
-                          {o.status === "ACCEPT" ? (
-                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-600">
-                              Completed
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-primary/10 text-primary">
-                              New Order
+                          {o.status && (
+                            <span
+                              className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${STATUS_COLORS[o.status].bg} ${STATUS_COLORS[o.status].text}`}
+                            >
+                              {STATUS_LABELS[o.status]}
                             </span>
                           )}
                         </div>
@@ -776,11 +815,16 @@ export default function OwnerOrdersPage() {
             </div>
             {/* 주문 상태 표시 */}
             <div className="px-6 py-2 border-b border-border bg-white">
-              <span className="px-3 py-1 bg-primary/10 text-primary text-sm font-bold rounded-full border border-primary/20">
-                {orders.find((o) => o.id === openId)?.status === "ACCEPT"
-                  ? "Pending Acceptance"
-                  : "New Order"}
-              </span>
+              {(() => {
+                const currentStatus = orders.find((o) => o.id === openId)?.status;
+                if (!currentStatus) return null;
+                const colors = STATUS_COLORS[currentStatus];
+                return (
+                  <span className={`px-3 py-1 text-sm font-bold rounded-full border ${colors.bg} ${colors.text} ${colors.border}`}>
+                    {STATUS_LABELS[currentStatus]}
+                  </span>
+                );
+              })()}
             </div>
 
             {/* Modal Body (Scrollable) */}
@@ -849,36 +893,55 @@ export default function OwnerOrdersPage() {
 
             {/* Modal Footer (Actions) */}
             <div className="p-4 border-t border-border bg-white sticky bottom-0">
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setOpenId(null)}
-                  className="flex-1 py-3 px-4 rounded-xl border border-gray-300 text-gray-700 font-bold hover:bg-gray-50 transition-colors"
-                >
-                  Close
-                </button>
-                <Form method="post" replace className="flex-[2]">
-                  <input type="hidden" name="actionType" value="accept" />
-                  <input type="hidden" name="orderId" value={openId ?? ""} />
-                  <button
-                    type="submit"
-                    disabled={
-                      orders.find((o) => o.id === openId)?.status === "ACCEPT"
-                    }
-                    className={`w-full py-3 px-4 rounded-xl font-bold transition-all shadow-lg shadow-primary/30 flex items-center justify-center gap-2 ${
-                      orders.find((o) => o.id === openId)?.status === "ACCEPT"
-                        ? "bg-gray-400 cursor-not-allowed text-white"
-                        : "bg-primary text-white hover:bg-primary/90"
-                    }`}
-                  >
-                    <span className="material-symbols-outlined">
-                      check_circle
-                    </span>
-                    {orders.find((o) => o.id === openId)?.status === "ACCEPT"
-                      ? "접수완료"
-                      : "Accept Order"}
-                  </button>
-                </Form>
-              </div>
+              {(() => {
+                const currentStatus = orders.find((o) => o.id === openId)?.status;
+                if (!currentStatus) return null;
+                const nextStatuses = getNextStatuses(currentStatus);
+
+                return (
+                  <div className="flex flex-col gap-3">
+                    {/* 다음 상태 버튼들 */}
+                    {nextStatuses.length > 0 ? (
+                      <div className="flex gap-2">
+                        {nextStatuses.map((nextStatus) => {
+                          const isCancel = nextStatus === "CANCEL";
+                          return (
+                            <Form key={nextStatus} method="post" replace className="flex-1">
+                              <input type="hidden" name="actionType" value="updateStatus" />
+                              <input type="hidden" name="orderId" value={openId ?? ""} />
+                              <input type="hidden" name="newStatus" value={nextStatus} />
+                              <button
+                                type="submit"
+                                className={`w-full py-3 px-4 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${
+                                  isCancel
+                                    ? "bg-red-100 text-red-600 hover:bg-red-200 border border-red-200"
+                                    : "bg-primary text-white hover:bg-primary/90 shadow-lg shadow-primary/30"
+                                }`}
+                              >
+                                <span className="material-symbols-outlined text-lg">
+                                  {isCancel ? "cancel" : "check_circle"}
+                                </span>
+                                {STATUS_ACTION_LABELS[nextStatus]}
+                              </button>
+                            </Form>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-center text-gray-500 py-2">
+                        이 주문은 최종 상태입니다
+                      </div>
+                    )}
+                    {/* 닫기 버튼 */}
+                    <button
+                      onClick={() => setOpenId(null)}
+                      className="w-full py-3 px-4 rounded-xl border border-gray-300 text-gray-700 font-bold hover:bg-gray-50 transition-colors"
+                    >
+                      닫기
+                    </button>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>

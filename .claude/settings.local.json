@@ -2,7 +2,12 @@
   "permissions": {
     "allow": [
       "Bash(dir /s \"C:\\\\Users\\\\swm09\\\\OneDrive\\\\Desktop\\\\project\\\\kakao_order_v3\\\\newapp\\\\app\")",
-      "Bash(git -C \"C:\\\\Users\\\\swm09\\\\OneDrive\\\\Desktop\\\\project\\\\kakao_order_v3\" log --oneline -15)"
+      "Bash(git -C \"C:\\\\Users\\\\swm09\\\\OneDrive\\\\Desktop\\\\project\\\\kakao_order_v3\" log --oneline -15)",
+      "Bash(npm run db:typegen:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npm run dev:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: 주문 상태 워크플로우 확장 \\(Step 1\\)\n\n- kakao_order enum 확장: PREPARING, READY, COMPLETED, REFUNDED 추가\n- order 테이블에 pickup_time, notes, updated_at 컬럼 추가\n- order_status_history 테이블 생성 \\(상태 변경 이력 추적\\)\n- order-status.ts 유틸리티 생성 \\(상태 전환 규칙, 라벨, 색상\\)\n- owner.orders.tsx 수정: 동적 상태 버튼, 한국어 라벨 표시\n- IMPLEMENTATION_PLAN.md 업데이트: 순서 조정, 한국어 요구사항 추가\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
     ]
   }
 }
