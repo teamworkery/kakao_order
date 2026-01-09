@@ -8,6 +8,17 @@ export default function Index() {
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-orange-100/50" />
         <div className="relative max-w-4xl mx-auto px-4 pt-16 pb-20 text-center">
+          {/* 고객 주문 내역 링크 (우측 상단) */}
+          <div className="absolute top-4 right-4">
+            <Link
+              to="/customer/orders"
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-white/80 hover:bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-xl transition-colors shadow-sm min-h-[44px]"
+            >
+              <span className="material-symbols-outlined text-lg">receipt_long</span>
+              <span className="hidden sm:inline">내 주문 내역</span>
+            </Link>
+          </div>
+
           {/* Logo */}
           <div className="mb-8">
             <span className="text-4xl font-black text-primary tracking-tight">

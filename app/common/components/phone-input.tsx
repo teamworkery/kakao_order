@@ -41,20 +41,21 @@ export function validatePhoneNumber(value: string): { isValid: boolean; message:
     return { isValid: false, message: "전화번호를 입력해주세요" };
   }
 
-  if (numbers.length < 10) {
-    return { isValid: false, message: "전화번호가 너무 짧습니다" };
-  }
-
-  if (numbers.length > 11) {
-    return { isValid: false, message: "전화번호가 너무 깁니다" };
-  }
-
   // 한국 휴대폰 번호 패턴 검사 (010, 011, 016, 017, 018, 019)
   const validPrefixes = ["010", "011", "016", "017", "018", "019"];
   const prefix = numbers.slice(0, 3);
 
-  if (!validPrefixes.includes(prefix)) {
-    return { isValid: false, message: "올바른 휴대폰 번호가 아닙니다" };
+  if (numbers.length >= 3 && !validPrefixes.includes(prefix)) {
+    return { isValid: false, message: "010으로 시작하는 휴대폰 번호를 입력해주세요" };
+  }
+
+  if (numbers.length < 10) {
+    const remaining = 10 - numbers.length;
+    return { isValid: false, message: `${remaining}자리 더 입력해주세요` };
+  }
+
+  if (numbers.length > 11) {
+    return { isValid: false, message: "전화번호가 너무 깁니다" };
   }
 
   return { isValid: true, message: "" };

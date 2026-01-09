@@ -1,5 +1,5 @@
 // routes/customer/orders.tsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Link } from "react-router";
 import { redirect } from "react-router";
 import type { LoaderFunctionArgs } from "react-router";
@@ -57,7 +57,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     return { orders: [], hasPhone: false };
   }
 
-  // 해당 전화번호로 된 주문 조회
+  // 해당 전화번호로 된 주문 조회 - JOIN으로 orderitem까지 한 번에 가져오기
   const { data: orders } = await client
     .from("order")
     .select(`
@@ -71,33 +71,31 @@ export async function loader({ request }: LoaderFunctionArgs) {
         storename,
         storenumber,
         name
-      )
-    `)
-    .eq("phoneNumber", profile.customernumber)
-    .order("createdat", { ascending: false })
-    .limit(20);
-
-  // 각 주문의 아이템 조회
-  const ordersWithItems: OrderData[] = [];
-
-  for (const order of orders || []) {
-    const { data: items } = await client
-      .from("orderitem")
-      .select(`
+      ),
+      orderitem (
         id,
         quantity,
         price,
         menuItem:menuItemId (
           name
         )
-      `)
-      .eq("orderId", order.order_id);
+      )
+    `)
+    .eq("phoneNumber", profile.customernumber)
+    .order("createdat", { ascending: false })
+    .limit(20);
 
-    ordersWithItems.push({
-      ...order,
-      items: (items as OrderItem[]) || [],
-    } as OrderData);
-  }
+  // N+1 쿼리 해결: JOIN으로 가져온 데이터를 변환
+  const ordersWithItems: OrderData[] = (orders || []).map((order) => ({
+    order_id: order.order_id,
+    phoneNumber: order.phoneNumber,
+    totalAmount: order.totalAmount,
+    status: order.status,
+    createdat: order.createdat,
+    estimated_pickup_time: order.estimated_pickup_time,
+    profile: order.profile,
+    items: ((order as any).orderitem as OrderItem[]) || [],
+  }));
 
   return { orders: ordersWithItems, hasPhone: true };
 }
@@ -171,14 +169,23 @@ export default function CustomerOrdersPage({ loaderData }: { loaderData: LoaderR
   if (!hasPhone) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="w-full max-w-md bg-white rounded-xl shadow-sm p-8 text-center">
-          <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-            <span className="material-symbols-outlined text-gray-400 text-3xl">phone_disabled</span>
+        <div className="w-full max-w-md bg-white rounded-2xl shadow-sm p-8 text-center">
+          <div className="mx-auto w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-6">
+            <span className="material-symbols-outlined text-primary text-4xl">shopping_bag</span>
           </div>
-          <h1 className="text-xl font-bold text-gray-900 mb-2">전화번호가 등록되지 않았습니다</h1>
-          <p className="text-gray-600 mb-6">주문을 하시면 전화번호가 자동으로 등록됩니다.</p>
+          <h1 className="text-xl font-bold text-gray-900 mb-3">아직 주문 내역이 없어요</h1>
+          <p className="text-gray-600 mb-6 leading-relaxed">
+            첫 주문을 해보세요!
+            <br />
+            주문하시면 연락처가 자동 등록되어
+            <br />
+            내역을 확인하실 수 있습니다.
+          </p>
           <Link to="/">
-            <Button className="w-full" size="lg">가게 둘러보기</Button>
+            <Button className="w-full min-h-[52px]" size="lg">
+              <span className="material-symbols-outlined mr-2">storefront</span>
+              가게 둘러보기
+            </Button>
           </Link>
         </div>
       </div>
@@ -189,22 +196,29 @@ export default function CustomerOrdersPage({ loaderData }: { loaderData: LoaderR
   if (orders.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="w-full max-w-md bg-white rounded-xl shadow-sm p-8 text-center">
-          <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-            <span className="material-symbols-outlined text-gray-400 text-3xl">receipt_long</span>
+        <div className="w-full max-w-md bg-white rounded-2xl shadow-sm p-8 text-center">
+          <div className="mx-auto w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-6">
+            <span className="material-symbols-outlined text-gray-400 text-4xl">receipt_long</span>
           </div>
-          <h1 className="text-xl font-bold text-gray-900 mb-2">주문 내역이 없습니다</h1>
-          <p className="text-gray-600 mb-6">아직 주문하신 내역이 없습니다.</p>
+          <h1 className="text-xl font-bold text-gray-900 mb-3">주문 내역이 없어요</h1>
+          <p className="text-gray-600 mb-6 leading-relaxed">
+            아직 주문하신 내역이 없습니다.
+            <br />
+            맛있는 음식을 주문해보세요!
+          </p>
           <Link to="/">
-            <Button className="w-full" size="lg">주문하러 가기</Button>
+            <Button className="w-full min-h-[52px]" size="lg">
+              <span className="material-symbols-outlined mr-2">restaurant_menu</span>
+              주문하러 가기
+            </Button>
           </Link>
         </div>
       </div>
     );
   }
 
-  // 날짜 포맷
-  const formatDate = (isoString: string | null) => {
+  // 날짜 포맷 - useCallback으로 메모이제이션
+  const formatDate = useCallback((isoString: string | null) => {
     if (!isoString) return "";
     const date = new Date(isoString);
     return date.toLocaleDateString("ko-KR", {
@@ -214,10 +228,10 @@ export default function CustomerOrdersPage({ loaderData }: { loaderData: LoaderR
       hour: "2-digit",
       minute: "2-digit",
     });
-  };
+  }, []);
 
-  // 픽업 시간 포맷
-  const formatPickupTime = (isoString: string | null) => {
+  // 픽업 시간 포맷 - useCallback으로 메모이제이션
+  const formatPickupTime = useCallback((isoString: string | null) => {
     if (!isoString) return null;
     const date = new Date(isoString);
     return date.toLocaleString("ko-KR", {
@@ -227,20 +241,30 @@ export default function CustomerOrdersPage({ loaderData }: { loaderData: LoaderR
       minute: "2-digit",
       hour12: true,
     });
-  };
+  }, []);
 
-  // 활성 주문과 완료 주문 분리
-  const activeOrders = orders.filter((o: OrderData) => o.status && isActiveStatus(o.status));
-  const completedOrders = orders.filter((o: OrderData) => o.status && !isActiveStatus(o.status));
+  // 활성 주문과 완료 주문 분리 - useMemo로 메모이제이션
+  const activeOrders = useMemo(
+    () => orders.filter((o: OrderData) => o.status && isActiveStatus(o.status)),
+    [orders]
+  );
+  const completedOrders = useMemo(
+    () => orders.filter((o: OrderData) => o.status && !isActiveStatus(o.status)),
+    [orders]
+  );
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* 헤더 */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-lg mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/" className="p-2 -ml-2 hover:bg-gray-100 rounded-lg">
+          <button
+            onClick={() => window.history.back()}
+            className="p-2.5 -ml-2 hover:bg-gray-100 active:bg-gray-200 rounded-xl transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+            aria-label="뒤로 가기"
+          >
             <span className="material-symbols-outlined">arrow_back</span>
-          </Link>
+          </button>
           <div className="text-center">
             <h1 className="font-bold text-lg">내 주문 내역</h1>
             {activeOrders.length > 0 && (
@@ -363,10 +387,11 @@ export default function CustomerOrdersPage({ loaderData }: { loaderData: LoaderR
           </section>
         )}
 
-        {/* 홈으로 */}
-        <div className="pt-4">
+        {/* 홈으로 - 하단 고정 여유 공간 확보 */}
+        <div className="pt-4 pb-8">
           <Link to="/">
-            <Button variant="outline" className="w-full" size="lg">
+            <Button variant="outline" className="w-full min-h-[52px]" size="lg">
+              <span className="material-symbols-outlined mr-2">home</span>
               홈으로 돌아가기
             </Button>
           </Link>

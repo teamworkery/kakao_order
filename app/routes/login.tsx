@@ -86,7 +86,16 @@ export default function LoginPage({ loaderData }: Route.ComponentProps) {
     setIsSubmitting(false);
 
     if (loginError) {
-      setError(loginError.message);
+      // 에러 메시지를 사용자 친화적으로 변환
+      let friendlyMessage = "로그인에 실패했습니다. 다시 시도해주세요.";
+      if (loginError.message.includes("Invalid login credentials")) {
+        friendlyMessage = "이메일 또는 비밀번호가 올바르지 않습니다.";
+      } else if (loginError.message.includes("Email not confirmed")) {
+        friendlyMessage = "이메일 인증이 필요합니다. 메일함을 확인해주세요.";
+      } else if (loginError.message.includes("Too many requests")) {
+        friendlyMessage = "잠시 후 다시 시도해주세요. (요청이 너무 많습니다)";
+      }
+      setError(friendlyMessage);
       return;
     }
 

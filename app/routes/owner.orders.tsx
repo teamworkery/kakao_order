@@ -722,7 +722,15 @@ export default function OwnerOrdersPage() {
               <div className="overflow-y-auto custom-scrollbar flex-1">
                 {orders.length === 0 ? (
                   <div className="p-12 text-center">
-                    <p className="text-muted-foreground">데이터 없음</p>
+                    <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                      <span className="material-symbols-outlined text-gray-400 text-2xl">receipt_long</span>
+                    </div>
+                    <p className="text-gray-700 font-medium mb-1">주문 내역이 없습니다</p>
+                    <p className="text-muted-foreground text-sm">
+                      선택한 기간에 해당하는 주문이 없어요.
+                      <br />
+                      필터를 변경하거나 새 주문을 기다려주세요.
+                    </p>
                   </div>
                 ) : (
                   orders.map((o) =>
@@ -933,10 +941,13 @@ export default function OwnerOrdersPage() {
               {itemsLoading ? (
                 <div className="p-8 text-center">
                   <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent mx-auto"></div>
-                  <p className="mt-2 text-muted-foreground">로딩 중…</p>
+                  <p className="mt-3 text-muted-foreground text-sm">주문 정보를 불러오는 중...</p>
                 </div>
               ) : items.length === 0 ? (
-                <p className="text-muted-foreground">아이템 없음</p>
+                <div className="p-6 text-center">
+                  <span className="material-symbols-outlined text-gray-400 text-3xl mb-2">inventory_2</span>
+                  <p className="text-muted-foreground text-sm">주문 아이템 정보가 없습니다</p>
+                </div>
               ) : (
                 <div className="bg-white rounded-xl border border-border shadow-sm overflow-hidden">
                   <div className="px-4 py-2 bg-gray-50 border-b border-border text-xs font-bold text-gray-500 uppercase">

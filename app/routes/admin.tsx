@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { redirect } from "react-router";
 import {
@@ -888,74 +888,79 @@ export default function AdminMenuPage() {
     }
   }, [actionData]);
 
-  // 폼 핸들러들
-  const handleAddChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
-    setAddForm((prev) => ({ ...prev, [name]: value }));
-  };
+  // 폼 핸들러들 - useCallback으로 메모이제이션
+  const handleAddChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+      const { name, value } = e.target;
+      setAddForm((prev) => ({ ...prev, [name]: value }));
+    },
+    []
+  );
 
-  const handleAddImageUpload = (url: string) => {
+  const handleAddImageUpload = useCallback((url: string) => {
     setAddForm((prev) => ({ ...prev, image: url }));
-  };
+  }, []);
 
-  const startEdit = (item: MenuItem) => {
+  const startEdit = useCallback((item: MenuItem) => {
     setEditingId(item.id);
     setEditForm({ ...item });
-  };
+  }, []);
 
-  const cancelEdit = () => {
+  const cancelEdit = useCallback(() => {
     setEditingId(null);
     setEditForm({});
-  };
+  }, []);
 
-  const handleEditChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
-
-    // 수정 폼의 필드명을 실제 데이터베이스 필드명으로 매핑
-    const fieldMap: { [key: string]: string } = {
+  // 필드명 매핑 객체 - 컴포넌트 외부에서 정의하거나 useMemo 사용
+  const fieldMap = useMemo(
+    () => ({
       editName: "name",
       editDescription: "description",
       editPrice: "price",
       editCategoryId: "category_id",
       editIsActive: "isActive",
-    };
+    }),
+    []
+  );
 
-    const actualFieldName = fieldMap[name] || name;
-    const processedValue =
-      actualFieldName === "isActive"
-        ? value === "true"
-        : actualFieldName === "price"
-        ? Number(value)
-        : value;
+  const handleEditChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+      const { name, value } = e.target;
 
-    setEditForm((prev) => ({
-      ...prev,
-      [actualFieldName]: processedValue,
-    }));
-  };
+      const actualFieldName = fieldMap[name as keyof typeof fieldMap] || name;
+      const processedValue =
+        actualFieldName === "isActive"
+          ? value === "true"
+          : actualFieldName === "price"
+          ? Number(value)
+          : value;
 
-  const handleEditImageUpload = (url: string) => {
+      setEditForm((prev) => ({
+        ...prev,
+        [actualFieldName]: processedValue,
+      }));
+    },
+    [fieldMap]
+  );
+
+  const handleEditImageUpload = useCallback((url: string) => {
     setEditForm((prev) => ({ ...prev, image: url }));
-  };
+  }, []);
 
-  const handleStoreImageUpload = (url: string) => {
+  const handleStoreImageUpload = useCallback((url: string) => {
     setStoreImage(url);
-  };
+  }, []);
 
-  // 메뉴 순서 변경 함수들
-  const handleDragStart = (e: React.DragEvent, itemId: string) => {
+  // 메뉴 순서 변경 함수들 - useCallback으로 메모이제이션
+  const handleDragStart = useCallback((e: React.DragEvent, itemId: string) => {
     setDraggedItem(itemId);
     e.dataTransfer.effectAllowed = "move";
-  };
+  }, []);
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
-  };
+  }, []);
 
   const handleDrop = async (e: React.DragEvent, targetItemId: string) => {
     e.preventDefault();
@@ -1042,19 +1047,23 @@ export default function AdminMenuPage() {
     }
   };
 
-  const handleDragEnd = () => {
+  const handleDragEnd = useCallback(() => {
     setDraggedItem(null);
-  };
+  }, []);
 
   // 선택된 카테고리 상태 (사이드바에서 사용 - category_id)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
-  // 선택된 카테고리의 메뉴만 필터링
-  const filteredMenuItems = selectedCategory
-    ? localMenuItems.filter(
-        (item) => (item as any).category_id === selectedCategory
-      )
-    : localMenuItems;
+  // 선택된 카테고리의 메뉴만 필터링 - useMemo로 메모이제이션
+  const filteredMenuItems = useMemo(
+    () =>
+      selectedCategory
+        ? localMenuItems.filter(
+            (item) => (item as any).category_id === selectedCategory
+          )
+        : localMenuItems,
+    [selectedCategory, localMenuItems]
+  );
 
   return (
     <div className="min-h-screen bg-background-light flex flex-col h-screen overflow-hidden">
@@ -1879,14 +1888,29 @@ export default function AdminMenuPage() {
               <div className="flex-1 overflow-y-auto px-6 pb-20 md:px-10">
                 <div className="max-w-7xl mx-auto">
                   {filteredMenuItems.length === 0 ? (
-                    <div className="p-12 text-center">
-                      <div className="text-6xl mb-4">🍽️</div>
-                      <h3 className="text-lg font-medium text-foreground mb-2">
-                        등록된 메뉴가 없습니다
+                    <div className="col-span-full p-12 text-center bg-white rounded-2xl border border-dashed border-gray-300">
+                      <div className="mx-auto w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-6">
+                        <span className="material-symbols-outlined text-primary text-4xl">restaurant_menu</span>
+                      </div>
+                      <h3 className="text-lg font-bold text-foreground mb-2">
+                        {selectedCategory ? "이 카테고리에 메뉴가 없습니다" : "아직 등록된 메뉴가 없어요"}
                       </h3>
-                      <p className="text-muted-foreground">
-                        위에서 새 메뉴를 추가해보세요.
+                      <p className="text-muted-foreground mb-6 leading-relaxed">
+                        {selectedCategory
+                          ? "다른 카테고리를 선택하거나 새 메뉴를 추가해보세요."
+                          : "위에서 새 메뉴를 추가하여 고객에게 보여줄 메뉴를 등록하세요."
+                        }
                       </p>
+                      <button
+                        onClick={() => {
+                          const form = document.querySelector('form[method="post"]') as HTMLFormElement;
+                          if (form) form.scrollIntoView({ behavior: "smooth" });
+                        }}
+                        className="inline-flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-white font-bold rounded-xl transition-colors"
+                      >
+                        <span className="material-symbols-outlined">add</span>
+                        새 메뉴 추가하기
+                      </button>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">

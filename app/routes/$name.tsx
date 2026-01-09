@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Form, useLocation, redirect, useFetcher } from "react-router";
 import { makeSSRClient, browserClient } from "../supa_clients";
 import type { Database } from "database.types";
@@ -39,11 +39,14 @@ export const getMenuItems = async (
 };
 
 // loader 함수에서는 client만 주입해서 사용
+// 최적화: 병렬 쿼리로 데이터 페칭 성능 향상
 export const loader = async ({ request, params }: MyLoaderArgs) => {
   const name = params.name;
   if (!name) throw new Response("Not Found", { status: 404 });
 
   const { client } = makeSSRClient(request);
+
+  // 첫 번째 단계: 프로필 조회 (필수)
   const { data: profile, error } = await client
     .from("profiles")
     .select("profile_id, storename, store_image, store_description, storenumber, default_prep_time_minutes")
@@ -56,32 +59,39 @@ export const loader = async ({ request, params }: MyLoaderArgs) => {
   }
 
   const profile_id = profile.profile_id;
-  const menuItems = await getMenuItems(client, profile_id);
-
-  // 카테고리 목록 가져오기
-  const { data: categories } = await client
-    .from("categories")
-    .select("*")
-    .eq("profile_id", profile_id)
-    .order("display_order", { ascending: true });
-
-  // 오늘의 영업시간 가져오기 (day_of_week: 0=일요일, 1=월요일, ...)
   const today = new Date().getDay();
-  const { data: todayHours } = await client
-    .from("store_hours")
-    .select("open_time, close_time, is_closed")
-    .eq("profile_id", profile_id)
-    .eq("day_of_week", today)
-    .maybeSingle();
 
-  // 인증 상태 확인
-  const { data: userData } = await client.auth.getUser();
-  const user = userData?.user || null;
+  // 두 번째 단계: 모든 쿼리를 병렬로 실행
+  const [menuItemsResult, categoriesResult, todayHoursResult, userDataResult] = await Promise.all([
+    // 메뉴 아이템 조회
+    getMenuItems(client, profile_id),
+    // 카테고리 목록 조회
+    client
+      .from("categories")
+      .select("id, name, display_order")
+      .eq("profile_id", profile_id)
+      .order("display_order", { ascending: true }),
+    // 오늘의 영업시간 조회
+    client
+      .from("store_hours")
+      .select("open_time, close_time, is_closed")
+      .eq("profile_id", profile_id)
+      .eq("day_of_week", today)
+      .maybeSingle(),
+    // 인증 상태 확인
+    client.auth.getUser(),
+  ]);
+
+  const menuItems = menuItemsResult;
+  const categories = categoriesResult.data || [];
+  const todayHours = todayHoursResult.data;
+  const user = userDataResult.data?.user || null;
 
   // 로그인한 사용자의 프로필 정보 가져오기
   let userProfile = null;
   let needsPhoneNumber = false;
   let userPhoneNumber = null;
+
   if (user) {
     const { data: profileData } = await client
       .from("profiles")
@@ -103,7 +113,7 @@ export const loader = async ({ request, params }: MyLoaderArgs) => {
 
   return {
     menuItems,
-    categories: categories || [],
+    categories,
     user,
     userEmail: userProfile?.email || user?.email || null,
     name,
@@ -468,11 +478,13 @@ export default function OrderPage({
     }
   };
 
-  const formatPrice = (price: number) => {
+  // 가격 포맷 함수 - useCallback으로 메모이제이션
+  const formatPrice = useCallback((price: number) => {
     return new Intl.NumberFormat("ko-KR").format(price);
-  };
+  }, []);
 
-  const increaseQuantity = (menuItem: MenuItem) => {
+  // 수량 증가 함수 - useCallback으로 메모이제이션
+  const increaseQuantity = useCallback((menuItem: MenuItem) => {
     setOrderItems((prev) => {
       const existingItem = prev.find((item) => item.id === menuItem.id);
       if (existingItem) {
@@ -493,9 +505,10 @@ export default function OrderPage({
         ];
       }
     });
-  };
+  }, []);
 
-  const decreaseQuantity = (menuItem: MenuItem) => {
+  // 수량 감소 함수 - useCallback으로 메모이제이션
+  const decreaseQuantity = useCallback((menuItem: MenuItem) => {
     setOrderItems((prev) => {
       const existingItem = prev.find((item) => item.id === menuItem.id);
       if (existingItem && existingItem.quantity > 1) {
@@ -508,16 +521,18 @@ export default function OrderPage({
         return prev.filter((item) => item.id !== menuItem.id);
       }
     });
-  };
+  }, []);
 
-  const getItemQuantity = (menuId: string) => {
+  // 아이템 수량 조회 - useCallback으로 메모이제이션
+  const getItemQuantity = useCallback((menuId: string) => {
     const item = orderItems.find((item) => item.id === menuId);
     return item ? item.quantity : 0;
-  };
+  }, [orderItems]);
 
-  const totalAmount = orderItems.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
+  // 총 금액 계산 - useMemo로 메모이제이션
+  const totalAmount = useMemo(
+    () => orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
+    [orderItems]
   );
   const isAuthenticated = !!user;
   const canOrder =
@@ -525,13 +540,21 @@ export default function OrderPage({
     isPhoneValid &&
     isAuthenticated;
 
+  // 주문 불가 상태 메시지
+  const [orderError, setOrderError] = useState<string | null>(null);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setOrderError(null);
+
     if (!canOrder) {
-      if (!userPhoneNumber && !phoneNumber.trim()) {
-        alert("메뉴를 선택하고 전화번호를 입력해주세요.");
-      } else {
-        alert("메뉴를 선택해주세요.");
+      if (orderItems.length === 0) {
+        setOrderError("주문할 메뉴를 선택해주세요.");
+        // 3초 후 에러 메시지 자동 제거
+        setTimeout(() => setOrderError(null), 3000);
+      } else if (!userPhoneNumber && !isPhoneValid) {
+        setOrderError("전화번호를 올바르게 입력해주세요. (예: 010-1234-5678)");
+        setTimeout(() => setOrderError(null), 3000);
       }
       return;
     }
@@ -569,30 +592,52 @@ export default function OrderPage({
 
   if (!menuItems || menuItems.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">
-            등록된 메뉴가 없습니다.
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="text-center max-w-sm">
+          <div className="mx-auto w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-6">
+            <span className="material-symbols-outlined text-4xl text-gray-400">restaurant_menu</span>
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-3">
+            아직 메뉴가 준비되지 않았어요
           </h2>
-          <p className="text-gray-600">
-            해당 페이지의 관리자라면 관리자 페이지에서 메뉴를 등록해주세요.
+          <p className="text-gray-600 mb-6 leading-relaxed">
+            가게에서 메뉴를 준비 중입니다.
+            <br />
+            잠시 후 다시 방문해주세요.
           </p>
+          <button
+            onClick={() => window.history.back()}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition-colors"
+          >
+            <span className="material-symbols-outlined text-lg">arrow_back</span>
+            이전 페이지로
+          </button>
         </div>
       </div>
     );
   }
 
-  // 첫 번째 메뉴 아이템 (Featured로 표시)
-  const featuredItem = menuItems.find(
-    (item: MenuItem) =>
-      selectedCategory === null ||
-      (item as any).category_id === selectedCategory
+  // 첫 번째 메뉴 아이템 (Featured로 표시) - useMemo로 메모이제이션
+  const featuredItem = useMemo(
+    () =>
+      menuItems.find(
+        (item: MenuItem) =>
+          selectedCategory === null ||
+          (item as any).category_id === selectedCategory
+      ),
+    [menuItems, selectedCategory]
   );
-  const regularItems = menuItems.filter(
-    (item: MenuItem) =>
-      (selectedCategory === null ||
-        (item as any).category_id === selectedCategory) &&
-      item.id !== featuredItem?.id
+
+  // 일반 메뉴 아이템 목록 - useMemo로 메모이제이션
+  const regularItems = useMemo(
+    () =>
+      menuItems.filter(
+        (item: MenuItem) =>
+          (selectedCategory === null ||
+            (item as any).category_id === selectedCategory) &&
+          item.id !== featuredItem?.id
+      ),
+    [menuItems, selectedCategory, featuredItem?.id]
   );
 
   return (
@@ -600,11 +645,18 @@ export default function OrderPage({
       {/* 전화번호 입력 모달 */}
       {showPhoneModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-2">전화번호 입력</h2>
-            <p className="text-gray-600 mb-4">
-              주문을 위해 전화번호를 입력해주세요.
-            </p>
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md">
+            <div className="text-center mb-6">
+              <div className="mx-auto w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+                <span className="material-symbols-outlined text-2xl text-primary">phone</span>
+              </div>
+              <h2 className="text-xl font-bold text-gray-900 mb-2">연락처를 알려주세요</h2>
+              <p className="text-gray-600 text-sm leading-relaxed">
+                주문 확인과 픽업 안내를 위해 필요합니다.
+                <br />
+                <span className="text-primary font-medium">한 번만 입력하면 다음부터 자동 저장됩니다.</span>
+              </p>
+            </div>
             <Form method="post" className="space-y-4">
               <input
                 type="hidden"
@@ -612,9 +664,6 @@ export default function OrderPage({
                 value="updatePhoneNumber"
               />
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  전화번호 *최초 한번만 입력하면 다음부터 자동으로 저장됩니다.
-                </label>
                 <PhoneInput
                   value={phoneInput}
                   onChange={setPhoneInput}
@@ -625,20 +674,19 @@ export default function OrderPage({
               {actionData &&
                 "error" in actionData &&
                 typeof actionData.error === "string" && (
-                  <div className="text-red-500 text-sm bg-red-50 p-3 rounded-lg flex items-center gap-2">
+                  <div className="text-red-700 text-sm bg-red-50 border border-red-200 p-3 rounded-xl flex items-center gap-2">
                     <span className="material-symbols-outlined text-base">error</span>
                     {actionData.error}
                   </div>
                 )}
-              <div className="flex gap-2">
-                <button
-                  type="submit"
-                  disabled={!validatePhoneNumber(phoneInput).isValid}
-                  className="flex-1 bg-primary hover:bg-orange-600 text-white font-bold py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  저장하기
-                </button>
-              </div>
+              <button
+                type="submit"
+                disabled={!validatePhoneNumber(phoneInput).isValid}
+                className="w-full bg-primary hover:bg-orange-600 text-white font-bold py-4 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[56px] flex items-center justify-center gap-2"
+              >
+                <span className="material-symbols-outlined">check</span>
+                저장하고 계속하기
+              </button>
             </Form>
           </div>
         </div>
@@ -713,11 +761,20 @@ export default function OrderPage({
               </div>
 
               {/* 안내 메시지 */}
-              <div className="flex gap-3 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
-                <span className="material-symbols-outlined text-yellow-600">info</span>
-                <div className="text-sm text-yellow-800">
-                  <p className="font-medium">결제 안내</p>
-                  <p>결제는 가게에서 픽업 시 현장에서 진행됩니다.</p>
+              <div className="space-y-3">
+                <div className="flex gap-3 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
+                  <span className="material-symbols-outlined text-yellow-600 shrink-0">payments</span>
+                  <div className="text-sm text-yellow-800">
+                    <p className="font-bold">현장 결제</p>
+                    <p>결제는 가게에서 음식 수령 시 진행됩니다.</p>
+                  </div>
+                </div>
+                <div className="flex gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
+                  <span className="material-symbols-outlined text-red-600 shrink-0">warning</span>
+                  <div className="text-sm text-red-800">
+                    <p className="font-bold">주문 확정 전 확인해주세요</p>
+                    <p>주문 접수 후에는 취소가 어렵습니다. 메뉴와 수량을 다시 한번 확인해주세요.</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -727,26 +784,28 @@ export default function OrderPage({
               <button
                 onClick={submitOrder}
                 disabled={isSubmitting}
-                className="w-full bg-primary hover:bg-orange-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-orange-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full bg-primary hover:bg-orange-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-orange-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-h-[56px]"
+                aria-label={isSubmitting ? "주문 처리 중입니다" : "주문 확정하기"}
               >
                 {isSubmitting ? (
                   <>
                     <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                    주문 처리 중...
+                    <span>주문 처리 중...</span>
                   </>
                 ) : (
                   <>
                     <span className="material-symbols-outlined">check_circle</span>
-                    주문 확정하기
+                    <span>주문 확정하기</span>
                   </>
                 )}
               </button>
               <button
                 onClick={() => setShowOrderConfirmModal(false)}
                 disabled={isSubmitting}
-                className="w-full py-3 text-gray-600 font-medium hover:bg-gray-100 rounded-xl transition-colors disabled:opacity-50"
+                className="w-full py-3 text-gray-600 font-medium hover:bg-gray-100 active:bg-gray-200 rounded-xl transition-colors disabled:opacity-50 min-h-[48px]"
+                aria-label="주문 취소하고 돌아가기"
               >
-                취소
+                다시 확인할게요
               </button>
             </div>
           </div>
@@ -755,7 +814,11 @@ export default function OrderPage({
 
       {/* Top Navigation Bar */}
       <header className="flex items-center justify-between px-4 py-3 bg-white/90 backdrop-blur-md sticky top-0 z-40 border-b border-gray-100 transition-colors">
-        <button className="size-10 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-800 transition-colors">
+        <button
+          onClick={() => window.history.back()}
+          className="size-11 flex items-center justify-center rounded-full hover:bg-gray-100 active:bg-gray-200 text-gray-800 transition-colors"
+          aria-label="뒤로 가기"
+        >
           <span className="material-symbols-outlined">arrow_back</span>
         </button>
         <h1 className="text-lg font-bold text-gray-900 tracking-tight">
@@ -1115,9 +1178,10 @@ export default function OrderPage({
                         <button
                           type="button"
                           onClick={() => increaseQuantity(item)}
-                          className="bg-gray-100 hover:bg-gray-200 text-gray-900 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-1.5 transition-colors"
+                          className="bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-900 px-4 py-2.5 rounded-lg text-sm font-bold flex items-center gap-1.5 transition-colors min-h-[44px]"
+                          aria-label={`${item.name} 담기`}
                         >
-                          Add
+                          담기
                           <span className="material-symbols-outlined text-sm font-bold">
                             add
                           </span>
@@ -1139,12 +1203,16 @@ export default function OrderPage({
         <div className="bg-white border-t border-gray-100 shadow-[0_-8px_30px_rgba(0,0,0,0.12)] p-4 rounded-t-2xl">
           {!isAuthenticated ? (
             /* Kakao Login Button - Always shown when not authenticated */
-            <div className="flex justify-center">
+            <div className="space-y-3">
+              <p className="text-center text-sm text-gray-500">주문하려면 로그인이 필요해요</p>
               <button
                 onClick={handleKakaoLogin}
-                className="w-full max-w-xs bg-[#FEE500] hover:bg-[#fdd800] text-[#3C1E1E] font-bold py-4 rounded-xl shadow-lg transition-all group active:scale-[0.98]"
+                className="w-full bg-[#FEE500] hover:bg-[#fdd800] active:bg-[#f5d000] text-[#3C1E1E] font-bold py-4 rounded-xl shadow-lg transition-all group active:scale-[0.98] min-h-[56px] flex items-center justify-center gap-2"
               >
-                <span className="text-[15px]">카카오로 로그인하기</span>
+                <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 3C6.48 3 2 6.48 2 10.76C2 13.62 3.86 16.12 6.64 17.41L5.64 21.05C5.57 21.32 5.86 21.56 6.11 21.38L10.39 18.53C10.91 18.59 11.45 18.62 12 18.62C17.52 18.62 22 15.14 22 10.86C22 6.58 17.52 3 12 3Z"></path>
+                </svg>
+                <span className="text-[15px]">카카오로 간편 로그인</span>
               </button>
             </div>
           ) : (
@@ -1152,13 +1220,16 @@ export default function OrderPage({
             <div className="flex flex-col gap-3">
               {/* Phone Number Input - only show if user doesn't have phone number in profile */}
               {!userPhoneNumber && (
-                <div className="bg-gray-50 rounded-lg p-3">
+                <div className="bg-gray-50 rounded-xl p-4">
                   <label
                     htmlFor="phoneNumber"
-                    className="block text-xs font-bold text-gray-700 mb-1.5"
+                    className="block text-sm font-bold text-gray-700 mb-2"
                   >
-                    전화번호 *
+                    연락처를 입력해주세요
                   </label>
+                  <p className="text-xs text-gray-500 mb-2">
+                    주문 확인 및 픽업 안내를 위해 필요합니다.
+                  </p>
                   <PhoneInput
                     id="phoneNumber"
                     value={phoneNumber}
@@ -1169,12 +1240,18 @@ export default function OrderPage({
                 </div>
               )}
 
+              {/* 주문 에러 메시지 */}
+              {orderError && (
+                <div className="mb-3 px-4 py-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-red-700 text-sm animate-pulse">
+                  <span className="material-symbols-outlined text-base">error</span>
+                  <span>{orderError}</span>
+                </div>
+              )}
+
               <div className="flex items-center gap-4">
                 <div className="flex flex-col pl-1">
                   <span className="text-xs text-gray-500 font-medium">
-                    Total (
-                    {orderItems.reduce((sum, item) => sum + item.quantity, 0)}{" "}
-                    items)
+                    총 {orderItems.reduce((sum, item) => sum + item.quantity, 0)}개
                   </span>
                   <span className="text-2xl font-bold text-gray-900 tracking-tight">
                     {formatPrice(totalAmount)}원
@@ -1195,7 +1272,8 @@ export default function OrderPage({
                   <button
                     type="submit"
                     disabled={!canOrder}
-                    className="w-full bg-primary hover:bg-orange-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-orange-500/30 flex items-center justify-between px-6 transition-all group active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full bg-primary hover:bg-orange-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-orange-500/30 flex items-center justify-between px-6 transition-all group active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed min-h-[56px]"
+                    aria-label={canOrder ? `${formatPrice(totalAmount)}원 주문하기` : "주문 조건을 확인해주세요"}
                   >
                     <span className="text-[15px]">주문하기</span>
                     <span className="bg-white/20 group-hover:bg-white/30 text-white text-xs font-bold px-2.5 py-1 rounded-md transition-colors">
