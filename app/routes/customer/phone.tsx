@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { redirect, Form } from "react-router";
 import { makeSSRClient } from "~/supa_clients";
 import type { Route } from "./+types/phone";
-import type { Database } from "~/database.types";
+import type { Database } from "./database.types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { Button } from "~/common/components/ui/button";
 import { Input } from "~/common/components/ui/input";

@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir /s \"C:\\\\Users\\\\swm09\\\\OneDrive\\\\Desktop\\\\project\\\\kakao_order_v3\\\\newapp\\\\app\")",
+      "Bash(git -C \"C:\\\\Users\\\\swm09\\\\OneDrive\\\\Desktop\\\\project\\\\kakao_order_v3\" log --oneline -15)"
+    ]
+  }
+}
