@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Form, useLocation, redirect } from "react-router";
+import { Form, useLocation, redirect, useFetcher } from "react-router";
 import { makeSSRClient, browserClient } from "../supa_clients";
 import type { Database } from "database.types";
 import type { Route } from "./+types/$name";
@@ -210,11 +210,11 @@ export const action = async ({ request, params }: Route.ActionArgs) => {
     // 인증 상태 확인 - 주문 시 카카오 로그인 필수
     const { data: userData, error: authError } = await client.auth.getUser();
     if (authError || !userData?.user) {
-      return {
+      return Response.json({
         success: false,
         message: "주문하려면 카카오 로그인이 필요합니다.",
         requiresAuth: true,
-      };
+      });
     }
     let phoneNumber = formData.get("phoneNumber") as string;
     const orderItems = JSON.parse(formData.get("orderItems") as string);
@@ -299,18 +299,18 @@ export const action = async ({ request, params }: Route.ActionArgs) => {
       console.error("N8N_WEBHOOK_URL_STORE is not set");
     }
 
-    return {
+    return Response.json({
       success: true,
       message:
         "주문이 성공적으로 접수되었습니다. 음식점 확인 시 알림톡이 발송됩니다.",
       orderId,
-    };
+    });
   } catch (error) {
     console.error("주문 저장 실패:", error);
-    return {
+    return Response.json({
       success: false,
       message: "주문 처리 중 오류가 발생했습니다.",
-    };
+    });
   }
 };
 
@@ -349,8 +349,8 @@ export default function OrderPage({
   const [showPhoneModal, setShowPhoneModal] = useState(needsPhoneNumber);
   const [phoneInput, setPhoneInput] = useState("");
   const [showOrderConfirmModal, setShowOrderConfirmModal] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const location = useLocation();
+  const fetcher = useFetcher();
 
   // 프로필에서 가져온 전화번호가 있으면 사용, 없으면 입력한 전화번호 사용 (하이픈 제거)
   const rawPhoneNumber = getRawPhoneNumber(phoneNumber);
@@ -527,34 +527,30 @@ export default function OrderPage({
   };
 
   // 실제 주문 제출
-  const submitOrder = async () => {
-    setIsSubmitting(true);
+  const submitOrder = () => {
     const formData = new FormData();
     formData.append("orderItems", JSON.stringify(orderItems));
     formData.append("totalAmount", String(totalAmount));
     formData.append("phoneNumber", effectivePhoneNumber);
 
-    try {
-      const response = await fetch(location.pathname, {
-        method: "POST",
-        body: formData,
-      });
-      const result = await response.json();
+    fetcher.submit(formData, { method: "POST" });
+  };
+
+  // fetcher 결과 처리
+  useEffect(() => {
+    if (fetcher.state === "idle" && fetcher.data) {
+      const result = fetcher.data as { success?: boolean; orderId?: string; message?: string };
       if (result.success && result.orderId) {
         // 주문 성공 시 완료 페이지로 이동
         window.location.href = `/customer/order-success?orderId=${result.orderId}`;
-      } else {
-        alert(result.message || "주문 처리 중 오류가 발생했습니다.");
+      } else if (result.message) {
+        alert(result.message);
         setShowOrderConfirmModal(false);
       }
-    } catch (error) {
-      console.error("주문 오류:", error);
-      alert("주문 처리 중 오류가 발생했습니다.");
-      setShowOrderConfirmModal(false);
-    } finally {
-      setIsSubmitting(false);
     }
-  };
+  }, [fetcher.state, fetcher.data]);
+
+  const isSubmitting = fetcher.state === "submitting" || fetcher.state === "loading";
 
   if (!menuItems || menuItems.length === 0) {
     return (
