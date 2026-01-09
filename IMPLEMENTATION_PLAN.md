@@ -40,22 +40,15 @@ Make the platform **commercially viable** by implementing:
 
 ## 📅 Implementation Roadmap
 
-### **Milestone 1: Extended Order Workflow** (Priority: HIGH)
-- Implement order status transitions (8 statuses)
-- Update owner dashboard with new statuses
-- Add customer notifications
-- Create order status manager utility
+### **Milestone 1 & 2: Extended Order Workflow + Database Foundation** ✅ COMPLETED
+> 주문 상태 7개로 확장 (PENDING → COMPLETED), order_status_history 테이블 생성, owner.orders.tsx 동적 상태 UI 구현
+>
+> **상세 내용:** [EXECUTED.md](./EXECUTED.md) 참조
 
-### **Milestone 2: Database Foundation** (Priority: HIGH)
-- Extend order status enum (8 statuses)
-- Create order_status_history table
-- Add order metadata columns (pickup time, notes, etc.)
-
-### **Milestone 3: GDPR Compliance** (Priority: MEDIUM)
-- Create privacy policy & terms of service
-- Implement data export feature
-- Implement account deletion
-- Add cookie consent banner
+### **Milestone 3: GDPR Compliance** ✅ COMPLETED
+> 개인정보 처리방침(/privacy), 이용약관(/terms), 계정 삭제(/customer/delete-account), 쿠키 동의 배너 구현
+>
+> **상세 내용:** [EXECUTED.md](./EXECUTED.md) 참조
 
 ### **Milestone 4: Security Hardening** (Priority: DEFERRED)
 - Create validation utilities (Zod schemas)
@@ -74,89 +67,15 @@ Make the platform **commercially viable** by implementing:
 
 ## 🔧 Detailed Implementation Tasks
 
-### MILESTONE 1: Database Foundation
+### MILESTONE 1, 2, 3: ✅ COMPLETED
 
-#### Task 1.1: Payment Schema (2 days)
-**Files to create:**
-- `supabase/migrations/001_payment_tables.sql`
-
-**Schema:**
-```sql
-CREATE TABLE payments (
-  payment_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  order_id UUID REFERENCES "order"(order_id) ON DELETE CASCADE,
-  profile_id UUID REFERENCES profiles(profile_id),
-  toss_payment_key VARCHAR(200) UNIQUE,
-  toss_order_id VARCHAR(200) UNIQUE,
-  amount INT NOT NULL,
-  status VARCHAR(20) CHECK (status IN ('PENDING', 'COMPLETED', 'FAILED', 'CANCELLED', 'REFUNDED')),
-  payment_method VARCHAR(50),
-  card_company VARCHAR(50),
-  card_number VARCHAR(20),
-  receipt_url TEXT,
-  failure_code VARCHAR(100),
-  failure_message TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE payment_logs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  payment_id UUID REFERENCES payments(payment_id),
-  event_type VARCHAR(50) NOT NULL,
-  event_data JSONB,
-  http_status INT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_payments_order ON payments(order_id);
-CREATE INDEX idx_payments_status ON payments(status);
-CREATE INDEX idx_payment_logs_payment ON payment_logs(payment_id);
-```
-
-**Success criteria:** Migration runs without errors, indexes created
+> 상세 구현 내용은 [EXECUTED.md](./EXECUTED.md) 참조
 
 ---
 
-#### Task 1.2: Extend Order Status (1 day)
-**Files to create:**
-- `supabase/migrations/002_extend_order_status.sql`
+### MILESTONE 4: Security Hardening (DEFERRED)
 
-**Changes:**
-```sql
--- Update order table
-ALTER TABLE "order"
-  ADD COLUMN estimated_pickup_time TIMESTAMPTZ,
-  ADD COLUMN actual_pickup_time TIMESTAMPTZ,
-  ADD COLUMN cancellation_reason TEXT,
-  ADD COLUMN notes TEXT;
-
--- Update status enum to include new statuses
--- Note: May need to drop and recreate enum or use ALTER TYPE
-ALTER TYPE kakao_order ADD VALUE 'PREPARING';
-ALTER TYPE kakao_order ADD VALUE 'READY';
-ALTER TYPE kakao_order ADD VALUE 'COMPLETED';
-ALTER TYPE kakao_order ADD VALUE 'REFUNDED';
-
--- Create status history table
-CREATE TABLE order_status_history (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  order_id UUID REFERENCES "order"(order_id) ON DELETE CASCADE,
-  from_status VARCHAR(20),
-  to_status VARCHAR(20) NOT NULL,
-  changed_by UUID REFERENCES profiles(profile_id),
-  notes TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_status_history_order ON order_status_history(order_id, created_at DESC);
-```
-
-**Post-migration:** Run `npx supabase gen types typescript` to regenerate database.types.ts
-
----
-
-#### Task 1.3: Row-Level Security (3 days) ⭐ CRITICAL
+#### Task 4.1: Row-Level Security ⭐ CRITICAL
 **Files to create:**
 - `supabase/migrations/003_enable_rls.sql`
 
