@@ -26,6 +26,7 @@ type OrderRow = {
   createdat: string | null;
   profile_id: string | null;
   status: OrderStatus | null;
+  estimated_pickup_time: string | null;
 };
 
 type OrderItemWithMenu = {
@@ -175,6 +176,33 @@ export async function action({ request }: ActionFunctionArgs) {
     return redirect("/owner/orders");
   }
 
+  // (C) 픽업 시간 설정
+  if (actionType === "setPickupTime") {
+    const orderId = String(form.get("orderId") ?? "");
+    const pickupMinutes = Number(form.get("pickupMinutes") ?? 0);
+
+    if (!orderId || pickupMinutes <= 0) {
+      return { error: "유효한 픽업 시간을 입력해주세요" };
+    }
+
+    const { data: userRes } = await client.auth.getUser();
+    const user = userRes?.user;
+    if (!user) throw redirect("/login");
+
+    // 현재 시간 + 픽업 시간(분)으로 예상 픽업 시간 계산
+    const estimatedPickupTime = new Date(Date.now() + pickupMinutes * 60 * 1000);
+
+    const { error: upErr } = await client
+      .from("order")
+      .update({ estimated_pickup_time: estimatedPickupTime.toISOString() })
+      .eq("order_id", orderId)
+      .eq("profile_id", user.id);
+
+    if (upErr) throw upErr;
+
+    return redirect("/owner/orders");
+  }
+
   return null;
 }
 
@@ -231,7 +259,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const dataQ = client
     .from("order")
     .select(
-      "id:order_id, phoneNumber, totalAmount, createdat, profile_id, status"
+      "id:order_id, phoneNumber, totalAmount, createdat, profile_id, status, estimated_pickup_time"
     )
     .eq("profile_id", user.id)
     .gte("createdat", dateFrom)
@@ -829,6 +857,64 @@ export default function OwnerOrdersPage() {
 
             {/* Modal Body (Scrollable) */}
             <div className="p-6 overflow-y-auto custom-scrollbar bg-background-light">
+              {/* 픽업 시간 설정 카드 */}
+              {(() => {
+                const order = orders.find((o) => o.id === openId);
+                const currentStatus = order?.status;
+                const pickupTime = order?.estimated_pickup_time;
+                const showPickupInput = currentStatus && isActiveStatus(currentStatus) && currentStatus !== "READY" && currentStatus !== "COMPLETED";
+
+                return (
+                  <div className="bg-white p-4 rounded-xl border border-border mb-4 shadow-sm">
+                    <div className="flex items-start gap-3 mb-3">
+                      <div className="p-2 bg-orange-50 rounded-lg text-orange-600">
+                        <span className="material-symbols-outlined">schedule</span>
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-bold text-foreground">예상 픽업 시간</p>
+                        {pickupTime ? (
+                          <p className="text-sm text-primary font-medium">
+                            {new Date(pickupTime).toLocaleString("ko-KR", {
+                              month: "short",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              hour12: true,
+                            })}
+                          </p>
+                        ) : (
+                          <p className="text-sm text-gray-500">아직 설정되지 않음</p>
+                        )}
+                      </div>
+                    </div>
+                    {showPickupInput && (
+                      <Form method="post" replace className="flex gap-2 items-end">
+                        <input type="hidden" name="actionType" value="setPickupTime" />
+                        <input type="hidden" name="orderId" value={openId ?? ""} />
+                        <div className="flex-1">
+                          <label className="text-xs text-gray-500 block mb-1">조리 소요 시간 (분)</label>
+                          <input
+                            type="number"
+                            name="pickupMinutes"
+                            min="1"
+                            max="180"
+                            defaultValue={15}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                            placeholder="예: 15"
+                          />
+                        </div>
+                        <button
+                          type="submit"
+                          className="px-4 py-2 bg-orange-500 text-white rounded-lg font-medium hover:bg-orange-600 transition-colors text-sm"
+                        >
+                          설정
+                        </button>
+                      </Form>
+                    )}
+                  </div>
+                );
+              })()}
+
               {/* Customer Info Card */}
               <div className="bg-white p-4 rounded-xl border border-border mb-4 shadow-sm">
                 <div className="flex items-start gap-3">

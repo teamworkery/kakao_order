@@ -347,6 +347,8 @@ export default function OrderPage({
   const [user, setUser] = useState(initialUser);
   const [showPhoneModal, setShowPhoneModal] = useState(needsPhoneNumber);
   const [phoneInput, setPhoneInput] = useState("");
+  const [showOrderConfirmModal, setShowOrderConfirmModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const location = useLocation();
 
   // 프로필에서 가져온 전화번호가 있으면 사용, 없으면 입력한 전화번호 사용
@@ -506,8 +508,8 @@ export default function OrderPage({
     isAuthenticated;
 
   const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
     if (!canOrder) {
-      e.preventDefault();
       if (!userPhoneNumber && !phoneNumber.trim()) {
         alert("메뉴를 선택하고 전화번호를 입력해주세요.");
       } else {
@@ -517,6 +519,38 @@ export default function OrderPage({
     }
     // 주문 정보를 sessionStorage에 저장 (전화번호 입력 후 자동 주문을 위해)
     saveOrderToSession();
+    // 확인 모달 표시
+    setShowOrderConfirmModal(true);
+  };
+
+  // 실제 주문 제출
+  const submitOrder = async () => {
+    setIsSubmitting(true);
+    const formData = new FormData();
+    formData.append("orderItems", JSON.stringify(orderItems));
+    formData.append("totalAmount", String(totalAmount));
+    formData.append("phoneNumber", effectivePhoneNumber);
+
+    try {
+      const response = await fetch(location.pathname, {
+        method: "POST",
+        body: formData,
+      });
+      const result = await response.json();
+      if (result.success && result.orderId) {
+        // 주문 성공 시 완료 페이지로 이동
+        window.location.href = `/customer/order-success?orderId=${result.orderId}`;
+      } else {
+        alert(result.message || "주문 처리 중 오류가 발생했습니다.");
+        setShowOrderConfirmModal(false);
+      }
+    } catch (error) {
+      console.error("주문 오류:", error);
+      alert("주문 처리 중 오류가 발생했습니다.");
+      setShowOrderConfirmModal(false);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!menuItems || menuItems.length === 0) {
@@ -593,6 +627,115 @@ export default function OrderPage({
                 </button>
               </div>
             </Form>
+          </div>
+        </div>
+      )}
+
+      {/* 주문 확인 모달 */}
+      {showOrderConfirmModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col">
+            {/* 헤더 */}
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-gray-900">주문 확인</h2>
+              <button
+                onClick={() => setShowOrderConfirmModal(false)}
+                className="text-gray-400 hover:text-gray-600 p-1"
+                disabled={isSubmitting}
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            {/* 주문 내역 */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              {/* 가게 정보 */}
+              <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <span className="material-symbols-outlined text-primary">store</span>
+                </div>
+                <div>
+                  <p className="font-bold text-gray-900">{storename}</p>
+                  <p className="text-sm text-gray-500">포장 주문</p>
+                </div>
+              </div>
+
+              {/* 연락처 */}
+              <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
+                <div className="p-2 bg-blue-50 rounded-lg">
+                  <span className="material-symbols-outlined text-blue-500">phone</span>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">연락처</p>
+                  <p className="font-medium text-gray-900">{effectivePhoneNumber}</p>
+                </div>
+              </div>
+
+              {/* 주문 아이템 */}
+              <div className="border border-gray-200 rounded-xl overflow-hidden">
+                <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+                  <h3 className="font-bold text-gray-700">주문 내역</h3>
+                </div>
+                <div className="divide-y divide-gray-100">
+                  {orderItems.map((item) => (
+                    <div key={item.id} className="p-4 flex justify-between items-center">
+                      <div className="flex-1">
+                        <p className="font-medium text-gray-900">{item.name}</p>
+                        <p className="text-sm text-gray-500">
+                          {formatPrice(item.price)}원 x {item.quantity}
+                        </p>
+                      </div>
+                      <p className="font-bold text-gray-900">
+                        {formatPrice(item.price * item.quantity)}원
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                <div className="px-4 py-4 bg-gray-50 border-t border-gray-200 flex justify-between items-center">
+                  <span className="font-bold text-gray-700">총 결제금액</span>
+                  <span className="text-xl font-bold text-primary">
+                    {formatPrice(totalAmount)}원
+                  </span>
+                </div>
+              </div>
+
+              {/* 안내 메시지 */}
+              <div className="flex gap-3 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
+                <span className="material-symbols-outlined text-yellow-600">info</span>
+                <div className="text-sm text-yellow-800">
+                  <p className="font-medium">결제 안내</p>
+                  <p>결제는 가게에서 픽업 시 현장에서 진행됩니다.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* 버튼 */}
+            <div className="p-4 border-t border-gray-100 space-y-3">
+              <button
+                onClick={submitOrder}
+                disabled={isSubmitting}
+                className="w-full bg-primary hover:bg-orange-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-orange-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                    주문 처리 중...
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined">check_circle</span>
+                    주문 확정하기
+                  </>
+                )}
+              </button>
+              <button
+                onClick={() => setShowOrderConfirmModal(false)}
+                disabled={isSubmitting}
+                className="w-full py-3 text-gray-600 font-medium hover:bg-gray-100 rounded-xl transition-colors disabled:opacity-50"
+              >
+                취소
+              </button>
+            </div>
           </div>
         </div>
       )}

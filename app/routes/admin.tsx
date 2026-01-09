@@ -14,6 +14,18 @@ import type { Route } from "./+types/admin";
 
 type MenuItem = Database["public"]["Tables"]["menuItem"]["Row"];
 
+// 영업 시간 타입
+type StoreHour = {
+  id?: string;
+  profile_id: string;
+  day_of_week: number;
+  open_time: string | null;
+  close_time: string | null;
+  is_closed: boolean;
+};
+
+const DAY_NAMES = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"];
+
 // ActionData 타입 정의
 type ActionData = {
   success?: boolean;
@@ -50,7 +62,7 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
     }
 
     const userId = userData.user.id;
-    const [menuItems, profileResult, categoriesResult] = await Promise.all([
+    const [menuItems, profileResult, categoriesResult, storeHoursResult] = await Promise.all([
       getadminMenuItems(client, userId),
       client.from("profiles").select("*").eq("profile_id", userId).single(),
       client
@@ -58,6 +70,11 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
         .select("*")
         .eq("profile_id", userId)
         .order("display_order", { ascending: true }),
+      (client as any)
+        .from("store_hours")
+        .select("*")
+        .eq("profile_id", userId)
+        .order("day_of_week", { ascending: true }),
     ]);
 
     // Check if profile exists
@@ -75,6 +92,7 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
       userProfile: profileResult.data,
       userId,
       categories: categoriesResult.data || [],
+      storeHours: storeHoursResult.data || [],
     };
   } catch (error) {
     console.error("Loader 오류:", error);
@@ -477,6 +495,76 @@ export async function action({ request }: ActionFunctionArgs) {
         return Response.json({ success: true, type: "updateProfile" });
       }
 
+      case "updateStoreHours": {
+        const storeHoursData = formData.get("storeHours") as string;
+        if (!storeHoursData) {
+          return Response.json(
+            { error: "영업 시간 데이터가 필요합니다." },
+            { status: 400 }
+          );
+        }
+
+        try {
+          const hours = JSON.parse(storeHoursData) as StoreHour[];
+
+          // 각 요일별로 upsert
+          for (const hour of hours) {
+            const { error } = await (client as any)
+              .from("store_hours")
+              .upsert({
+                profile_id,
+                day_of_week: hour.day_of_week,
+                open_time: hour.is_closed ? null : hour.open_time,
+                close_time: hour.is_closed ? null : hour.close_time,
+                is_closed: hour.is_closed,
+              }, {
+                onConflict: "profile_id,day_of_week",
+              });
+
+            if (error) {
+              console.error("영업 시간 저장 오류:", error);
+              return Response.json(
+                { error: "영업 시간 저장에 실패했습니다." },
+                { status: 500 }
+              );
+            }
+          }
+
+          return Response.json({ success: true, type: "updateStoreHours" });
+        } catch (parseError) {
+          console.error("영업 시간 데이터 파싱 오류:", parseError);
+          return Response.json(
+            { error: "잘못된 영업 시간 데이터입니다." },
+            { status: 400 }
+          );
+        }
+      }
+
+      case "updatePrepTime": {
+        const prepTime = Number(formData.get("prepTime") ?? 15);
+        if (prepTime < 1 || prepTime > 180) {
+          return Response.json(
+            { error: "조리 시간은 1분에서 180분 사이여야 합니다." },
+            { status: 400 }
+          );
+        }
+
+        const { error } = await (client as any)
+          .from("profiles")
+          .update({ default_prep_time_minutes: prepTime })
+          .eq("profile_id", profile_id);
+
+        if (error) {
+          console.error("조리 시간 저장 오류:", error);
+          return Response.json(
+            { error: "조리 시간 저장에 실패했습니다." },
+            { status: 500 }
+          );
+        }
+
+        return Response.json({ success: true, type: "updatePrepTime" });
+      }
+
       default:
         return Response.json(
           { error: "알 수 없는 액션입니다." },
@@ -662,7 +750,7 @@ function Toast({
 
 // 메인 컴포넌트
 export default function AdminMenuPage() {
-  const { menuItems, userProfile, categories } = useLoaderData<typeof loader>();
+  const { menuItems, userProfile, categories, storeHours } = useLoaderData<typeof loader>();
   const actionData = useActionData<ActionData>();
   const navigation = useNavigation();
 
@@ -690,6 +778,29 @@ export default function AdminMenuPage() {
   // 프로필 이미지 상태
   const [storeImage, setStoreImage] = useState<string>(
     userProfile?.store_image || ""
+  );
+
+  // 영업 시간 상태
+  const [localStoreHours, setLocalStoreHours] = useState<StoreHour[]>(() => {
+    // 기본 영업 시간 생성 (모든 요일 10:00~22:00)
+    const defaultHours: StoreHour[] = [];
+    const storeHoursArray = (storeHours || []) as any[];
+    for (let i = 0; i < 7; i++) {
+      const existing = storeHoursArray.find((h) => h.day_of_week === i);
+      defaultHours.push({
+        profile_id: userProfile?.profile_id || "",
+        day_of_week: i,
+        open_time: existing?.open_time || "10:00",
+        close_time: existing?.close_time || "22:00",
+        is_closed: existing?.is_closed || false,
+      });
+    }
+    return defaultHours;
+  });
+
+  // 기본 조리 시간 상태
+  const [defaultPrepTime, setDefaultPrepTime] = useState<number>(
+    (userProfile as any)?.default_prep_time_minutes || 15
   );
 
   // 메뉴 순서 변경을 위한 상태
@@ -735,6 +846,8 @@ export default function AdminMenuPage() {
           addCategory: "카테고리가 성공적으로 추가되었습니다.",
           deleteCategory: "카테고리가 성공적으로 삭제되었습니다.",
           reorderCategories: "카테고리 순서가 성공적으로 변경되었습니다.",
+          updateStoreHours: "영업 시간이 성공적으로 저장되었습니다.",
+          updatePrepTime: "기본 조리 시간이 성공적으로 저장되었습니다.",
         };
         setShowToast({
           message:
@@ -1509,6 +1622,160 @@ export default function AdminMenuPage() {
                         ) : (
                           "가게 정보 저장"
                         )}
+                      </button>
+                    </div>
+                  </Form>
+                </div>
+              </div>
+
+              {/* 영업 시간 관리 */}
+              <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+                <div className="bg-purple-50 px-6 py-4 border-b border-purple-100">
+                  <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
+                    영업 시간 관리
+                  </h2>
+                </div>
+                <div className="p-6">
+                  <Form method="post" className="space-y-4">
+                    <input type="hidden" name="actionType" value="updateStoreHours" />
+                    <input
+                      type="hidden"
+                      name="storeHours"
+                      value={JSON.stringify(localStoreHours)}
+                    />
+
+                    <div className="space-y-3">
+                      {localStoreHours.map((hour, index) => (
+                        <div
+                          key={hour.day_of_week}
+                          className={`flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-lg border ${
+                            hour.is_closed
+                              ? "bg-gray-50 border-gray-200"
+                              : "bg-white border-gray-200"
+                          }`}
+                        >
+                          {/* 요일 */}
+                          <div className="w-20 font-medium text-gray-900">
+                            {DAY_NAMES[hour.day_of_week]}
+                          </div>
+
+                          {/* 휴무일 토글 */}
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={hour.is_closed}
+                              onChange={(e) => {
+                                const newHours = [...localStoreHours];
+                                newHours[index] = {
+                                  ...newHours[index],
+                                  is_closed: e.target.checked,
+                                };
+                                setLocalStoreHours(newHours);
+                              }}
+                              className="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
+                            />
+                            <span className="text-sm text-gray-600">휴무</span>
+                          </label>
+
+                          {/* 시간 선택 */}
+                          {!hour.is_closed && (
+                            <div className="flex items-center gap-2 flex-1">
+                              <input
+                                type="time"
+                                value={hour.open_time || "10:00"}
+                                onChange={(e) => {
+                                  const newHours = [...localStoreHours];
+                                  newHours[index] = {
+                                    ...newHours[index],
+                                    open_time: e.target.value,
+                                  };
+                                  setLocalStoreHours(newHours);
+                                }}
+                                className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                              />
+                              <span className="text-gray-500">~</span>
+                              <input
+                                type="time"
+                                value={hour.close_time || "22:00"}
+                                onChange={(e) => {
+                                  const newHours = [...localStoreHours];
+                                  newHours[index] = {
+                                    ...newHours[index],
+                                    close_time: e.target.value,
+                                  };
+                                  setLocalStoreHours(newHours);
+                                }}
+                                className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                              />
+                            </div>
+                          )}
+
+                          {hour.is_closed && (
+                            <span className="text-sm text-gray-500 italic">휴무일입니다</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="pt-4">
+                      <button
+                        type="submit"
+                        className="w-full sm:w-auto bg-purple-500 hover:bg-purple-600 text-white font-semibold px-8 py-3 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        disabled={isSubmitting}
+                      >
+                        {isSubmitting && navigation.formData?.get("actionType") === "updateStoreHours" && (
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                        )}
+                        영업 시간 저장
+                      </button>
+                    </div>
+                  </Form>
+                </div>
+              </div>
+
+              {/* 기본 조리 시간 설정 */}
+              <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+                <div className="bg-amber-50 px-6 py-4 border-b border-amber-100">
+                  <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
+                    기본 조리 시간 설정
+                  </h2>
+                </div>
+                <div className="p-6">
+                  <Form method="post" className="space-y-4">
+                    <input type="hidden" name="actionType" value="updatePrepTime" />
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        기본 조리 소요 시간 (분)
+                      </label>
+                      <p className="text-xs text-gray-500 mb-3">
+                        주문 접수 시 기본으로 제안되는 픽업 예정 시간입니다. 주문별로 조정할 수 있습니다.
+                      </p>
+                      <div className="flex items-center gap-4">
+                        <input
+                          type="number"
+                          name="prepTime"
+                          min="1"
+                          max="180"
+                          value={defaultPrepTime}
+                          onChange={(e) => setDefaultPrepTime(Number(e.target.value))}
+                          className="w-32 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-base"
+                          disabled={isSubmitting}
+                        />
+                        <span className="text-gray-600">분</span>
+                      </div>
+                    </div>
+
+                    <div className="pt-4">
+                      <button
+                        type="submit"
+                        className="w-full sm:w-auto bg-amber-500 hover:bg-amber-600 text-white font-semibold px-8 py-3 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        disabled={isSubmitting}
+                      >
+                        {isSubmitting && navigation.formData?.get("actionType") === "updatePrepTime" && (
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                        )}
+                        조리 시간 저장
                       </button>
                     </div>
                   </Form>

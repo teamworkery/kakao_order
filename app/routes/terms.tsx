@@ -1,7 +1,5 @@
 // routes/terms.tsx
-import type { Route } from "./+types/terms";
-
-export function meta({}: Route.MetaArgs) {
+export function meta() {
   return [
     { title: "이용약관 | 포장주문" },
     { name: "description", content: "포장주문 서비스의 이용약관입니다." },

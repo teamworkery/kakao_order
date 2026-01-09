@@ -1,7 +1,5 @@
 // routes/privacy.tsx
-import type { Route } from "./+types/privacy";
-
-export function meta({}: Route.MetaArgs) {
+export function meta() {
   return [
     { title: "개인정보 처리방침 | 포장주문" },
     { name: "description", content: "포장주문 서비스의 개인정보 처리방침입니다." },

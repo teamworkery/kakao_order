@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { redirect, Form } from "react-router";
+import type { LoaderFunctionArgs, ActionFunctionArgs } from "react-router";
 import { makeSSRClient } from "~/supa_clients";
-import type { Route } from "./+types/phone";
-import type { Database } from "./database.types";
+import type { Database } from "database.types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { Button } from "~/common/components/ui/button";
 import { Input } from "~/common/components/ui/input";
@@ -68,7 +68,7 @@ const saveOrder = async (
   return order.order_id;
 };
 
-export async function loader({ request }: Route.LoaderArgs) {
+export async function loader({ request }: LoaderFunctionArgs) {
   const { client } = makeSSRClient(request);
   const { data: userData } = await client.auth.getUser();
 
@@ -94,7 +94,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   };
 }
 
-export async function action({ request }: Route.ActionArgs) {
+export async function action({ request }: ActionFunctionArgs) {
   const { client, headers } = makeSSRClient(request);
   const { data: userData } = await client.auth.getUser();
 
@@ -172,10 +172,19 @@ export async function action({ request }: Route.ActionArgs) {
   throw redirect("/customer/phone?phoneSaved=true", { headers });
 }
 
+interface PhoneLoaderData {
+  userId: string;
+  hasPhoneNumber: boolean;
+}
+
+interface PhoneActionData {
+  error?: string;
+}
+
 export default function PhoneInputPage({
   loaderData,
   actionData,
-}: Route.ComponentProps) {
+}: { loaderData: PhoneLoaderData; actionData?: PhoneActionData }) {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [error, setError] = useState<string | null>(
     actionData?.error || null
