@@ -46,7 +46,7 @@ export const loader = async ({ request, params }: MyLoaderArgs) => {
   const { client } = makeSSRClient(request);
   const { data: profile, error } = await client
     .from("profiles")
-    .select("profile_id, storename, store_image, store_description")
+    .select("profile_id, storename, store_image, store_description, storenumber, default_prep_time_minutes")
     .eq("name", name)
     .single();
 
@@ -64,6 +64,15 @@ export const loader = async ({ request, params }: MyLoaderArgs) => {
     .select("*")
     .eq("profile_id", profile_id)
     .order("display_order", { ascending: true });
+
+  // 오늘의 영업시간 가져오기 (day_of_week: 0=일요일, 1=월요일, ...)
+  const today = new Date().getDay();
+  const { data: todayHours } = await client
+    .from("store_hours")
+    .select("open_time, close_time, is_closed")
+    .eq("profile_id", profile_id)
+    .eq("day_of_week", today)
+    .maybeSingle();
 
   // 인증 상태 확인
   const { data: userData } = await client.auth.getUser();
@@ -103,6 +112,9 @@ export const loader = async ({ request, params }: MyLoaderArgs) => {
     store_description: profile.store_description || null,
     needsPhoneNumber, // 전화번호 입력 필요 플래그
     userPhoneNumber, // 사용자 전화번호
+    storenumber: profile.storenumber || null, // 가게 전화번호
+    prepTime: profile.default_prep_time_minutes || 15, // 기본 준비 시간 (분)
+    todayHours, // 오늘 영업시간
   };
 };
 
@@ -341,6 +353,9 @@ export default function OrderPage({
     store_description,
     needsPhoneNumber,
     userPhoneNumber,
+    storenumber,
+    prepTime,
+    todayHours,
   } = loaderData;
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -835,21 +850,67 @@ export default function OrderPage({
               {storename}
             </h2>
             <div className="flex items-center flex-wrap gap-3 text-sm font-medium">
-              <span className="flex items-center gap-1 bg-white/20 backdrop-blur-sm px-2 py-1 rounded-lg">
-                <span className="material-symbols-outlined text-yellow-400 text-lg fill-1">
-                  star
-                </span>
-                4.8 (500+)
-              </span>
+              {/* 가게 전화번호 */}
+              {storenumber && (
+                <a
+                  href={`tel:${storenumber}`}
+                  className="flex items-center gap-1 bg-white/20 backdrop-blur-sm px-2 py-1 rounded-lg hover:bg-white/30 transition-colors"
+                >
+                  <span className="material-symbols-outlined text-white text-lg">
+                    call
+                  </span>
+                  {storenumber}
+                </a>
+              )}
+              {/* 예상 준비 시간 */}
               <span className="flex items-center gap-1 bg-white/20 backdrop-blur-sm px-2 py-1 rounded-lg">
                 <span className="material-symbols-outlined text-white text-lg">
                   schedule
                 </span>
-                20-30 min
+                약 {prepTime}분
               </span>
-              <span className="bg-primary px-2 py-1 rounded-lg text-white">
-                Free Delivery
-              </span>
+              {/* 영업 상태 */}
+              {(() => {
+                // 영업시간 정보가 없으면 표시하지 않음
+                if (!todayHours) return null;
+
+                // 휴무일인 경우
+                if (todayHours.is_closed) {
+                  return (
+                    <span className="bg-gray-500 px-2 py-1 rounded-lg text-white">
+                      오늘 휴무
+                    </span>
+                  );
+                }
+
+                // 영업시간 확인
+                const now = new Date();
+                const currentTime = now.getHours() * 60 + now.getMinutes();
+
+                const parseTime = (timeStr: string | null) => {
+                  if (!timeStr) return null;
+                  const [hours, minutes] = timeStr.split(':').map(Number);
+                  return hours * 60 + minutes;
+                };
+
+                const openTime = parseTime(todayHours.open_time);
+                const closeTime = parseTime(todayHours.close_time);
+
+                if (openTime !== null && closeTime !== null) {
+                  const isOpen = currentTime >= openTime && currentTime < closeTime;
+                  return isOpen ? (
+                    <span className="bg-green-500 px-2 py-1 rounded-lg text-white">
+                      영업중
+                    </span>
+                  ) : (
+                    <span className="bg-gray-500 px-2 py-1 rounded-lg text-white">
+                      영업종료
+                    </span>
+                  );
+                }
+
+                return null;
+              })()}
             </div>
           </div>
         </div>
