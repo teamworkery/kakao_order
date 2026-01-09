@@ -10,6 +10,7 @@ import {
 import type { Route } from "./+types/root";
 import "./app.css";
 import { makeSSRClient } from "./supa_clients";
+import { CookieConsent } from "./common/components/cookie-consent";
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -54,7 +55,12 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
 
 export default function App({ loaderData }: Route.ComponentProps) {
   const { user } = loaderData;
-  return <Outlet />;
+  return (
+    <>
+      <Outlet />
+      <CookieConsent />
+    </>
+  );
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
