@@ -10,7 +10,11 @@
       "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: 주문 상태 워크플로우 확장 \\(Step 1\\)\n\n- kakao_order enum 확장: PREPARING, READY, COMPLETED, REFUNDED 추가\n- order 테이블에 pickup_time, notes, updated_at 컬럼 추가\n- order_status_history 테이블 생성 \\(상태 변경 이력 추적\\)\n- order-status.ts 유틸리티 생성 \\(상태 전환 규칙, 라벨, 색상\\)\n- owner.orders.tsx 수정: 동적 상태 버튼, 한국어 라벨 표시\n- IMPLEMENTATION_PLAN.md 업데이트: 순서 조정, 한국어 요구사항 추가\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git push:*)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: GDPR Compliance 구현 \\(Step 2\\)\n\n- 개인정보 처리방침 페이지 추가 \\(/privacy\\)\n- 이용약관 페이지 추가 \\(/terms\\)\n- 계정 삭제 기능 구현 \\(/customer/delete-account\\)\n- 쿠키 동의 배너 컴포넌트 추가 \\(전역\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
-      "Bash(git commit -m \"$\\(cat <<''EOF''\ndocs: IMPLEMENTATION_PLAN 정리 및 EXECUTED.md 생성\n\n- 완료된 Milestone 1, 2, 3 상세 내용을 EXECUTED.md로 분리\n- IMPLEMENTATION_PLAN.md에서 완료 항목은 간략한 요약만 유지\n- DEFERRED 항목\\(Security, Payment\\)의 상세 내용은 유지\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
+      "Bash(git commit -m \"$\\(cat <<''EOF''\ndocs: IMPLEMENTATION_PLAN 정리 및 EXECUTED.md 생성\n\n- 완료된 Milestone 1, 2, 3 상세 내용을 EXECUTED.md로 분리\n- IMPLEMENTATION_PLAN.md에서 완료 항목은 간략한 요약만 유지\n- DEFERRED 항목\\(Security, Payment\\)의 상세 내용은 유지\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: 고객 경험 개선 기능 구현\n\n- 주문 확인 모달 추가 \\($name.tsx\\)\n- 고객 주문 내역 페이지 생성 \\(/customer/orders\\)\n- 점주 픽업 시간 입력 기능 \\(owner.orders.tsx\\)\n- 영업 시간 관리 UI 및 DB \\(admin.tsx, 002_store_hours.sql\\)\n- 기본 조리 시간 설정 기능 \\(admin.tsx\\)\n- 주문 완료 페이지 개선 \\(order-success.tsx\\)\n- TypeScript 타입 수정 및 database.types.ts 업데이트\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git commit:*)",
+      "Bash(taskkill:*)",
+      "Bash(npm run build:*)"
     ]
   }
 }

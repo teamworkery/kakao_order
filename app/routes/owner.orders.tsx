@@ -135,6 +135,7 @@ export async function action({ request }: ActionFunctionArgs) {
       .maybeSingle();
 
     const payload = {
+      event: "order.accepted",
       orderId,
       status: newStatus,
       previousStatus: currentStatus,
@@ -161,15 +162,22 @@ export async function action({ request }: ActionFunctionArgs) {
       timestamp: new Date().toISOString(),
     };
 
-    // 고객에게 알림 (ACCEPT, READY 상태일 때)
-    if (newStatus === "ACCEPT" || newStatus === "READY") {
+    // 고객에게 알림 (ACCEPT 상태일 때만)
+    if (newStatus === "ACCEPT") {
       const hookUrl = process.env.N8N_WEBHOOK_URL;
       if (hookUrl) {
-        await fetch(hookUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
+        try {
+          const res = await fetch(hookUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          if (!res.ok) {
+            console.error(`[Webhook] 고객 알림 실패: orderId=${orderId}, status=${res.status}`);
+          }
+        } catch (err) {
+          console.error(`[Webhook] 고객 알림 발송 에러: orderId=${orderId}`, err);
+        }
       }
     }
 

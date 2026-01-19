@@ -19,6 +19,13 @@ interface OrderItem {
   quantity: number;
 }
 
+// Action 반환 타입 정의
+type ActionData =
+  | { success: true; phoneNumberUpdated: true }
+  | { success: true; message: string; orderId: string }
+  | { success: false; message: string; requiresAuth?: boolean }
+  | { error: string };
+
 export const getMenuItems = async (
   client: SupabaseClient<Database>,
   profile_id: string
@@ -350,8 +357,9 @@ export const meta: Route.MetaFunction = () => {
 // --- 4. React 컴포넌트
 export default function OrderPage({
   loaderData,
-  actionData,
+  actionData: rawActionData,
 }: Route.ComponentProps) {
+  const actionData = rawActionData as ActionData | undefined;
   const {
     menuItems,
     categories,
@@ -406,7 +414,7 @@ export default function OrderPage({
 
   // 주문 성공 시 sessionStorage 정리
   useEffect(() => {
-    if (actionData?.success) {
+    if (actionData && "success" in actionData && actionData.success) {
       // 주문 성공 시 sessionStorage에서 주문 정보 삭제
       sessionStorage.removeItem("pendingOrder");
     }
@@ -861,20 +869,20 @@ export default function OrderPage({
       </header>
 
       {/* 성공/실패 메시지 */}
-      {actionData && (
+      {actionData && "message" in actionData && (
         <div className="px-4 py-2">
           <div
             className={`border px-4 py-3 rounded-xl mb-4 ${
-              actionData.success
+              "success" in actionData && actionData.success
                 ? "bg-green-100 border-green-400 text-green-700"
                 : "bg-red-100 border-red-400 text-red-700"
             }`}
           >
             {actionData.message}
-            {actionData.success && actionData.orderId && (
+            {"success" in actionData && actionData.success && "orderId" in actionData && actionData.orderId && (
               <p className="text-sm mt-1">주문번호: {actionData.orderId}</p>
             )}
-            {actionData.requiresAuth && (
+            {"requiresAuth" in actionData && actionData.requiresAuth && (
               <button
                 onClick={handleKakaoLogin}
                 className="mt-3 w-full py-2 px-4 bg-[#FEE500] text-[#3c1e1e] rounded-lg font-bold hover:bg-[#fadd00] transition-colors"
