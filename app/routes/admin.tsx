@@ -7,12 +7,14 @@ import {
   useActionData,
   useNavigation,
 } from "react-router";
-import type { Database } from "database.types";
+import type { Database, Tables } from "database.types";
 import { browserClient, makeSSRClient } from "~/supa_clients";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Route } from "./+types/admin";
 
 type MenuItem = Database["public"]["Tables"]["menuItem"]["Row"];
+type Category = Tables<"categories">;
+type Profile = Tables<"profiles">;
 
 // 영업 시간 타입
 type StoreHour = {
@@ -70,7 +72,7 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
         .select("*")
         .eq("profile_id", userId)
         .order("display_order", { ascending: true }),
-      (client as any)
+      client
         .from("store_hours")
         .select("*")
         .eq("profile_id", userId)
@@ -509,7 +511,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
           // 각 요일별로 upsert
           for (const hour of hours) {
-            const { error } = await (client as any)
+            const { error } = await client
               .from("store_hours")
               .upsert({
                 profile_id,
@@ -549,7 +551,7 @@ export async function action({ request }: ActionFunctionArgs) {
           );
         }
 
-        const { error } = await (client as any)
+        const { error } = await client
           .from("profiles")
           .update({ default_prep_time_minutes: prepTime })
           .eq("profile_id", profile_id);
@@ -641,8 +643,9 @@ function ImageUploadInput({
       } = supabase.storage.from(bucketName).getPublicUrl(filename);
 
       onChange(publicUrl);
-    } catch (err: any) {
-      setError("업로드 실패: " + (err.message || "알 수 없는 오류"));
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "알 수 없는 오류";
+      setError("업로드 실패: " + errorMessage);
     } finally {
       setUploading(false);
     }
@@ -771,7 +774,7 @@ export default function AdminMenuPage() {
   });
 
   const [categoryName, setCategoryName] = useState("");
-  const [localCategories, setLocalCategories] = useState(categories || []);
+  const [localCategories, setLocalCategories] = useState<Category[]>(categories || []);
   const [draggedCategory, setDraggedCategory] = useState<string | null>(null);
   const [isReorderingCategories, setIsReorderingCategories] = useState(false);
 
@@ -784,7 +787,7 @@ export default function AdminMenuPage() {
   const [localStoreHours, setLocalStoreHours] = useState<StoreHour[]>(() => {
     // 기본 영업 시간 생성 (모든 요일 10:00~22:00)
     const defaultHours: StoreHour[] = [];
-    const storeHoursArray = (storeHours || []) as any[];
+    const storeHoursArray = storeHours || [];
     for (let i = 0; i < 7; i++) {
       const existing = storeHoursArray.find((h) => h.day_of_week === i);
       defaultHours.push({
@@ -800,7 +803,7 @@ export default function AdminMenuPage() {
 
   // 기본 조리 시간 상태
   const [defaultPrepTime, setDefaultPrepTime] = useState<number>(
-    (userProfile as any)?.default_prep_time_minutes || 15
+    userProfile?.default_prep_time_minutes || 15
   );
 
   // 메뉴 순서 변경을 위한 상태
@@ -1059,7 +1062,7 @@ export default function AdminMenuPage() {
     () =>
       selectedCategory
         ? localMenuItems.filter(
-            (item) => (item as any).category_id === selectedCategory
+            (item) => item.category_id === selectedCategory
           )
         : localMenuItems,
     [selectedCategory, localMenuItems]
@@ -1099,7 +1102,7 @@ export default function AdminMenuPage() {
               </svg>
             </div>
             <h2 className="text-lg font-bold leading-tight tracking-[-0.015em]">
-              My Restaurant Admin
+              가게 관리
             </h2>
           </div>
           <label className="hidden md:flex flex-col min-w-40 !h-10 w-64">
@@ -1111,7 +1114,7 @@ export default function AdminMenuPage() {
               </div>
               <input
                 className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-foreground focus:outline-0 focus:ring-0 border-none bg-background-light focus:border-none h-full placeholder:text-muted-foreground px-3 rounded-l-none border-l-0 text-sm font-normal leading-normal"
-                placeholder="Quick search..."
+                placeholder="빠른 검색..."
               />
             </div>
           </label>
@@ -1122,28 +1125,28 @@ export default function AdminMenuPage() {
               className="text-foreground hover:text-primary transition-colors text-sm font-medium leading-normal"
               href="/admin"
             >
-              Menu
+              메뉴
             </a>
             <a
               className="text-foreground hover:text-primary transition-colors text-sm font-medium leading-normal"
               href="/owner/orders"
             >
-              Orders
+              주문
             </a>
             <a
               className="text-foreground hover:text-primary transition-colors text-sm font-medium leading-normal"
               href="#"
             >
-              Settings
+              설정
             </a>
           </nav>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <div className="hidden xl:flex flex-col">
                 <span className="text-xs font-bold text-foreground">
-                  {userProfile?.email || "Admin"}
+                  {userProfile?.email || "관리자"}
                 </span>
-                <span className="text-[10px] text-muted-foreground">Owner</span>
+                <span className="text-[10px] text-muted-foreground">사장님</span>
               </div>
             </div>
             <Form method="post">
@@ -1151,7 +1154,7 @@ export default function AdminMenuPage() {
               <button
                 type="submit"
                 className="flex items-center justify-center rounded-full size-9 bg-yellow-400 text-[#3c1e1e] hover:bg-yellow-500 transition-colors"
-                title="Logged in with Kakao"
+                title="카카오로 로그인됨"
                 disabled={isSubmitting}
               >
                 <span className="material-symbols-outlined text-[20px]">
@@ -1178,7 +1181,7 @@ export default function AdminMenuPage() {
                 </div>
                 <div className="flex items-center gap-1 bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border border-green-200">
                   <span className="size-1.5 rounded-full bg-green-600 animate-pulse"></span>{" "}
-                  Open
+                  영업중
                 </div>
               </div>
               <div>
@@ -1196,14 +1199,14 @@ export default function AdminMenuPage() {
                 <span>10:00 AM - 10:00 PM</span>
               </div>
               <button className="w-full h-8 flex items-center justify-center rounded-lg bg-white border border-border text-foreground text-xs font-medium hover:bg-gray-50 transition-colors">
-                Edit Store Info
+                가게 정보 수정
               </button>
             </div>
             {/* Categories */}
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between px-2 mb-1">
                 <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                  Categories
+                  카테고리
                 </h3>
                 <button className="text-primary hover:text-primary/80">
                   <span className="material-symbols-outlined text-[18px]">
@@ -1229,18 +1232,12 @@ export default function AdminMenuPage() {
                       selectedCategory === null ? "font-bold" : "font-medium"
                     }`}
                   >
-                    All Items
+                    전체
                   </span>
                 </div>
               </div>
               {/* Category Items */}
-              {localCategories.map((cat: any) => {
-                const categoryName =
-                  selectedCategory === cat.id
-                    ? cat.name
-                    : selectedCategory === null
-                    ? "All Items"
-                    : null;
+              {localCategories.map((cat) => {
                 return (
                   <div
                     key={cat.id}
@@ -1280,8 +1277,8 @@ export default function AdminMenuPage() {
                   lightbulb
                 </span>
                 <p className="text-xs text-yellow-800 leading-relaxed">
-                  <strong>Tip:</strong> Drag categories to reorder how they
-                  appear in the customer app.
+                  <strong>팁:</strong> 카테고리를 드래그하여 고객 앱에 표시되는
+                  순서를 변경할 수 있습니다.
                 </p>
               </div>
             </div>
@@ -1289,8 +1286,8 @@ export default function AdminMenuPage() {
         </aside>
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col h-full overflow-hidden relative bg-background-light">
-          <div className="flex-1 overflow-y-auto px-6 pb-20 md:px-10">
-            <div className="max-w-7xl mx-auto space-y-6 pt-6">
+          <div className="flex-1 overflow-y-auto px-4 pb-20 md:px-6">
+            <div className="max-w-2xl mx-auto space-y-6 pt-6">
               {/* 메뉴 추가 폼 */}
               <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
                 <div className="bg-primary/10 px-6 py-4 border-b border-primary/20">
@@ -1366,7 +1363,7 @@ export default function AdminMenuPage() {
                           disabled={isSubmitting}
                         >
                           <option value="">카테고리 선택</option>
-                          {localCategories.map((cat: any) => (
+                          {localCategories.map((cat) => (
                             <option key={cat.id} value={cat.id}>
                               {cat.name}
                             </option>
@@ -1473,7 +1470,7 @@ export default function AdminMenuPage() {
                         </p>
                       ) : (
                         <div className="space-y-2">
-                          {localCategories.map((cat: any, index: number) => (
+                          {localCategories.map((cat, index) => (
                             <div
                               key={cat.id}
                               className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
@@ -1606,16 +1603,14 @@ export default function AdminMenuPage() {
                       <textarea
                         name="store_description"
                         placeholder="가게에 대한 설명을 입력하세요 (최대 500자)"
-                        defaultValue={
-                          (userProfile as any)?.store_description || ""
-                        }
+                        defaultValue={userProfile?.store_description || ""}
                         maxLength={500}
                         rows={4}
                         className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base resize-none"
                         disabled={isSubmitting || isUpdatingProfile}
                       />
                       <p className="text-xs text-gray-500 mt-1">
-                        {((userProfile as any)?.store_description || "").length}
+                        {(userProfile?.store_description || "").length}
                         /500자
                       </p>
                     </div>
@@ -1792,32 +1787,32 @@ export default function AdminMenuPage() {
               </div>
 
               {/* Page Heading & Actions */}
-              <div className="flex-none p-6 md:px-10 md:pt-10 md:pb-6 bg-white/50 backdrop-blur-sm z-10">
-                <div className="max-w-7xl mx-auto flex flex-col gap-6">
+              <div className="flex-none p-4 md:px-6 md:pt-6 md:pb-4 bg-white/50 backdrop-blur-sm z-10">
+                <div className="max-w-2xl mx-auto flex flex-col gap-6">
                   <div className="flex flex-wrap justify-between gap-4 items-end">
                     <div className="flex flex-col gap-1">
                       <div className="flex items-center gap-2 text-muted-foreground text-sm font-medium">
-                        <span>Menu</span>
+                        <span>메뉴</span>
                         <span className="material-symbols-outlined text-[12px]">
                           chevron_right
                         </span>
                         <span className="text-primary">
                           {selectedCategory
                             ? localCategories.find(
-                                (c: any) => c.id === selectedCategory
-                              )?.name || "All Items"
-                            : "All Items"}
+                                (c) => c.id === selectedCategory
+                              )?.name || "전체"
+                            : "전체"}
                         </span>
                       </div>
                       <h1 className="text-3xl font-bold text-foreground tracking-tight">
                         {selectedCategory
                           ? localCategories.find(
-                              (c: any) => c.id === selectedCategory
-                            )?.name || "All Items"
-                          : "All Items"}
+                              (c) => c.id === selectedCategory
+                            )?.name || "전체"
+                          : "전체"}
                       </h1>
                       <p className="text-muted-foreground text-sm max-w-2xl">
-                        Manage your menu items here. Prices include VAT.
+                        메뉴 아이템을 관리하세요. 가격은 부가세 포함입니다.
                       </p>
                     </div>
                     <div className="flex gap-3">
@@ -1825,7 +1820,7 @@ export default function AdminMenuPage() {
                         <span className="material-symbols-outlined text-[20px]">
                           swap_vert
                         </span>
-                        Reorder Items
+                        순서 변경
                       </button>
                       <button
                         onClick={() => {
@@ -1845,7 +1840,7 @@ export default function AdminMenuPage() {
                         <span className="material-symbols-outlined text-[20px]">
                           add
                         </span>
-                        Add New Item
+                        새 메뉴 추가
                       </button>
                     </div>
                   </div>
@@ -1857,7 +1852,7 @@ export default function AdminMenuPage() {
                       </span>
                       <input
                         className="w-full pl-10 pr-4 py-2 bg-transparent border-none focus:ring-0 text-sm text-foreground placeholder:text-muted-foreground"
-                        placeholder="Search items..."
+                        placeholder="메뉴 검색..."
                         type="text"
                       />
                     </div>
@@ -1866,27 +1861,27 @@ export default function AdminMenuPage() {
                         <span className="material-symbols-outlined text-[16px]">
                           apps
                         </span>{" "}
-                        All
+                        전체
                       </button>
                       <button className="flex shrink-0 items-center gap-2 px-3 py-1.5 rounded-lg bg-background-light text-muted-foreground hover:bg-gray-200 transition-colors text-xs font-medium">
                         <span className="material-symbols-outlined text-[16px]">
                           check_circle
                         </span>{" "}
-                        Available
+                        판매중
                       </button>
                       <button className="flex shrink-0 items-center gap-2 px-3 py-1.5 rounded-lg bg-background-light text-muted-foreground hover:bg-gray-200 transition-colors text-xs font-medium">
                         <span className="material-symbols-outlined text-[16px]">
                           cancel
                         </span>{" "}
-                        Sold Out
+                        품절
                       </button>
                     </div>
                   </div>
                 </div>
               </div>
               {/* Scrollable Grid Content */}
-              <div className="flex-1 overflow-y-auto px-6 pb-20 md:px-10">
-                <div className="max-w-7xl mx-auto">
+              <div className="flex-1 overflow-y-auto px-4 pb-20 md:px-6">
+                <div className="max-w-2xl mx-auto">
                   {filteredMenuItems.length === 0 ? (
                     <div className="col-span-full p-12 text-center bg-white rounded-2xl border border-dashed border-gray-300">
                       <div className="mx-auto w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-6">
@@ -1913,7 +1908,7 @@ export default function AdminMenuPage() {
                       </button>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {/* 순서 변경 중 로딩 표시 */}
                       {isReorderingMenu && (
                         <div className="p-6 text-center bg-blue-50 border-l-4 border-blue-500">
@@ -1969,7 +1964,7 @@ export default function AdminMenuPage() {
                               <input
                                 type="hidden"
                                 name="category_id"
-                                value={(editForm as any).category_id || ""}
+                                value={editForm.category_id || ""}
                               />
                             </Form>
 
@@ -2027,14 +2022,14 @@ export default function AdminMenuPage() {
                                     카테고리
                                   </label>
                                   <select
-                                    value={(editForm as any).category_id || ""}
+                                    value={editForm.category_id || ""}
                                     onChange={handleEditChange}
                                     name="editCategoryId"
                                     className="w-full border border-border px-3 py-2 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                                     disabled={isSubmitting}
                                   >
                                     <option value="">카테고리 선택</option>
-                                    {localCategories.map((cat: any) => (
+                                    {localCategories.map((cat) => (
                                       <option key={cat.id} value={cat.id}>
                                         {cat.name}
                                       </option>
@@ -2141,7 +2136,7 @@ export default function AdminMenuPage() {
                               {!item.isActive && (
                                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                                   <span className="bg-black/60 text-white px-3 py-1 rounded-full text-xs font-bold border border-white/20 backdrop-blur-sm">
-                                    SOLD OUT
+                                    품절
                                   </span>
                                 </div>
                               )}
@@ -2200,7 +2195,7 @@ export default function AdminMenuPage() {
                                 }" />
                                 <input type="hidden" name="isActive" value="${!item.isActive}" />
                                 <input type="hidden" name="category_id" value="${
-                                  (item as any).category_id || ""
+                                  item.category_id || ""
                                 }" />
                               `;
                                       document.body.appendChild(form);
@@ -2208,7 +2203,7 @@ export default function AdminMenuPage() {
                                     }}
                                   >
                                     <span className="sr-only">
-                                      Toggle availability
+                                      판매 상태 변경
                                     </span>
                                     <span
                                       className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
@@ -2219,13 +2214,13 @@ export default function AdminMenuPage() {
                                     ></span>
                                   </button>
                                   <span className="text-xs font-medium text-foreground">
-                                    {item.isActive ? "On Menu" : "Sold Out"}
+                                    {item.isActive ? "판매중" : "품절"}
                                   </span>
                                 </div>
                                 <div className="flex gap-1">
                                   <button
                                     className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
-                                    title="Edit Item"
+                                    title="메뉴 수정"
                                     onClick={() => startEdit(item)}
                                     disabled={isSubmitting}
                                   >
@@ -2247,7 +2242,7 @@ export default function AdminMenuPage() {
                                     <button
                                       type="submit"
                                       className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
-                                      title="Delete Item"
+                                      title="메뉴 삭제"
                                       disabled={isSubmitting}
                                       onClick={(e) => {
                                         if (

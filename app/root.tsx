@@ -13,25 +13,32 @@ import { makeSSRClient } from "./supa_clients";
 import { CookieConsent } from "./common/components/cookie-consent";
 
 export const links: Route.LinksFunction = () => [
+  // Preconnect hints for faster font loading
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
   {
     rel: "preconnect",
     href: "https://fonts.gstatic.com",
     crossOrigin: "anonymous",
   },
+  // DNS prefetch as fallback for browsers that don't support preconnect
+  { rel: "dns-prefetch", href: "https://fonts.googleapis.com" },
+  { rel: "dns-prefetch", href: "https://fonts.gstatic.com" },
+  // Plus Jakarta Sans font with font-display: swap for better loading performance
   {
     rel: "stylesheet",
     href: "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
   },
+  // Material Symbols Outlined - optimized to load only needed weights (400, 500, 600)
+  // Using FILL=0 (outline style) and specific weights instead of full range
   {
     rel: "stylesheet",
-    href: "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap",
+    href: "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400..600,0,0&display=swap",
   },
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="ko">
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />

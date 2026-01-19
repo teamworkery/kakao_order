@@ -5,12 +5,11 @@ import { Link, useNavigate } from "react-router";
 import InputPair from "~/common/components/input-pair";
 import { LoaderCircle } from "lucide-react";
 import { z } from "zod";
-import { createBrowserClient } from "@supabase/ssr";
 import { redirect } from "react-router"; // loader에서만 사용
-import { makeSSRClient } from "~/supa_clients";
+import { makeSSRClient, browserClient } from "~/supa_clients";
 
 export const meta: Route.MetaFunction = () => {
-  return [{ title: "Login | 관리자 페이지" }];
+  return [{ title: "로그인 | 관리자 페이지" }];
 };
 
 const formSchema = z.object({
@@ -39,12 +38,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     }
   }
 
-  return {
-    env: {
-      SUPABASE_URL: process.env.SUPABASE_URL!,
-      SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY!,
-    },
-  };
+  return null;
 }
 
 export default function LoginPage({ loaderData }: Route.ComponentProps) {
@@ -72,13 +66,8 @@ export default function LoginPage({ loaderData }: Route.ComponentProps) {
       return;
     }
 
-    const supabase = createBrowserClient(
-      loaderData.env.SUPABASE_URL,
-      loaderData.env.SUPABASE_ANON_KEY
-    );
-
     const { data: loginData, error: loginError } =
-      await supabase.auth.signInWithPassword({
+      await browserClient.auth.signInWithPassword({
         email: formValues.email as string,
         password: formValues.password as string,
       });
@@ -117,7 +106,7 @@ export default function LoginPage({ loaderData }: Route.ComponentProps) {
           <h2 className="text-xl font-bold leading-tight tracking-tight">Partner Portal</h2>
         </div>
         <a className="hidden sm:flex items-center justify-center text-sm font-bold text-muted-foreground hover:text-primary transition-colors" href="#">
-          Need help?
+          도움이 필요하신가요?
         </a>
       </header>
       {/* Main Content */}
@@ -129,8 +118,8 @@ export default function LoginPage({ loaderData }: Route.ComponentProps) {
               <div className="size-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 border border-white/30">
                 <span className="material-symbols-outlined text-white">restaurant</span>
               </div>
-              <h1 className="text-3xl font-bold leading-tight">Manage your restaurant efficiently.</h1>
-              <p className="text-white/90 font-medium text-lg leading-relaxed">Track orders, update menus, and analyze sales performance all in one place.</p>
+              <h1 className="text-3xl font-bold leading-tight">매장을 효율적으로 관리하세요.</h1>
+              <p className="text-white/90 font-medium text-lg leading-relaxed">주문 확인, 메뉴 업데이트, 매출 분석을 한 곳에서 관리할 수 있습니다.</p>
             </div>
           </div>
           {/* Right Side: Form */}
@@ -138,22 +127,22 @@ export default function LoginPage({ loaderData }: Route.ComponentProps) {
             {/* Tabs */}
             <div className="flex border-b border-gray-100">
               <button className="flex-1 py-5 text-center border-b-2 border-primary text-primary font-bold text-sm tracking-wide transition-colors">
-                Login
+                로그인
               </button>
               <Link to="/join" className="flex-1 py-5 text-center border-b-2 border-transparent text-gray-500 hover:text-gray-800 font-bold text-sm tracking-wide transition-colors">
-                Sign Up
+                회원가입
               </Link>
             </div>
             {/* Form Container */}
-            <div className="flex-1 p-8 sm:p-12 flex flex-col justify-center max-w-lg mx-auto w-full">
+            <div className="flex-1 p-8 sm:p-12 flex flex-col justify-center max-w-2xl mx-auto w-full">
               <div className="mb-8">
-                <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">Welcome Back</h2>
-                <p className="text-gray-500">Enter your details to access your dashboard.</p>
+                <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">다시 오신 것을 환영합니다</h2>
+                <p className="text-gray-500">계정 정보를 입력하여 대시보드에 접속하세요.</p>
               </div>
               <form action="#" className="space-y-5" onSubmit={doLogin}>
                 {/* Email Input */}
                 <label className="block">
-                  <span className="text-foreground text-sm font-semibold mb-2 block">Email Address</span>
+                  <span className="text-foreground text-sm font-semibold mb-2 block">이메일 주소</span>
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
                       <span className="material-symbols-outlined text-[20px]">mail</span>
@@ -171,8 +160,8 @@ export default function LoginPage({ loaderData }: Route.ComponentProps) {
                 {/* Password Input */}
                 <label className="block">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-foreground text-sm font-semibold">Password</span>
-                    <a className="text-sm text-primary font-bold hover:underline" href="#">Forgot Password?</a>
+                    <span className="text-foreground text-sm font-semibold">비밀번호</span>
+                    <a className="text-sm text-primary font-bold hover:underline" href="#">비밀번호를 잊으셨나요?</a>
                   </div>
                   <div className="relative group">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors">
@@ -184,7 +173,7 @@ export default function LoginPage({ loaderData }: Route.ComponentProps) {
                       required
                       type="password"
                       className="w-full h-12 pl-11 pr-12 rounded-lg bg-gray-50 border border-gray-200 text-foreground placeholder:text-gray-400 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary transition-all outline-none"
-                      placeholder="Enter your password"
+                      placeholder="비밀번호를 입력하세요"
                     />
                     <button className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer" type="button">
                       <span className="material-symbols-outlined text-[20px]">visibility</span>
@@ -207,14 +196,14 @@ export default function LoginPage({ loaderData }: Route.ComponentProps) {
                   {isSubmitting ? (
                     <LoaderCircle className="animate-spin" />
                   ) : (
-                    "Log In"
+                    "로그인"
                   )}
                 </button>
               </form>
               {/* Divider */}
               <div className="relative py-6 flex items-center">
                 <div className="flex-grow border-t border-gray-200"></div>
-                <span className="flex-shrink-0 mx-4 text-gray-400 text-sm font-medium">Or continue with</span>
+                <span className="flex-shrink-0 mx-4 text-gray-400 text-sm font-medium">또는</span>
                 <div className="flex-grow border-t border-gray-200"></div>
               </div>
               {/* Social Login (Kakao) */}
@@ -222,10 +211,10 @@ export default function LoginPage({ loaderData }: Route.ComponentProps) {
                 <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path d="M12 3C6.48 3 2 6.48 2 10.76C2 13.62 3.86 16.12 6.64 17.41L5.64 21.05C5.57 21.32 5.86 21.56 6.11 21.38L10.39 18.53C10.91 18.59 11.45 18.62 12 18.62C17.52 18.62 22 15.14 22 10.86C22 6.58 17.52 3 12 3Z"></path>
                 </svg>
-                <span>Login with Kakao</span>
+                <span>카카오로 로그인</span>
               </button>
               <p className="mt-8 text-center text-xs text-gray-400 leading-relaxed">
-                By continuing, you agree to our <a className="underline hover:text-gray-600" href="#">Terms of Service</a> and <a className="underline hover:text-gray-600" href="#">Privacy Policy</a>.
+                계속 진행하면 <a className="underline hover:text-gray-600" href="#">이용약관</a> 및 <a className="underline hover:text-gray-600" href="#">개인정보처리방침</a>에 동의하는 것으로 간주됩니다.
               </p>
             </div>
           </div>

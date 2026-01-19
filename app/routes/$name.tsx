@@ -7,6 +7,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import PhoneInput, { getRawPhoneNumber, validatePhoneNumber } from "~/common/components/phone-input";
 
 type MenuItem = Database["public"]["Tables"]["menuItem"]["Row"];
+type Category = Database["public"]["Tables"]["categories"]["Row"];
+
+// MenuItem에 카테고리 정보가 조인된 타입
+type MenuItemWithCategory = MenuItem & {
+  categories: Pick<Category, "id" | "name" | "display_order"> | null;
+};
+
 type MyLoaderArgs = {
   request: Request;
   params: { name?: string };
@@ -246,7 +253,26 @@ export const action = async ({ request, params }: Route.ActionArgs) => {
       });
     }
     let phoneNumber = formData.get("phoneNumber") as string;
-    const orderItems = JSON.parse(formData.get("orderItems") as string);
+
+    // JSON 파싱 에러 처리
+    let orderItems: OrderItem[];
+    try {
+      const orderItemsRaw = formData.get("orderItems") as string;
+      if (!orderItemsRaw) {
+        return Response.json({
+          success: false,
+          message: "주문 항목이 없습니다.",
+        }, { status: 400 });
+      }
+      orderItems = JSON.parse(orderItemsRaw);
+    } catch (parseError) {
+      console.error("주문 항목 파싱 실패:", parseError);
+      return Response.json({
+        success: false,
+        message: "주문 데이터 형식이 올바르지 않습니다.",
+      }, { status: 400 });
+    }
+
     const totalAmount = parseInt(formData.get("totalAmount") as string);
     const autoOrder = formData.get("autoOrder") === "true"; // 자동 주문 플래그
 
@@ -542,11 +568,41 @@ export default function OrderPage({
     () => orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
     [orderItems]
   );
+
+  // 영업 상태 확인 - useMemo로 메모이제이션
+  const isStoreOpen = useMemo(() => {
+    // 영업시간 정보가 없으면 영업 중으로 간주
+    if (!todayHours) return true;
+
+    // 휴무일인 경우
+    if (todayHours.is_closed) return false;
+
+    // 영업시간 확인
+    const now = new Date();
+    const currentTime = now.getHours() * 60 + now.getMinutes();
+
+    const parseTime = (timeStr: string | null) => {
+      if (!timeStr) return null;
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      return hours * 60 + minutes;
+    };
+
+    const openTime = parseTime(todayHours.open_time);
+    const closeTime = parseTime(todayHours.close_time);
+
+    if (openTime !== null && closeTime !== null) {
+      return currentTime >= openTime && currentTime < closeTime;
+    }
+
+    return true; // 시간 정보가 없으면 영업 중으로 간주
+  }, [todayHours]);
+
   const isAuthenticated = !!user;
   const canOrder =
     orderItems.length > 0 &&
     isPhoneValid &&
-    isAuthenticated;
+    isAuthenticated &&
+    isStoreOpen;
 
   // 주문 불가 상태 메시지
   const [orderError, setOrderError] = useState<string | null>(null);
@@ -628,10 +684,10 @@ export default function OrderPage({
   // 첫 번째 메뉴 아이템 (Featured로 표시) - useMemo로 메모이제이션
   const featuredItem = useMemo(
     () =>
-      menuItems.find(
-        (item: MenuItem) =>
+      (menuItems as MenuItemWithCategory[]).find(
+        (item) =>
           selectedCategory === null ||
-          (item as any).category_id === selectedCategory
+          item.category_id === selectedCategory
       ),
     [menuItems, selectedCategory]
   );
@@ -639,10 +695,10 @@ export default function OrderPage({
   // 일반 메뉴 아이템 목록 - useMemo로 메모이제이션
   const regularItems = useMemo(
     () =>
-      menuItems.filter(
-        (item: MenuItem) =>
+      (menuItems as MenuItemWithCategory[]).filter(
+        (item) =>
           (selectedCategory === null ||
-            (item as any).category_id === selectedCategory) &&
+            item.category_id === selectedCategory) &&
           item.id !== featuredItem?.id
       ),
     [menuItems, selectedCategory, featuredItem?.id]
@@ -1017,7 +1073,7 @@ export default function OrderPage({
               }`}
             ></span>
           </button>
-          {categories.map((cat: any) => (
+          {categories.map((cat: Pick<Category, "id" | "name" | "display_order">) => (
             <button
               key={cat.id}
               onClick={() => setSelectedCategory(cat.id)}
@@ -1052,18 +1108,20 @@ export default function OrderPage({
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-bold text-gray-900 tracking-tight">
                 {categories.find(
-                  (c: any) => c.id === (featuredItem as any).category_id
+                  (c: Pick<Category, "id" | "name" | "display_order">) => c.id === featuredItem?.category_id
                 )?.name || "추천 메뉴"}
               </h3>
             </div>
             <div className="flex flex-col gap-5">
               <div className="flex flex-col bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
-                <div className="relative h-56 w-full bg-gray-100 bg-cover bg-center">
+                <div className="relative h-56 w-full bg-gray-100 overflow-hidden">
                   {featuredItem.image ? (
-                    <div
-                      className="absolute inset-0 bg-cover bg-center"
-                      style={{ backgroundImage: `url(${featuredItem.image})` }}
-                    ></div>
+                    <img
+                      src={featuredItem.image}
+                      alt={featuredItem.name}
+                      loading="lazy"
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
                   ) : (
                     <div className="absolute inset-0 bg-gray-200 flex items-center justify-center">
                       <span className="material-symbols-outlined text-6xl text-gray-400">
@@ -1090,20 +1148,22 @@ export default function OrderPage({
                       <button
                         type="button"
                         onClick={() => decreaseQuantity(featuredItem)}
-                        className="size-9 flex items-center justify-center bg-white rounded-md shadow-sm text-gray-600 hover:text-primary active:scale-95 transition-all"
+                        className="size-11 flex items-center justify-center bg-white rounded-md shadow-sm text-gray-600 hover:text-primary active:scale-95 transition-all"
                         disabled={getItemQuantity(featuredItem.id) === 0}
+                        aria-label={`${featuredItem.name} 수량 감소`}
                       >
                         <span className="material-symbols-outlined text-xl">
                           remove
                         </span>
                       </button>
-                      <span className="w-10 text-center font-bold text-gray-900 text-base">
+                      <span className="w-12 text-center font-bold text-gray-900 text-base">
                         {getItemQuantity(featuredItem.id)}
                       </span>
                       <button
                         type="button"
                         onClick={() => increaseQuantity(featuredItem)}
-                        className="size-9 flex items-center justify-center bg-white rounded-md shadow-sm text-gray-600 hover:text-primary active:scale-95 transition-all"
+                        className="size-11 flex items-center justify-center bg-white rounded-md shadow-sm text-gray-600 hover:text-primary active:scale-95 transition-all"
+                        aria-label={`${featuredItem.name} 수량 증가`}
                       >
                         <span className="material-symbols-outlined text-xl">
                           add
@@ -1128,16 +1188,18 @@ export default function OrderPage({
               </div>
             )}
             <div className="flex flex-col gap-4">
-              {regularItems.map((item: MenuItem) => (
+              {regularItems.map((item: MenuItemWithCategory) => (
                 <div
                   key={item.id}
                   className="group flex bg-white rounded-xl p-3 shadow-sm border border-gray-100 gap-4 hover:shadow-md transition-all"
                 >
                   {item.image ? (
-                    <div
-                      className="size-28 rounded-lg bg-gray-100 bg-cover bg-center shrink-0"
-                      style={{ backgroundImage: `url(${item.image})` }}
-                    ></div>
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      loading="lazy"
+                      className="size-28 rounded-lg bg-gray-100 object-cover shrink-0"
+                    />
                   ) : (
                     <div className="size-28 rounded-lg bg-gray-50 shrink-0 flex items-center justify-center text-gray-300">
                       <span className="material-symbols-outlined text-[40px]">
@@ -1159,23 +1221,25 @@ export default function OrderPage({
                         {formatPrice(item.price)}원
                       </span>
                       {getItemQuantity(item.id) > 0 ? (
-                        <div className="flex items-center bg-gray-100 rounded-lg p-1 h-9">
+                        <div className="flex items-center bg-gray-100 rounded-lg p-1">
                           <button
                             type="button"
                             onClick={() => decreaseQuantity(item)}
-                            className="w-8 h-full flex items-center justify-center text-gray-600 hover:text-primary transition-colors"
+                            className="size-11 flex items-center justify-center text-gray-600 hover:text-primary transition-colors"
+                            aria-label={`${item.name} 수량 감소`}
                           >
                             <span className="material-symbols-outlined text-lg">
                               remove
                             </span>
                           </button>
-                          <span className="w-7 text-center font-bold text-gray-900 text-sm">
+                          <span className="w-8 text-center font-bold text-gray-900 text-sm">
                             {getItemQuantity(item.id)}
                           </span>
                           <button
                             type="button"
                             onClick={() => increaseQuantity(item)}
-                            className="w-8 h-full flex items-center justify-center text-gray-600 hover:text-primary transition-colors"
+                            className="size-11 flex items-center justify-center text-gray-600 hover:text-primary transition-colors"
+                            aria-label={`${item.name} 수량 증가`}
                           >
                             <span className="material-symbols-outlined text-lg">
                               add
@@ -1280,13 +1344,19 @@ export default function OrderPage({
                   <button
                     type="submit"
                     disabled={!canOrder}
-                    className="w-full bg-primary hover:bg-orange-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-orange-500/30 flex items-center justify-between px-6 transition-all group active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed min-h-[56px]"
-                    aria-label={canOrder ? `${formatPrice(totalAmount)}원 주문하기` : "주문 조건을 확인해주세요"}
+                    className={`w-full font-bold py-4 rounded-xl shadow-lg flex items-center justify-between px-6 transition-all min-h-[56px] ${
+                      !isStoreOpen
+                        ? "bg-gray-400 cursor-not-allowed"
+                        : "bg-primary hover:bg-orange-600 shadow-orange-500/30 group active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                    } text-white`}
+                    aria-label={!isStoreOpen ? "영업 종료" : canOrder ? `${formatPrice(totalAmount)}원 주문하기` : "주문 조건을 확인해주세요"}
                   >
-                    <span className="text-[15px]">주문하기</span>
-                    <span className="bg-white/20 group-hover:bg-white/30 text-white text-xs font-bold px-2.5 py-1 rounded-md transition-colors">
-                      {orderItems.reduce((sum, item) => sum + item.quantity, 0)}
-                    </span>
+                    <span className="text-[15px]">{!isStoreOpen ? "영업 종료" : "주문하기"}</span>
+                    {isStoreOpen && (
+                      <span className="bg-white/20 group-hover:bg-white/30 text-white text-xs font-bold px-2.5 py-1 rounded-md transition-colors">
+                        {orderItems.reduce((sum, item) => sum + item.quantity, 0)}
+                      </span>
+                    )}
                   </button>
                 </Form>
               </div>

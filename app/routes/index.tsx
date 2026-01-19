@@ -1,35 +1,65 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router";
 import { Button } from "~/common/components/ui/button";
 
 export default function Index() {
+  const [showFloatingCta, setShowFloatingCta] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      // Hero 섹션 높이 (약 400px) 이후에 표시
+      const heroHeight = 400;
+      setShowFloatingCta(window.scrollY > heroHeight);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-orange-50 to-white">
+      {/* Floating CTA Button */}
+      <div
+        className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 ${
+          showFloatingCta
+            ? "opacity-100 translate-y-0"
+            : "opacity-0 translate-y-4 pointer-events-none"
+        }`}
+      >
+        <Link to="/join">
+          <Button
+            size="lg"
+            className="px-8 py-4 text-base font-bold shadow-2xl shadow-orange-500/40 hover:shadow-orange-500/50 hover:scale-105 transition-all"
+          >
+            <span className="material-symbols-outlined mr-2 text-lg">rocket_launch</span>
+            무료로 시작하기
+          </Button>
+        </Link>
+      </div>
+
       {/* Hero Section */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-orange-100/50" />
-        <div className="relative max-w-4xl mx-auto px-4 pt-16 pb-20 text-center">
-          {/* 고객 주문 내역 링크 (우측 상단) */}
-          <div className="absolute top-4 right-4">
+        <div className="relative max-w-2xl mx-auto px-4 pt-4 pb-20 text-center">
+          {/* Header with logo and nav */}
+          <header className="flex items-center justify-between mb-12">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl font-black text-primary tracking-tight">
+                POJANG.ONE
+              </span>
+            </div>
             <Link
               to="/customer/orders"
               className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-white/80 hover:bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-xl transition-colors shadow-sm min-h-[44px]"
             >
               <span className="material-symbols-outlined text-lg">receipt_long</span>
-              <span className="hidden sm:inline">내 주문 내역</span>
+              <span>내 주문 내역</span>
             </Link>
-          </div>
-
-          {/* Logo */}
-          <div className="mb-8">
-            <span className="text-4xl font-black text-primary tracking-tight">
-              POJANG.ONE
-            </span>
-            <p className="text-gray-500 text-sm mt-1">포장주문 전용 서비스</p>
-          </div>
+          </header>
 
           {/* Pain Point - Main Hook */}
           <div className="mb-8">
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 leading-tight mb-4">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight mb-4">
               우리 가게 단골 포장 손님,
               <br />
               <span className="text-primary">아직도 수수료 내고 계세요?</span>
@@ -75,7 +105,7 @@ export default function Index() {
 
       {/* Problem Section */}
       <section className="py-16 bg-gray-900 text-white">
-        <div className="max-w-4xl mx-auto px-4">
+        <div className="max-w-2xl mx-auto px-4">
           <h2 className="text-2xl sm:text-3xl font-bold text-center mb-12">
             혹시 이런 고민 있으신가요?
           </h2>
@@ -113,7 +143,7 @@ export default function Index() {
 
       {/* Solution Section */}
       <section className="py-20 bg-white">
-        <div className="max-w-4xl mx-auto px-4">
+        <div className="max-w-2xl mx-auto px-4">
           <div className="text-center mb-12">
             <span className="inline-block bg-primary/10 text-primary font-bold px-4 py-1 rounded-full text-sm mb-4">
               POJANG.ONE 솔루션
@@ -180,7 +210,7 @@ export default function Index() {
 
       {/* How It Works */}
       <section className="py-20 bg-gray-50">
-        <div className="max-w-4xl mx-auto px-4">
+        <div className="max-w-2xl mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">
               이용 방법은 간단해요
@@ -226,7 +256,7 @@ export default function Index() {
 
       {/* Pricing Section */}
       <section className="py-20 bg-white">
-        <div className="max-w-4xl mx-auto px-4">
+        <div className="max-w-2xl mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">
               투명한 요금제
@@ -305,7 +335,7 @@ export default function Index() {
 
       {/* Launch Event Banner */}
       <section className="py-16 bg-gradient-to-r from-yellow-400 via-orange-500 to-primary">
-        <div className="max-w-4xl mx-auto px-4 text-center text-white">
+        <div className="max-w-2xl mx-auto px-4 text-center text-white">
           <span className="inline-block bg-white/20 backdrop-blur px-4 py-1 rounded-full text-sm font-bold mb-4">
             출시기념 이벤트
           </span>
@@ -334,7 +364,7 @@ export default function Index() {
 
       {/* Demo Section */}
       <section className="py-20 bg-gray-50">
-        <div className="max-w-4xl mx-auto px-4">
+        <div className="max-w-2xl mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">
               샘플 페이지를 확인해보세요
@@ -344,16 +374,53 @@ export default function Index() {
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-8">
+          <div className="flex flex-col items-center gap-8">
             {/* Phone Mockup */}
             <div className="relative">
               <div className="w-64 h-[500px] bg-gray-900 rounded-[3rem] p-3 shadow-2xl">
                 <div className="w-full h-full bg-white rounded-[2.5rem] overflow-hidden">
-                  <div className="w-full h-full bg-gradient-to-b from-gray-100 to-white flex flex-col items-center justify-center p-6">
-                    <span className="material-symbols-outlined text-6xl text-gray-300 mb-4">restaurant_menu</span>
-                    <p className="text-gray-500 text-sm text-center">
-                      샘플 페이지 보기 버튼을<br />클릭하여 확인하세요
-                    </p>
+                  {/* Simulated app screen */}
+                  <div className="w-full h-full bg-gradient-to-b from-orange-50 to-white flex flex-col">
+                    {/* App header */}
+                    <div className="bg-primary text-white p-4 text-center">
+                      <p className="font-bold text-sm">샘플 치킨집</p>
+                    </div>
+                    {/* Menu preview */}
+                    <div className="flex-1 p-3 space-y-2 overflow-hidden">
+                      <div className="bg-white rounded-lg p-2 shadow-sm border flex items-center gap-2">
+                        <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                          <span className="material-symbols-outlined text-orange-500 text-xl">lunch_dining</span>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-xs font-bold text-gray-800">후라이드치킨</p>
+                          <p className="text-xs text-primary font-bold">18,000원</p>
+                        </div>
+                      </div>
+                      <div className="bg-white rounded-lg p-2 shadow-sm border flex items-center gap-2">
+                        <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+                          <span className="material-symbols-outlined text-red-500 text-xl">local_fire_department</span>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-xs font-bold text-gray-800">양념치킨</p>
+                          <p className="text-xs text-primary font-bold">19,000원</p>
+                        </div>
+                      </div>
+                      <div className="bg-white rounded-lg p-2 shadow-sm border flex items-center gap-2">
+                        <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                          <span className="material-symbols-outlined text-yellow-600 text-xl">egg_alt</span>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-xs font-bold text-gray-800">반반치킨</p>
+                          <p className="text-xs text-primary font-bold">19,000원</p>
+                        </div>
+                      </div>
+                    </div>
+                    {/* Bottom CTA */}
+                    <div className="p-3 bg-white border-t">
+                      <div className="bg-primary text-white text-center py-2 rounded-lg text-xs font-bold">
+                        주문하기
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -361,11 +428,12 @@ export default function Index() {
               <div className="absolute top-3 left-1/2 -translate-x-1/2 w-20 h-6 bg-gray-900 rounded-b-xl" />
             </div>
 
-            <div className="text-center sm:text-left">
+            {/* Demo description */}
+            <div className="text-center">
               <h3 className="text-xl font-bold text-gray-900 mb-4">
                 깔끔하고 직관적인 주문 화면
               </h3>
-              <ul className="space-y-3 text-gray-600 mb-6">
+              <ul className="space-y-2 text-gray-600 mb-6 inline-block text-left">
                 <li className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-primary text-lg">check</span>
                   카테고리별 메뉴 정리
@@ -383,11 +451,19 @@ export default function Index() {
                   카카오 로그인 지원
                 </li>
               </ul>
-              <Link to="/sample">
-                <Button size="lg" className="px-8">
-                  샘플 페이지 보기
-                </Button>
-              </Link>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <Link to="/sample">
+                  <Button size="lg" className="w-full sm:w-auto px-8">
+                    <span className="material-symbols-outlined mr-2 text-lg">touch_app</span>
+                    데모 체험하기
+                  </Button>
+                </Link>
+                <Link to="/sample">
+                  <Button size="lg" variant="outline" className="w-full sm:w-auto px-8">
+                    샘플 페이지 보기
+                  </Button>
+                </Link>
+              </div>
             </div>
           </div>
         </div>
@@ -395,7 +471,7 @@ export default function Index() {
 
       {/* FAQ Section */}
       <section className="py-20 bg-white">
-        <div className="max-w-3xl mx-auto px-4">
+        <div className="max-w-2xl mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">
               자주 묻는 질문
@@ -456,7 +532,7 @@ export default function Index() {
 
       {/* Final CTA */}
       <section className="py-20 bg-gray-900 text-white">
-        <div className="max-w-4xl mx-auto px-4 text-center">
+        <div className="max-w-2xl mx-auto px-4 text-center">
           <h2 className="text-2xl sm:text-3xl font-bold mb-4">
             지금 바로 시작하세요
           </h2>
@@ -483,7 +559,7 @@ export default function Index() {
 
       {/* Footer */}
       <footer className="bg-gray-950 text-gray-400 py-12">
-        <div className="max-w-4xl mx-auto px-4">
+        <div className="max-w-2xl mx-auto px-4">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-6">
             <div>
               <span className="text-xl font-bold text-white">POJANG.ONE</span>
