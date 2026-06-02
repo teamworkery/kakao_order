@@ -60,14 +60,14 @@ export const loader = async ({ request, params }: MyLoaderArgs) => {
 
   const { client } = makeSSRClient(request);
 
-  // 첫 번째 단계: 프로필 조회 (필수)
+  // 첫 번째 단계: 가게 조회 (공개 컬럼만 노출하는 public_stores 뷰 사용)
   const { data: profile, error } = await client
-    .from("profiles")
+    .from("public_stores")
     .select("profile_id, storename, store_image, store_description, storenumber, default_prep_time_minutes")
     .eq("name", name)
     .single();
 
-  if (error || !profile) {
+  if (error || !profile || !profile.profile_id) {
     console.error("Profile not found:", error);
     throw new Response("Not Found", { status: 404 });
   }
@@ -291,7 +291,7 @@ export const action = async ({ request, params }: Route.ActionArgs) => {
 
     const name = params.name;
     const { data: profile } = await client
-      .from("profiles")
+      .from("public_stores")
       .select("profile_id, name, storename, storenumber")
       .eq("name", name)
       .single();

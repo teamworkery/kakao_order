@@ -44,6 +44,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["profile_id"]
           },
+          {
+            foreignKeyName: "categories_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_stores"
+            referencedColumns: ["profile_id"]
+          },
         ]
       }
       menuItem: {
@@ -104,6 +111,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["profile_id"]
           },
+          {
+            foreignKeyName: "menuItem_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_stores"
+            referencedColumns: ["profile_id"]
+          },
         ]
       }
       order: {
@@ -151,6 +165,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["profile_id"]
           },
+          {
+            foreignKeyName: "order_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_stores"
+            referencedColumns: ["profile_id"]
+          },
         ]
       }
       order_status_history: {
@@ -187,6 +208,13 @@ export type Database = {
             columns: ["changed_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "order_status_history_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "public_stores"
             referencedColumns: ["profile_id"]
           },
           {
@@ -318,11 +346,47 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["profile_id"]
           },
+          {
+            foreignKeyName: "store_hours_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_stores"
+            referencedColumns: ["profile_id"]
+          },
         ]
       }
     }
     Views: {
-      [_ in never]: never
+      public_stores: {
+        Row: {
+          default_prep_time_minutes: number | null
+          name: string | null
+          profile_id: string | null
+          store_description: string | null
+          store_image: string | null
+          storename: string | null
+          storenumber: string | null
+        }
+        Insert: {
+          default_prep_time_minutes?: number | null
+          name?: string | null
+          profile_id?: string | null
+          store_description?: string | null
+          store_image?: string | null
+          storename?: string | null
+          storenumber?: string | null
+        }
+        Update: {
+          default_prep_time_minutes?: number | null
+          name?: string | null
+          profile_id?: string | null
+          store_description?: string | null
+          store_image?: string | null
+          storename?: string | null
+          storenumber?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       [_ in never]: never

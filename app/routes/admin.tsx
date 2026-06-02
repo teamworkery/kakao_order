@@ -453,9 +453,9 @@ export async function action({ request }: ActionFunctionArgs) {
           );
         }
 
-        // 다른 가게가 이미 같은 주소를 쓰는지 확인 (자기 자신 제외)
+        // 다른 가게가 이미 같은 주소를 쓰는지 확인 (자기 자신 제외, 공개 뷰 사용)
         const { data: slugOwner } = await client
-          .from("profiles")
+          .from("public_stores")
           .select("profile_id")
           .eq("name", slug)
           .neq("profile_id", profile_id)
