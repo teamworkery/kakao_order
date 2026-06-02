@@ -73,7 +73,7 @@ export default function Index() {
           aria-hidden
           className="pointer-events-none absolute inset-x-0 top-0 h-[520px] bg-[radial-gradient(60%_60%_at_50%_-5%,rgba(238,124,43,0.20),transparent_70%)]"
         />
-        <div className="relative max-w-3xl mx-auto px-5 pt-16 pb-10 sm:pt-24 text-center">
+        <div className="relative max-w-3xl mx-auto px-5 pt-16 pb-20 sm:pt-24 sm:pb-28 text-center">
           <div className="inline-flex items-center gap-2 h-8 px-3.5 mb-7 rounded-full bg-primary-light border border-primary/20 text-primary">
             <span className="size-1.5 rounded-full bg-primary animate-pulse"></span>
             <span className="text-[12px] font-semibold tracking-tight">
@@ -122,46 +122,6 @@ export default function Index() {
                 {t}
               </span>
             ))}
-          </div>
-        </div>
-
-        {/* Hero preview — 따뜻한 메뉴판 */}
-        <div className="relative max-w-2xl mx-auto px-5 pb-16 sm:pb-24">
-          <div className="rounded-3xl border border-border bg-card shadow-warm-lg overflow-hidden">
-            <div className="flex items-center justify-between px-5 h-13 py-3.5 border-b border-border bg-secondary/50">
-              <div className="flex items-center gap-2">
-                <span className="text-[16px]">🍗</span>
-                <span className="text-[13px] font-bold tracking-tight">샘플 치킨집</span>
-              </div>
-              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-primary">
-                <span className="size-1.5 rounded-full bg-primary" />
-                영업중
-              </span>
-            </div>
-            <div className="grid grid-cols-3 gap-3 p-4 sm:p-6">
-              {[
-                { name: "후라이드치킨", price: "18,000", emoji: "🍗" },
-                { name: "양념치킨", price: "19,000", emoji: "🌶️" },
-                { name: "반반치킨", price: "19,000", emoji: "🥢" },
-              ].map((m) => (
-                <div
-                  key={m.name}
-                  className="flex flex-col bg-background rounded-2xl border border-border overflow-hidden shadow-warm"
-                >
-                  <div className="aspect-square bg-primary-light flex items-center justify-center text-4xl sm:text-5xl">
-                    {m.emoji}
-                  </div>
-                  <div className="p-2.5 sm:p-3">
-                    <p className="text-[11px] sm:text-[13px] font-semibold tracking-tight truncate">
-                      {m.name}
-                    </p>
-                    <p className="text-[11px] sm:text-[13px] text-primary font-semibold tabular-nums mt-0.5">
-                      {m.price}원
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
       </section>
