@@ -4,6 +4,8 @@ export default [
   index("routes/index.tsx"),
   route("/join", "routes/join.tsx"),
   route("/login", "routes/login.tsx"),
+  route("/forgot-password", "routes/forgot-password.tsx"),
+  route("/reset-password", "routes/reset-password.tsx"),
   route("/admin", "routes/admin.tsx"),
   route("/owner/orders", "routes/owner.orders.tsx"),
   route("/auth/callback", "routes/auth/callback.tsx"),

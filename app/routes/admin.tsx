@@ -79,22 +79,18 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
         .order("day_of_week", { ascending: true }),
     ]);
 
-    // Check if profile exists
-    if (profileResult.error || !profileResult.data) {
-      throw redirect("/login");
-    }
-
-    // Check if user is customer - redirect to index
-    if (profileResult.data.role === "customer") {
-      throw redirect("/");
-    }
+    // 프로필이 아직 없거나(신규 가입), owner가 아니거나, 가게명이 없으면 온보딩 필요
+    const profile = profileResult.data ?? null;
+    const needsOnboarding =
+      !profile || profile.role !== "owner" || !profile.storename;
 
     return {
       menuItems,
-      userProfile: profileResult.data,
+      userProfile: profile,
       userId,
       categories: categoriesResult.data || [],
       storeHours: storeHoursResult.data || [],
+      needsOnboarding,
     };
   } catch (error) {
     console.error("Loader 오류:", error);
@@ -422,7 +418,7 @@ export async function action({ request }: ActionFunctionArgs) {
       case "updateProfile": {
         if (!name?.trim()) {
           return Response.json(
-            { error: "이름은 필수입니다." },
+            { error: "가게 주소(URL)는 필수입니다." },
             { status: 400 }
           );
         }
@@ -433,32 +429,72 @@ export async function action({ request }: ActionFunctionArgs) {
           );
         }
 
+        // 가게 주소(slug) 정규화 및 형식 검증
+        const slug = name.trim().toLowerCase();
+        const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]{1,30}[a-z0-9])$/;
+        const RESERVED = new Set([
+          "admin", "login", "join", "owner", "customer", "auth", "api",
+          "privacy", "terms", "index", "assets", "static", "public",
+          "menu-images", "store-images", "forgot-password", "reset-password",
+        ]);
+        if (!SLUG_RE.test(slug)) {
+          return Response.json(
+            {
+              error:
+                "가게 주소는 영문 소문자·숫자·하이픈(-)만 사용해 3~32자로 입력해주세요. (예: goodmorning-china)",
+            },
+            { status: 400 }
+          );
+        }
+        if (RESERVED.has(slug)) {
+          return Response.json(
+            { error: "사용할 수 없는 주소입니다. 다른 주소를 입력해주세요." },
+            { status: 400 }
+          );
+        }
+
+        // 다른 가게가 이미 같은 주소를 쓰는지 확인 (자기 자신 제외)
+        const { data: slugOwner } = await client
+          .from("profiles")
+          .select("profile_id")
+          .eq("name", slug)
+          .neq("profile_id", profile_id)
+          .maybeSingle();
+        if (slugOwner) {
+          return Response.json(
+            { error: "이미 사용 중인 가게 주소입니다. 다른 주소를 입력해주세요." },
+            { status: 400 }
+          );
+        }
+
         const storename = formData.get("storename") as string;
         const storenumber = formData.get("storenumber") as string;
         const store_image = formData.get("store_image") as string;
         const store_description = formData.get("store_description") as string;
+
+        const profileFields = {
+          name: slug,
+          storename: storename.trim(),
+          storenumber: storenumber?.trim() || null,
+          store_image: store_image?.trim() || null,
+          store_description:
+            store_description?.trim() && store_description.trim().length > 0
+              ? store_description.trim().slice(0, 500)
+              : null,
+          role: "owner" as const, // 가게 정보를 저장하면 점주로 승격
+        };
 
         // 프로필이 이미 존재하는지 확인
         const { data: existingProfile } = await client
           .from("profiles")
           .select("profile_id")
           .eq("profile_id", profile_id)
-          .single();
+          .maybeSingle();
 
         if (existingProfile) {
-          // 기존 프로필 업데이트
           const { error } = await client
             .from("profiles")
-            .update({
-              name: name.trim(),
-              storename: storename.trim(),
-              storenumber: storenumber?.trim() || null,
-              store_image: store_image?.trim() || null,
-              store_description:
-                store_description?.trim() && store_description.trim().length > 0
-                  ? store_description.trim().slice(0, 500)
-                  : null,
-            })
+            .update(profileFields)
             .eq("profile_id", profile_id);
 
           if (error) {
@@ -469,19 +505,11 @@ export async function action({ request }: ActionFunctionArgs) {
             );
           }
         } else {
-          // 새 프로필 생성
           const { error } = await client.from("profiles").insert([
             {
               profile_id,
-              name: name.trim(),
-              storename: storename.trim(),
-              storenumber: storenumber?.trim() || null,
-              store_image: store_image?.trim() || null,
-              store_description:
-                store_description?.trim() && store_description.trim().length > 0
-                  ? store_description.trim().slice(0, 500)
-                  : null,
               email: userData.user.email,
+              ...profileFields,
             },
           ]);
 
@@ -753,7 +781,7 @@ function Toast({
 
 // 메인 컴포넌트
 export default function AdminMenuPage() {
-  const { menuItems, userProfile, categories, storeHours } = useLoaderData<typeof loader>();
+  const { menuItems, userProfile, categories, storeHours, needsOnboarding } = useLoaderData<typeof loader>();
   const actionData = useActionData<ActionData>();
   const navigation = useNavigation();
 
@@ -876,6 +904,9 @@ export default function AdminMenuPage() {
           setEditForm({});
         } else if (actionData.type === "delete") {
           // 메뉴 삭제 후 localMenuItems 동기화
+          window.location.reload();
+        } else if (actionData.type === "updateProfile" && needsOnboarding) {
+          // 온보딩(가게 개설) 완료 → owner로 승격되었으므로 새로고침하여 대시보드 진입
           window.location.reload();
         } else if (actionData.type === "addCategory") {
           setCategoryName("");
@@ -1068,6 +1099,151 @@ export default function AdminMenuPage() {
     [selectedCategory, localMenuItems]
   );
 
+  // 오늘 영업 상태 (사이드바 배지용) — 실제 영업시간 데이터로 계산
+  const todayStoreStatus = useMemo(() => {
+    const today = new Date().getDay();
+    const h = (storeHours || []).find((x) => x.day_of_week === today);
+    if (!h || h.is_closed) {
+      return {
+        open: false,
+        label: h?.is_closed ? "오늘 휴무" : "영업시간 미설정",
+        range: null as string | null,
+      };
+    }
+    const fmt = (t: string | null) => (t ? t.slice(0, 5) : null);
+    const range =
+      h.open_time && h.close_time
+        ? `${fmt(h.open_time)} - ${fmt(h.close_time)}`
+        : null;
+    const toMin = (t: string) => {
+      const [hh, mm] = t.split(":").map(Number);
+      return hh * 60 + mm;
+    };
+    const now = new Date();
+    const cur = now.getHours() * 60 + now.getMinutes();
+    let open = true;
+    if (h.open_time && h.close_time) {
+      open = cur >= toMin(h.open_time) && cur < toMin(h.close_time);
+    }
+    return { open, label: open ? "영업중" : "영업종료", range };
+  }, [storeHours]);
+
+  // 온보딩(가게 개설) 화면용 상태 — slug 미리보기
+  const [onboardSlug, setOnboardSlug] = useState("");
+  const previewHost = (
+    (import.meta.env.VITE_APP_URL as string | undefined) || "https://pojang.one"
+  ).replace(/^https?:\/\//, "");
+  const normalizedSlug = onboardSlug.trim().toLowerCase();
+
+  // 가게가 아직 없으면 개설 마법사를 보여준다
+  if (needsOnboarding) {
+    return (
+      <div className="min-h-screen bg-background-light font-display antialiased text-foreground flex flex-col">
+        <header className="w-full px-6 py-4 lg:px-12 flex items-center justify-between border-b border-border bg-white">
+          <div className="flex items-center gap-3">
+            <div className="text-primary size-8">
+              <svg fill="currentColor" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                <path d="M24 4C25.7818 14.2173 33.7827 22.2182 44 24C33.7827 25.7818 25.7818 33.7827 24 44C22.2182 33.7827 14.2173 25.7818 4 24C14.2173 22.2182 22.2182 14.2173 24 4Z"></path>
+              </svg>
+            </div>
+            <h2 className="text-xl font-bold leading-tight tracking-tight">Partner Portal</h2>
+          </div>
+          <Form method="post">
+            <input type="hidden" name="actionType" value="logout" />
+            <button type="submit" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+              로그아웃
+            </button>
+          </Form>
+        </header>
+
+        <main className="flex-1 flex items-center justify-center p-4 lg:p-8">
+          <div className="bg-white w-full max-w-lg rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] p-8 sm:p-10">
+            <div className="mb-8">
+              <div className="size-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                <span className="material-symbols-outlined text-primary text-2xl">storefront</span>
+              </div>
+              <h1 className="text-2xl font-bold text-foreground mb-2">가게 개설하기</h1>
+              <p className="text-gray-500 text-sm leading-relaxed">
+                기본 정보만 입력하면 바로 주문 페이지가 만들어집니다. 메뉴·영업시간·사진은 개설 후 언제든 추가할 수 있어요.
+              </p>
+            </div>
+
+            <Form method="post" className="space-y-5">
+              <input type="hidden" name="actionType" value="updateProfile" />
+
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-2">
+                  가게명 <span className="text-primary">*</span>
+                </label>
+                <input
+                  name="storename"
+                  required
+                  placeholder="예: 굿모닝차이나"
+                  defaultValue={userProfile?.storename || ""}
+                  className="w-full h-12 px-4 rounded-lg bg-gray-50 border border-gray-200 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary transition-all outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-2">
+                  가게 주소 (URL) <span className="text-primary">*</span>
+                </label>
+                <input
+                  name="name"
+                  required
+                  value={onboardSlug}
+                  onChange={(e) => setOnboardSlug(e.target.value)}
+                  placeholder="goodmorning-china"
+                  pattern="[A-Za-z0-9][A-Za-z0-9\-]{1,30}[A-Za-z0-9]"
+                  className="w-full h-12 px-4 rounded-lg bg-gray-50 border border-gray-200 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary transition-all outline-none"
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  손님에게 공유할 주소예요. 영문 소문자·숫자·하이픈(-), 3~32자.
+                  {normalizedSlug && (
+                    <span className="block mt-1 text-primary font-medium break-all">
+                      {previewHost}/{normalizedSlug}
+                    </span>
+                  )}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-2">
+                  가게 전화번호
+                </label>
+                <input
+                  name="storenumber"
+                  placeholder="예: 032-327-9696"
+                  defaultValue={userProfile?.storenumber || ""}
+                  className="w-full h-12 px-4 rounded-lg bg-gray-50 border border-gray-200 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary transition-all outline-none"
+                />
+              </div>
+
+              {actionData?.error && (
+                <div className="flex items-center gap-2 text-red-500 text-sm bg-red-50 p-3 rounded-lg border border-red-100">
+                  <span className="material-symbols-outlined text-[18px]">error</span>
+                  <span>{actionData.error}</span>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full h-12 bg-primary hover:bg-[#d66a1f] text-white font-bold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isSubmitting && navigation.formData?.get("actionType") === "updateProfile" ? (
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                ) : (
+                  "가게 개설하고 시작하기"
+                )}
+              </button>
+            </Form>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background-light flex flex-col h-screen overflow-hidden">
       {showToast && (
@@ -1179,9 +1355,19 @@ export default function AdminMenuPage() {
                     restaurant
                   </span>
                 </div>
-                <div className="flex items-center gap-1 bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border border-green-200">
-                  <span className="size-1.5 rounded-full bg-green-600 animate-pulse"></span>{" "}
-                  영업중
+                <div
+                  className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${
+                    todayStoreStatus.open
+                      ? "bg-green-100 text-green-700 border-green-200"
+                      : "bg-gray-100 text-gray-500 border-gray-200"
+                  }`}
+                >
+                  <span
+                    className={`size-1.5 rounded-full ${
+                      todayStoreStatus.open ? "bg-green-600 animate-pulse" : "bg-gray-400"
+                    }`}
+                  ></span>{" "}
+                  {todayStoreStatus.label}
                 </div>
               </div>
               <div>
@@ -1196,7 +1382,7 @@ export default function AdminMenuPage() {
                 <span className="material-symbols-outlined text-[14px]">
                   schedule
                 </span>
-                <span>10:00 AM - 10:00 PM</span>
+                <span>{todayStoreStatus.range || "영업시간을 설정해주세요"}</span>
               </div>
               <button className="w-full h-8 flex items-center justify-center rounded-lg bg-white border border-border text-foreground text-xs font-medium hover:bg-gray-50 transition-colors">
                 가게 정보 수정
@@ -1538,16 +1724,20 @@ export default function AdminMenuPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          이름 <span className="text-blue-500">*</span>
+                          가게 주소 (URL) <span className="text-blue-500">*</span>
                         </label>
                         <input
                           name="name"
                           required
-                          placeholder="예: 김철수"
+                          placeholder="goodmorning-china"
+                          pattern="[A-Za-z0-9][A-Za-z0-9\-]{1,30}[A-Za-z0-9]"
                           defaultValue={userProfile?.name || ""}
                           className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
                           disabled={isSubmitting || isUpdatingProfile}
                         />
+                        <p className="text-xs text-gray-500 mt-1">
+                          손님 주문 페이지 주소 · 영문 소문자·숫자·하이픈(-), 3~32자
+                        </p>
                       </div>
 
                       <div>

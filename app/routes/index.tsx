@@ -1,577 +1,563 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router";
-import { Button } from "~/common/components/ui/button";
 
 export default function Index() {
   const [showFloatingCta, setShowFloatingCta] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
-      // Hero 섹션 높이 (약 400px) 이후에 표시
-      const heroHeight = 400;
+      const heroHeight = 480;
       setShowFloatingCta(window.scrollY > heroHeight);
     };
-
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-orange-50 to-white">
-      {/* Floating CTA Button */}
+    <div className="min-h-screen bg-background text-foreground antialiased">
+      {/* Top Nav */}
+      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border">
+        <div className="max-w-5xl mx-auto px-5 h-14 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-2">
+            <span className="size-6 rounded-md bg-foreground flex items-center justify-center">
+              <span className="text-background text-[11px] font-bold tracking-tight">P</span>
+            </span>
+            <span className="text-[14px] font-semibold tracking-tight">pojang.one</span>
+          </Link>
+          <div className="flex items-center gap-1">
+            <Link
+              to="/customer/orders"
+              className="hidden sm:inline-flex items-center gap-1.5 h-9 px-3 text-[13px] font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md"
+            >
+              주문내역
+            </Link>
+            <Link
+              to="/login"
+              className="hidden sm:inline-flex items-center h-9 px-3 text-[13px] font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md"
+            >
+              로그인
+            </Link>
+            <Link
+              to="/join"
+              className="inline-flex items-center h-9 px-3.5 text-[13px] font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors rounded-md"
+            >
+              시작하기
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      {/* Floating CTA */}
       <div
-        className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 ${
+        className={`fixed bottom-5 left-1/2 -translate-x-1/2 z-50 transition-all duration-200 ${
           showFloatingCta
             ? "opacity-100 translate-y-0"
-            : "opacity-0 translate-y-4 pointer-events-none"
+            : "opacity-0 translate-y-2 pointer-events-none"
         }`}
       >
-        <Link to="/join">
-          <Button
-            size="lg"
-            className="px-8 py-4 text-base font-bold shadow-2xl shadow-orange-500/40 hover:shadow-orange-500/50 hover:scale-105 transition-all"
-          >
-            <span className="material-symbols-outlined mr-2 text-lg">rocket_launch</span>
-            무료로 시작하기
-          </Button>
+        <Link
+          to="/join"
+          className="inline-flex items-center gap-2 h-11 px-5 rounded-full bg-primary text-primary-foreground text-[13px] font-medium tracking-tight shadow-lg shadow-primary/30 hover:bg-primary/90 transition-colors"
+        >
+          <span className="material-symbols-outlined text-[16px]">rocket_launch</span>
+          무료로 시작하기
         </Link>
       </div>
 
-      {/* Hero Section */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-orange-100/50" />
-        <div className="relative max-w-2xl mx-auto px-4 pt-4 pb-20 text-center">
-          {/* Header with logo and nav */}
-          <header className="flex items-center justify-between mb-12">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl font-black text-primary tracking-tight">
-                POJANG.ONE
-              </span>
-            </div>
+      {/* Hero */}
+      <section className="relative">
+        <div className="max-w-3xl mx-auto px-5 pt-16 pb-20 sm:pt-24 sm:pb-28">
+          <div className="inline-flex items-center gap-2 h-7 px-2.5 mb-6 rounded-full bg-muted border border-border">
+            <span className="size-1.5 rounded-full bg-emerald-500"></span>
+            <span className="text-[11px] font-medium text-muted-foreground tracking-wide">
+              베타 출시 이벤트 진행중
+            </span>
+          </div>
+          <h1 className="text-[34px] sm:text-[44px] font-semibold tracking-tight leading-[1.1] text-foreground mb-5">
+            배달앱 수수료 없이
+            <br />
+            내 가게 <span className="text-primary">포장 주문</span> 페이지.
+          </h1>
+          <p className="text-[15px] sm:text-[17px] text-muted-foreground leading-relaxed max-w-xl mb-8">
+            카카오톡 채널과 연동되는 전용 주문 페이지. 메뉴 등록부터 알림까지
+            10분이면 충분합니다. 월 <span className="text-foreground font-medium">10,000원</span>.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-2.5 mb-10">
             <Link
-              to="/customer/orders"
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-white/80 hover:bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-xl transition-colors shadow-sm min-h-[44px]"
+              to="/join"
+              className="inline-flex items-center justify-center h-11 px-5 rounded-lg bg-primary text-primary-foreground text-[14px] font-medium tracking-tight shadow-sm shadow-primary/20 hover:bg-primary/90 transition-colors"
             >
-              <span className="material-symbols-outlined text-lg">receipt_long</span>
-              <span>내 주문 내역</span>
+              무료로 시작하기
             </Link>
-          </header>
-
-          {/* Pain Point - Main Hook */}
-          <div className="mb-8">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight mb-4">
-              우리 가게 단골 포장 손님,
-              <br />
-              <span className="text-primary">아직도 수수료 내고 계세요?</span>
-            </h1>
-            <p className="text-gray-600 text-lg max-w-xl mx-auto">
-              배달앱 수수료 없이, 내 가게만의 포장 주문 페이지를
-              <br className="hidden sm:block" />
-              <strong className="text-gray-900">월 10,000원</strong>으로 운영하세요.
-            </p>
-          </div>
-
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-3 justify-center mb-12">
-            <Link to="/join">
-              <Button size="lg" className="w-full sm:w-auto px-8 py-6 text-lg font-bold shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 transition-all">
-                무료로 시작하기
-              </Button>
-            </Link>
-            <Link to="/sample">
-              <Button variant="outline" size="lg" className="w-full sm:w-auto px-8 py-6 text-lg font-bold border-2">
-                샘플 페이지 보기
-              </Button>
+            <Link
+              to="/sample"
+              className="inline-flex items-center justify-center h-11 px-5 rounded-lg border border-border bg-background text-foreground text-[14px] font-medium tracking-tight hover:bg-muted transition-colors"
+            >
+              샘플 페이지 보기
             </Link>
           </div>
-
-          {/* Trust Badge */}
-          <div className="flex items-center justify-center gap-6 text-sm text-gray-500">
-            <span className="flex items-center gap-1">
-              <span className="material-symbols-outlined text-green-500 text-base">check_circle</span>
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px] text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-foreground text-[14px]">check</span>
               설치비 무료
             </span>
-            <span className="flex items-center gap-1">
-              <span className="material-symbols-outlined text-green-500 text-base">check_circle</span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-foreground text-[14px]">check</span>
               주문 수수료 0%
             </span>
-            <span className="flex items-center gap-1">
-              <span className="material-symbols-outlined text-green-500 text-base">check_circle</span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-foreground text-[14px]">check</span>
               즉시 개설
             </span>
           </div>
         </div>
+
+        {/* Hero preview */}
+        <div className="max-w-3xl mx-auto px-5 pb-16">
+          <div className="relative rounded-2xl border border-border bg-muted/40 overflow-hidden aspect-[16/9]">
+            <div className="absolute inset-0 bg-gradient-to-br from-muted/0 via-muted/30 to-muted/60" />
+            <div className="absolute inset-0 grid grid-cols-3 gap-3 p-6 sm:p-10">
+              {[
+                { name: "후라이드치킨", price: "18,000", emoji: "🍗" },
+                { name: "양념치킨", price: "19,000", emoji: "🌶️" },
+                { name: "반반치킨", price: "19,000", emoji: "🥢" },
+              ].map((m) => (
+                <div
+                  key={m.name}
+                  className="flex flex-col bg-background rounded-lg border border-border overflow-hidden"
+                >
+                  <div className="aspect-square bg-muted flex items-center justify-center text-3xl sm:text-5xl">
+                    {m.emoji}
+                  </div>
+                  <div className="p-2 sm:p-3">
+                    <p className="text-[10px] sm:text-[12px] font-semibold text-foreground tracking-tight truncate">
+                      {m.name}
+                    </p>
+                    <p className="text-[10px] sm:text-[12px] text-muted-foreground tabular-nums mt-0.5">
+                      {m.price}원
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </section>
 
-      {/* Problem Section */}
-      <section className="py-16 bg-gray-900 text-white">
-        <div className="max-w-2xl mx-auto px-4">
-          <h2 className="text-2xl sm:text-3xl font-bold text-center mb-12">
-            혹시 이런 고민 있으신가요?
+      {/* Problem */}
+      <section className="border-t border-border bg-muted/30">
+        <div className="max-w-3xl mx-auto px-5 py-20 sm:py-24">
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-[0.12em] mb-3">
+            문제
+          </p>
+          <h2 className="text-[26px] sm:text-[32px] font-semibold tracking-tight leading-tight mb-12">
+            아직도 이런 고민하고 계신가요?
           </h2>
-          <div className="grid sm:grid-cols-3 gap-6">
-            <div className="bg-white/10 backdrop-blur rounded-2xl p-6 text-center">
-              <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="material-symbols-outlined text-3xl text-red-400">trending_down</span>
-              </div>
-              <h3 className="font-bold text-lg mb-2">배달앱 수수료 부담</h3>
-              <p className="text-gray-400 text-sm">
-                주문당 수수료가 쌓이면<br />한 달에 수십만원
-              </p>
-            </div>
-            <div className="bg-white/10 backdrop-blur rounded-2xl p-6 text-center">
-              <div className="w-16 h-16 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="material-symbols-outlined text-3xl text-yellow-400">phone_missed</span>
-              </div>
-              <h3 className="font-bold text-lg mb-2">전화 주문 불편</h3>
-              <p className="text-gray-400 text-sm">
-                바쁜 시간에 전화 받기 힘들고<br />주문 실수도 생기고
-              </p>
-            </div>
-            <div className="bg-white/10 backdrop-blur rounded-2xl p-6 text-center">
-              <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="material-symbols-outlined text-3xl text-blue-400">person_off</span>
-              </div>
-              <h3 className="font-bold text-lg mb-2">단골 관리 어려움</h3>
-              <p className="text-gray-400 text-sm">
-                한번 온 손님을<br />다시 부르기 어려워요
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Solution Section */}
-      <section className="py-20 bg-white">
-        <div className="max-w-2xl mx-auto px-4">
-          <div className="text-center mb-12">
-            <span className="inline-block bg-primary/10 text-primary font-bold px-4 py-1 rounded-full text-sm mb-4">
-              POJANG.ONE 솔루션
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">
-              포장 주문, 이렇게 바뀝니다
-            </h2>
-            <p className="text-gray-600">
-              복잡한 배달앱 없이, 내 가게 전용 주문 페이지로 간편하게
-            </p>
-          </div>
-
-          <div className="grid sm:grid-cols-2 gap-6">
-            {/* Feature 1 */}
-            <div className="group bg-gradient-to-br from-orange-50 to-white border border-orange-100 rounded-2xl p-6 hover:shadow-lg transition-all">
-              <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                <span className="material-symbols-outlined text-2xl text-primary">storefront</span>
-              </div>
-              <h3 className="font-bold text-lg text-gray-900 mb-2">내 가게 전용 주문 페이지</h3>
-              <p className="text-gray-600 text-sm leading-relaxed">
-                pojang.one/가게이름 형태의 깔끔한 주문 페이지가 생성됩니다.
-                메뉴 등록부터 주문 관리까지 한 곳에서.
-              </p>
-            </div>
-
-            {/* Feature 2 */}
-            <div className="group bg-gradient-to-br from-yellow-50 to-white border border-yellow-100 rounded-2xl p-6 hover:shadow-lg transition-all">
-              <div className="w-12 h-12 bg-yellow-500/10 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                <span className="material-symbols-outlined text-2xl text-yellow-600">chat</span>
-              </div>
-              <h3 className="font-bold text-lg text-gray-900 mb-2">카카오톡 채널 연동</h3>
-              <p className="text-gray-600 text-sm leading-relaxed">
-                카카오톡 채널의 '주문하기' 버튼과 연결됩니다.
-                고객은 익숙한 카카오톡에서 바로 주문!
-              </p>
-            </div>
-
-            {/* Feature 3 */}
-            <div className="group bg-gradient-to-br from-green-50 to-white border border-green-100 rounded-2xl p-6 hover:shadow-lg transition-all">
-              <div className="w-12 h-12 bg-green-500/10 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                <span className="material-symbols-outlined text-2xl text-green-600">notifications_active</span>
-              </div>
-              <h3 className="font-bold text-lg text-gray-900 mb-2">실시간 주문 알림</h3>
-              <p className="text-gray-600 text-sm leading-relaxed">
-                새 주문이 들어오면 사장님 핸드폰으로 바로 알림!
-                주문 확인, 준비완료 알림까지 자동으로.
-              </p>
-            </div>
-
-            {/* Feature 4 */}
-            <div className="group bg-gradient-to-br from-blue-50 to-white border border-blue-100 rounded-2xl p-6 hover:shadow-lg transition-all">
-              <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                <span className="material-symbols-outlined text-2xl text-blue-600">loyalty</span>
-              </div>
-              <h3 className="font-bold text-lg text-gray-900 mb-2">단골 고객 관리</h3>
-              <p className="text-gray-600 text-sm leading-relaxed">
-                카카오 채널 친구에게 이벤트 쿠폰, 비오는 날 할인 등
-                맞춤 메시지로 재방문을 유도하세요.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works */}
-      <section className="py-20 bg-gray-50">
-        <div className="max-w-2xl mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">
-              이용 방법은 간단해요
-            </h2>
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8">
-            {/* Step 1 */}
-            <div className="flex flex-col items-center text-center">
-              <div className="w-16 h-16 bg-primary text-white rounded-full flex items-center justify-center text-2xl font-bold mb-3">
-                1
-              </div>
-              <h3 className="font-bold text-gray-900 mb-1">회원가입</h3>
-              <p className="text-gray-500 text-sm">카카오로 간편 가입</p>
-            </div>
-
-            <span className="material-symbols-outlined text-gray-300 text-3xl hidden sm:block">arrow_forward</span>
-            <span className="material-symbols-outlined text-gray-300 text-3xl sm:hidden rotate-90">arrow_forward</span>
-
-            {/* Step 2 */}
-            <div className="flex flex-col items-center text-center">
-              <div className="w-16 h-16 bg-primary text-white rounded-full flex items-center justify-center text-2xl font-bold mb-3">
-                2
-              </div>
-              <h3 className="font-bold text-gray-900 mb-1">가게 정보 입력</h3>
-              <p className="text-gray-500 text-sm">메뉴와 가격 등록</p>
-            </div>
-
-            <span className="material-symbols-outlined text-gray-300 text-3xl hidden sm:block">arrow_forward</span>
-            <span className="material-symbols-outlined text-gray-300 text-3xl sm:hidden rotate-90">arrow_forward</span>
-
-            {/* Step 3 */}
-            <div className="flex flex-col items-center text-center">
-              <div className="w-16 h-16 bg-primary text-white rounded-full flex items-center justify-center text-2xl font-bold mb-3">
-                3
-              </div>
-              <h3 className="font-bold text-gray-900 mb-1">주문 받기</h3>
-              <p className="text-gray-500 text-sm">바로 운영 시작!</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing Section */}
-      <section className="py-20 bg-white">
-        <div className="max-w-2xl mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">
-              투명한 요금제
-            </h2>
-            <p className="text-gray-600">
-              숨겨진 비용 없이, 딱 월 이용료만
-            </p>
-          </div>
-
-          <div className="max-w-md mx-auto">
-            <div className="bg-gradient-to-br from-primary to-orange-600 text-white rounded-3xl p-8 shadow-2xl shadow-orange-500/30 relative overflow-hidden">
-              {/* Background decoration */}
-              <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
-              <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2" />
-
-              <div className="relative">
-                <div className="text-center mb-6">
-                  <span className="inline-block bg-white/20 px-3 py-1 rounded-full text-sm font-medium mb-4">
-                    월 구독
+          <div className="grid sm:grid-cols-3 gap-3">
+            {[
+              {
+                icon: "trending_down",
+                title: "수수료 부담",
+                body: "주문당 15% 수수료가 쌓이면 한 달 수십만원.",
+              },
+              {
+                icon: "phone_missed",
+                title: "전화 주문 불편",
+                body: "바쁜 시간 전화 받기 힘들고, 주문 실수도 잦아요.",
+              },
+              {
+                icon: "person_off",
+                title: "단골 관리 어려움",
+                body: "한 번 온 손님을 다시 부르기 어려워요.",
+              },
+            ].map((c) => (
+              <div
+                key={c.title}
+                className="flex flex-col bg-background border border-border rounded-xl p-5"
+              >
+                <div className="size-9 rounded-md bg-muted flex items-center justify-center mb-4">
+                  <span className="material-symbols-outlined text-foreground text-[20px]">
+                    {c.icon}
                   </span>
-                  <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-5xl font-black">10,000</span>
-                    <span className="text-xl">원</span>
-                  </div>
-                  <p className="text-white/80 mt-2">/ 월</p>
                 </div>
-
-                <div className="space-y-3 mb-8">
-                  <div className="flex items-center gap-3 bg-white/10 rounded-xl px-4 py-3">
-                    <span className="material-symbols-outlined text-green-300">check_circle</span>
-                    <span>주문 수수료 <strong>0%</strong></span>
-                  </div>
-                  <div className="flex items-center gap-3 bg-white/10 rounded-xl px-4 py-3">
-                    <span className="material-symbols-outlined text-green-300">check_circle</span>
-                    <span>전용 주문 페이지</span>
-                  </div>
-                  <div className="flex items-center gap-3 bg-white/10 rounded-xl px-4 py-3">
-                    <span className="material-symbols-outlined text-green-300">check_circle</span>
-                    <span>카카오톡 채널 연동</span>
-                  </div>
-                  <div className="flex items-center gap-3 bg-white/10 rounded-xl px-4 py-3">
-                    <span className="material-symbols-outlined text-green-300">check_circle</span>
-                    <span>실시간 주문 알림</span>
-                  </div>
-                  <div className="flex items-center gap-3 bg-white/10 rounded-xl px-4 py-3">
-                    <span className="material-symbols-outlined text-green-300">check_circle</span>
-                    <span>무제한 메뉴 등록</span>
-                  </div>
-                </div>
-
-                <Link to="/join" className="block">
-                  <Button size="lg" variant="secondary" className="w-full py-6 text-lg font-bold bg-white text-primary hover:bg-gray-100">
-                    지금 시작하기
-                  </Button>
-                </Link>
+                <h3 className="text-[15px] font-semibold tracking-tight mb-1.5">
+                  {c.title}
+                </h3>
+                <p className="text-[13px] text-muted-foreground leading-relaxed">
+                  {c.body}
+                </p>
               </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Solution */}
+      <section className="border-t border-border">
+        <div className="max-w-3xl mx-auto px-5 py-20 sm:py-24">
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-[0.12em] mb-3">
+            해결
+          </p>
+          <h2 className="text-[26px] sm:text-[32px] font-semibold tracking-tight leading-tight mb-3">
+            포장 주문, 이렇게 바뀝니다.
+          </h2>
+          <p className="text-[15px] text-muted-foreground mb-12 max-w-xl">
+            복잡한 배달앱 없이, 내 가게 전용 주문 페이지로 간편하게.
+          </p>
+          <div className="grid sm:grid-cols-2 gap-3">
+            {[
+              {
+                icon: "storefront",
+                title: "내 가게 전용 주문 페이지",
+                body: "pojang.one/가게이름 형태의 깔끔한 주문 페이지. 메뉴 등록부터 주문 관리까지 한 곳에서.",
+              },
+              {
+                icon: "chat",
+                title: "카카오톡 채널 연동",
+                body: "카카오톡 채널의 '주문하기' 버튼과 연결. 고객은 익숙한 카카오톡에서 바로 주문.",
+              },
+              {
+                icon: "notifications_active",
+                title: "실시간 주문 알림",
+                body: "새 주문이 들어오면 사장님 핸드폰으로 즉시 알림. 주문 확인·준비완료까지 자동.",
+              },
+              {
+                icon: "loyalty",
+                title: "단골 고객 관리",
+                body: "카카오 채널 친구에게 이벤트 쿠폰, 날씨 할인 등 맞춤 메시지로 재방문 유도.",
+              },
+            ].map((c) => (
+              <div
+                key={c.title}
+                className="flex flex-col bg-background border border-border rounded-xl p-5 hover:border-foreground/20 transition-colors"
+              >
+                <div className="size-9 rounded-md bg-primary/10 flex items-center justify-center mb-4">
+                  <span className="material-symbols-outlined text-primary text-[20px]">
+                    {c.icon}
+                  </span>
+                </div>
+                <h3 className="text-[15px] font-semibold tracking-tight mb-1.5">
+                  {c.title}
+                </h3>
+                <p className="text-[13px] text-muted-foreground leading-relaxed">
+                  {c.body}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section className="border-t border-border bg-muted/30">
+        <div className="max-w-3xl mx-auto px-5 py-20 sm:py-24">
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-[0.12em] mb-3">
+            절차
+          </p>
+          <h2 className="text-[26px] sm:text-[32px] font-semibold tracking-tight leading-tight mb-12">
+            이용 방법은 간단해요.
+          </h2>
+          <div className="grid sm:grid-cols-3 gap-3">
+            {[
+              { num: "01", title: "회원가입", body: "카카오로 간편 가입" },
+              { num: "02", title: "가게 정보 입력", body: "메뉴와 가격 등록" },
+              { num: "03", title: "주문 받기", body: "바로 운영 시작" },
+            ].map((s) => (
+              <div
+                key={s.num}
+                className="flex flex-col bg-background border border-border rounded-xl p-5"
+              >
+                <span className="text-[11px] font-semibold text-muted-foreground tabular-nums tracking-wider mb-3">
+                  {s.num}
+                </span>
+                <h3 className="text-[16px] font-semibold tracking-tight mb-1">
+                  {s.title}
+                </h3>
+                <p className="text-[13px] text-muted-foreground">{s.body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing */}
+      <section className="border-t border-border">
+        <div className="max-w-3xl mx-auto px-5 py-20 sm:py-24">
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-[0.12em] mb-3">
+            요금제
+          </p>
+          <h2 className="text-[26px] sm:text-[32px] font-semibold tracking-tight leading-tight mb-3">
+            투명한 단일 요금제.
+          </h2>
+          <p className="text-[15px] text-muted-foreground mb-12 max-w-xl">
+            숨겨진 비용 없이, 딱 월 이용료만.
+          </p>
+
+          <div className="max-w-md">
+            <div className="border border-border rounded-2xl p-7 bg-background">
+              <div className="flex items-baseline gap-1.5 mb-1">
+                <span className="text-[44px] font-semibold tracking-tight tabular-nums leading-none">
+                  10,000
+                </span>
+                <span className="text-[18px] text-muted-foreground">원</span>
+                <span className="text-[13px] text-muted-foreground ml-1">/ 월</span>
+              </div>
+              <p className="text-[13px] text-muted-foreground mb-6">
+                약정 없음 · 언제든 해지
+              </p>
+              <div className="h-px bg-border mb-6" />
+              <ul className="space-y-3 mb-7">
+                {[
+                  "주문 수수료 0%",
+                  "전용 주문 페이지",
+                  "카카오톡 채널 연동",
+                  "실시간 주문 알림",
+                  "무제한 메뉴 등록",
+                ].map((f) => (
+                  <li key={f} className="flex items-center gap-2.5 text-[13px] text-foreground">
+                    <span className="material-symbols-outlined text-foreground text-[16px]">
+                      check
+                    </span>
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                to="/join"
+                className="inline-flex w-full items-center justify-center h-11 rounded-lg bg-primary text-primary-foreground text-[14px] font-medium tracking-tight shadow-sm shadow-primary/20 hover:bg-primary/90 transition-colors"
+              >
+                지금 시작하기
+              </Link>
             </div>
 
-            {/* Comparison note */}
-            <div className="mt-8 bg-gray-100 rounded-2xl p-6">
-              <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary">calculate</span>
-                수수료 비교해보세요
-              </h3>
-              <p className="text-gray-600 text-sm leading-relaxed">
-                배달앱 수수료가 주문당 평균 15%라면,<br />
-                월 <strong>100만원</strong> 매출 기준 <strong>15만원</strong>이 수수료로 나갑니다.<br />
-                <br />
-                POJANG.ONE은 아무리 많이 팔아도<br />
-                <strong className="text-primary">월 1만원</strong>만 내면 됩니다.
+            <div className="mt-6 p-5 rounded-xl bg-muted/40 border border-border">
+              <p className="text-[12px] font-semibold text-foreground mb-2 tracking-tight">
+                수수료 비교
+              </p>
+              <p className="text-[13px] text-muted-foreground leading-relaxed">
+                배달앱 수수료 평균 15% 기준 월 100만원 매출이면{" "}
+                <span className="text-foreground font-medium">15만원</span>이 수수료.
+                pojang.one은 매출 무관 <span className="text-foreground font-medium">월 1만원</span>.
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Launch Event Banner */}
-      <section className="py-16 bg-gradient-to-r from-yellow-400 via-orange-500 to-primary">
-        <div className="max-w-2xl mx-auto px-4 text-center text-white">
-          <span className="inline-block bg-white/20 backdrop-blur px-4 py-1 rounded-full text-sm font-bold mb-4">
-            출시기념 이벤트
-          </span>
-          <h2 className="text-2xl sm:text-3xl font-bold mb-6">
-            베타서비스 기간 한정 혜택
+      {/* Launch event */}
+      <section className="border-t border-border bg-foreground text-background">
+        <div className="max-w-3xl mx-auto px-5 py-20 sm:py-24">
+          <p className="text-[11px] font-medium text-background/60 uppercase tracking-[0.12em] mb-3">
+            출시 기념
+          </p>
+          <h2 className="text-[26px] sm:text-[32px] font-semibold tracking-tight leading-tight mb-3">
+            베타 한정 혜택.
           </h2>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8">
-            <div className="bg-white/20 backdrop-blur rounded-xl px-6 py-4">
-              <p className="text-sm opacity-90">1개월 결제 시</p>
-              <p className="text-xl font-bold">3개월 이용</p>
+          <p className="text-[15px] text-background/70 mb-10 max-w-xl">
+            선착순 5팀에 한해 진행됩니다.
+          </p>
+          <div className="grid sm:grid-cols-2 gap-3 mb-10">
+            <div className="rounded-xl border border-background/15 p-5">
+              <p className="text-[12px] text-background/60 mb-1.5">1개월 결제 시</p>
+              <p className="text-[20px] font-semibold tracking-tight">3개월 이용</p>
             </div>
-            <span className="text-3xl">+</span>
-            <div className="bg-white/20 backdrop-blur rounded-xl px-6 py-4">
-              <p className="text-sm opacity-90">카카오채널 개설 대행</p>
-              <p className="text-xl font-bold">무료 <span className="text-sm line-through opacity-70">(정가 3만원)</span></p>
+            <div className="rounded-xl border border-background/15 p-5">
+              <p className="text-[12px] text-background/60 mb-1.5">
+                카카오채널 개설 대행 <span className="line-through ml-1">3만원</span>
+              </p>
+              <p className="text-[20px] font-semibold tracking-tight">무료</p>
             </div>
           </div>
-          <p className="text-white/80 mb-6">선착순 5팀 한정</p>
-          <Link to="/join">
-            <Button size="lg" variant="secondary" className="px-8 py-6 text-lg font-bold bg-white text-primary hover:bg-gray-100 shadow-xl">
-              이벤트 신청하기
-            </Button>
+          <Link
+            to="/join"
+            className="inline-flex items-center justify-center h-11 px-5 rounded-lg bg-background text-foreground text-[14px] font-medium tracking-tight hover:bg-background/90 transition-colors"
+          >
+            이벤트 신청하기
           </Link>
         </div>
       </section>
 
-      {/* Demo Section */}
-      <section className="py-20 bg-gray-50">
-        <div className="max-w-2xl mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">
-              샘플 페이지를 확인해보세요
-            </h2>
-            <p className="text-gray-600">
-              실제 주문 페이지가 어떻게 보이는지 미리 체험해보세요
-            </p>
-          </div>
+      {/* Demo */}
+      <section className="border-t border-border bg-muted/30">
+        <div className="max-w-3xl mx-auto px-5 py-20 sm:py-24">
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-[0.12em] mb-3">
+            샘플
+          </p>
+          <h2 className="text-[26px] sm:text-[32px] font-semibold tracking-tight leading-tight mb-3">
+            실제 주문 화면을 확인해보세요.
+          </h2>
+          <p className="text-[15px] text-muted-foreground mb-12 max-w-xl">
+            깔끔하고 직관적인 모바일 우선 디자인.
+          </p>
 
-          <div className="flex flex-col items-center gap-8">
+          <div className="grid sm:grid-cols-[auto_1fr] gap-10 sm:gap-14 items-center">
             {/* Phone Mockup */}
-            <div className="relative">
-              <div className="w-64 h-[500px] bg-gray-900 rounded-[3rem] p-3 shadow-2xl">
-                <div className="w-full h-full bg-white rounded-[2.5rem] overflow-hidden">
-                  {/* Simulated app screen */}
-                  <div className="w-full h-full bg-gradient-to-b from-orange-50 to-white flex flex-col">
-                    {/* App header */}
-                    <div className="bg-primary text-white p-4 text-center">
-                      <p className="font-bold text-sm">샘플 치킨집</p>
-                    </div>
-                    {/* Menu preview */}
-                    <div className="flex-1 p-3 space-y-2 overflow-hidden">
-                      <div className="bg-white rounded-lg p-2 shadow-sm border flex items-center gap-2">
-                        <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                          <span className="material-symbols-outlined text-orange-500 text-xl">lunch_dining</span>
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-xs font-bold text-gray-800">후라이드치킨</p>
-                          <p className="text-xs text-primary font-bold">18,000원</p>
-                        </div>
-                      </div>
-                      <div className="bg-white rounded-lg p-2 shadow-sm border flex items-center gap-2">
-                        <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
-                          <span className="material-symbols-outlined text-red-500 text-xl">local_fire_department</span>
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-xs font-bold text-gray-800">양념치킨</p>
-                          <p className="text-xs text-primary font-bold">19,000원</p>
+            <div className="mx-auto">
+              <div className="relative w-[260px] h-[520px] rounded-[2.5rem] bg-foreground p-2.5 shadow-xl shadow-black/20">
+                <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-24 h-5 bg-foreground rounded-b-2xl z-10" />
+                <div className="w-full h-full rounded-[2rem] overflow-hidden bg-background flex flex-col">
+                  <div className="h-12 border-b border-border flex items-center justify-center">
+                    <p className="text-[12px] font-semibold tracking-tight">샘플 치킨집</p>
+                  </div>
+                  <div className="flex-1 p-3 space-y-2 overflow-hidden">
+                    {[
+                      { name: "후라이드치킨", price: "18,000" },
+                      { name: "양념치킨", price: "19,000" },
+                      { name: "반반치킨", price: "19,000" },
+                    ].map((m) => (
+                      <div
+                        key={m.name}
+                        className="flex items-center gap-2.5 p-2 rounded-lg border border-border"
+                      >
+                        <div className="size-10 rounded-md bg-muted shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[11px] font-semibold truncate">{m.name}</p>
+                          <p className="text-[11px] text-muted-foreground tabular-nums">
+                            {m.price}원
+                          </p>
                         </div>
                       </div>
-                      <div className="bg-white rounded-lg p-2 shadow-sm border flex items-center gap-2">
-                        <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                          <span className="material-symbols-outlined text-yellow-600 text-xl">egg_alt</span>
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-xs font-bold text-gray-800">반반치킨</p>
-                          <p className="text-xs text-primary font-bold">19,000원</p>
-                        </div>
-                      </div>
-                    </div>
-                    {/* Bottom CTA */}
-                    <div className="p-3 bg-white border-t">
-                      <div className="bg-primary text-white text-center py-2 rounded-lg text-xs font-bold">
-                        주문하기
-                      </div>
+                    ))}
+                  </div>
+                  <div className="p-3 border-t border-border">
+                    <div className="h-9 rounded-md bg-primary text-primary-foreground flex items-center justify-center text-[11px] font-medium">
+                      주문하기
                     </div>
                   </div>
                 </div>
               </div>
-              {/* Notch */}
-              <div className="absolute top-3 left-1/2 -translate-x-1/2 w-20 h-6 bg-gray-900 rounded-b-xl" />
             </div>
 
-            {/* Demo description */}
-            <div className="text-center">
-              <h3 className="text-xl font-bold text-gray-900 mb-4">
-                깔끔하고 직관적인 주문 화면
-              </h3>
-              <ul className="space-y-2 text-gray-600 mb-6 inline-block text-left">
-                <li className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary text-lg">check</span>
-                  카테고리별 메뉴 정리
+            <ul className="space-y-3 text-[14px]">
+              {[
+                "카테고리별 메뉴 정리",
+                "원클릭 수량 조절",
+                "모바일 최적화 디자인",
+                "카카오 로그인 지원",
+              ].map((f) => (
+                <li key={f} className="flex items-center gap-2.5 text-foreground">
+                  <span className="material-symbols-outlined text-foreground text-[16px]">
+                    check
+                  </span>
+                  {f}
                 </li>
-                <li className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary text-lg">check</span>
-                  원클릭 수량 조절
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary text-lg">check</span>
-                  모바일 최적화 디자인
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary text-lg">check</span>
-                  카카오 로그인 지원
-                </li>
-              </ul>
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <Link to="/sample">
-                  <Button size="lg" className="w-full sm:w-auto px-8">
-                    <span className="material-symbols-outlined mr-2 text-lg">touch_app</span>
-                    데모 체험하기
-                  </Button>
+              ))}
+              <li className="pt-4">
+                <Link
+                  to="/sample"
+                  className="inline-flex items-center justify-center gap-1.5 h-10 px-4 rounded-lg border border-border bg-background text-foreground text-[13px] font-medium tracking-tight hover:bg-muted transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[16px]">touch_app</span>
+                  데모 체험하기
                 </Link>
-                <Link to="/sample">
-                  <Button size="lg" variant="outline" className="w-full sm:w-auto px-8">
-                    샘플 페이지 보기
-                  </Button>
-                </Link>
-              </div>
-            </div>
+              </li>
+            </ul>
           </div>
         </div>
       </section>
 
-      {/* FAQ Section */}
-      <section className="py-20 bg-white">
-        <div className="max-w-2xl mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">
-              자주 묻는 질문
-            </h2>
-          </div>
-
-          <div className="space-y-4">
-            <details className="group bg-gray-50 rounded-2xl">
-              <summary className="flex items-center justify-between p-6 cursor-pointer list-none">
-                <span className="font-bold text-gray-900">결제는 어떻게 받나요?</span>
-                <span className="material-symbols-outlined text-gray-400 group-open:rotate-180 transition-transform">expand_more</span>
-              </summary>
-              <div className="px-6 pb-6 text-gray-600">
-                고객이 가게에 방문해서 포장 음식을 받을 때 현장에서 직접 결제합니다.
-                현금, 카드, 계좌이체 등 사장님이 원하시는 방식으로 받으시면 됩니다.
-                저희 서비스는 주문 접수만 담당합니다.
-              </div>
-            </details>
-
-            <details className="group bg-gray-50 rounded-2xl">
-              <summary className="flex items-center justify-between p-6 cursor-pointer list-none">
-                <span className="font-bold text-gray-900">카카오톡 채널이 꼭 필요한가요?</span>
-                <span className="material-symbols-outlined text-gray-400 group-open:rotate-180 transition-transform">expand_more</span>
-              </summary>
-              <div className="px-6 pb-6 text-gray-600">
-                카카오톡 채널 없이도 주문 페이지 URL만으로 운영 가능합니다.
-                하지만 카카오톡 채널과 연동하면 고객 재방문 유도, 이벤트 발송 등
-                더 효과적인 마케팅이 가능합니다. 베타 기간에는 채널 개설도 대행해드려요!
-              </div>
-            </details>
-
-            <details className="group bg-gray-50 rounded-2xl">
-              <summary className="flex items-center justify-between p-6 cursor-pointer list-none">
-                <span className="font-bold text-gray-900">주문 알림은 어떻게 받나요?</span>
-                <span className="material-symbols-outlined text-gray-400 group-open:rotate-180 transition-transform">expand_more</span>
-              </summary>
-              <div className="px-6 pb-6 text-gray-600">
-                새 주문이 들어오면 등록하신 전화번호로 알림톡이 발송됩니다.
-                주문 관리 페이지에서 주문 현황을 실시간으로 확인할 수 있고,
-                주문 확인/준비완료 시 고객에게도 자동 알림이 갑니다.
-              </div>
-            </details>
-
-            <details className="group bg-gray-50 rounded-2xl">
-              <summary className="flex items-center justify-between p-6 cursor-pointer list-none">
-                <span className="font-bold text-gray-900">해지는 어떻게 하나요?</span>
-                <span className="material-symbols-outlined text-gray-400 group-open:rotate-180 transition-transform">expand_more</span>
-              </summary>
-              <div className="px-6 pb-6 text-gray-600">
-                약정 기간 없이 언제든 해지 가능합니다.
-                설정 페이지에서 직접 해지하시거나 고객센터로 연락주시면 됩니다.
-                이미 결제된 기간은 끝까지 이용하실 수 있습니다.
-              </div>
-            </details>
+      {/* FAQ */}
+      <section className="border-t border-border">
+        <div className="max-w-3xl mx-auto px-5 py-20 sm:py-24">
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-[0.12em] mb-3">
+            FAQ
+          </p>
+          <h2 className="text-[26px] sm:text-[32px] font-semibold tracking-tight leading-tight mb-10">
+            자주 묻는 질문.
+          </h2>
+          <div className="border-t border-border">
+            {[
+              {
+                q: "결제는 어떻게 받나요?",
+                a: "고객이 가게에 방문해서 포장 음식을 받을 때 현장에서 직접 결제합니다. 현금, 카드, 계좌이체 등 사장님이 원하시는 방식으로. pojang.one은 주문 접수만 담당합니다.",
+              },
+              {
+                q: "카카오톡 채널이 꼭 필요한가요?",
+                a: "채널 없이 주문 페이지 URL만으로 운영 가능합니다. 다만 채널 연동 시 재방문 유도·이벤트 발송 등 마케팅이 가능합니다. 베타 기간에는 채널 개설도 대행해 드립니다.",
+              },
+              {
+                q: "주문 알림은 어떻게 받나요?",
+                a: "새 주문 발생 시 등록한 전화번호로 알림톡이 발송됩니다. 주문 관리 페이지에서 실시간 확인이 가능하고, 주문 확인·준비완료 시 고객에게도 자동 알림이 갑니다.",
+              },
+              {
+                q: "해지는 어떻게 하나요?",
+                a: "약정 없이 언제든 해지 가능합니다. 설정 페이지에서 직접 해지하거나 고객센터로 연락주시면 됩니다. 이미 결제된 기간은 끝까지 이용하실 수 있습니다.",
+              },
+            ].map((item) => (
+              <details
+                key={item.q}
+                className="group border-b border-border"
+              >
+                <summary className="flex items-center justify-between py-5 cursor-pointer list-none">
+                  <span className="text-[15px] font-medium text-foreground tracking-tight">
+                    {item.q}
+                  </span>
+                  <span className="material-symbols-outlined text-muted-foreground group-open:rotate-180 transition-transform text-[20px]">
+                    expand_more
+                  </span>
+                </summary>
+                <p className="pb-5 text-[14px] text-muted-foreground leading-relaxed pr-8">
+                  {item.a}
+                </p>
+              </details>
+            ))}
           </div>
         </div>
       </section>
 
       {/* Final CTA */}
-      <section className="py-20 bg-gray-900 text-white">
-        <div className="max-w-2xl mx-auto px-4 text-center">
-          <h2 className="text-2xl sm:text-3xl font-bold mb-4">
-            지금 바로 시작하세요
+      <section className="border-t border-border bg-muted/30">
+        <div className="max-w-3xl mx-auto px-5 py-20 sm:py-28 text-center">
+          <h2 className="text-[28px] sm:text-[36px] font-semibold tracking-tight leading-tight mb-4">
+            지금 바로 시작하세요.
           </h2>
-          <p className="text-gray-400 mb-8 max-w-xl mx-auto">
+          <p className="text-[15px] text-muted-foreground mb-8 max-w-xl mx-auto">
             복잡한 설정 없이 10분이면 내 가게 주문 페이지가 완성됩니다.
-            <br />
-            배달앱 수수료 걱정 없이 포장 주문을 받아보세요.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/join">
-              <Button size="lg" className="w-full sm:w-auto px-8 py-6 text-lg font-bold shadow-lg shadow-orange-500/30">
-                무료로 시작하기
-              </Button>
+          <div className="flex flex-col sm:flex-row gap-2.5 justify-center">
+            <Link
+              to="/join"
+              className="inline-flex items-center justify-center h-11 px-5 rounded-lg bg-primary text-primary-foreground text-[14px] font-medium tracking-tight shadow-sm shadow-primary/20 hover:bg-primary/90 transition-colors"
+            >
+              무료로 시작하기
             </Link>
-            <a href="tel:010-1234-5678">
-              <Button size="lg" variant="outline" className="w-full sm:w-auto px-8 py-6 text-lg font-bold border-gray-600 text-gray-300 hover:bg-gray-800">
-                <span className="material-symbols-outlined mr-2">call</span>
-                문의하기
-              </Button>
+            <a
+              href="tel:010-1234-5678"
+              className="inline-flex items-center justify-center gap-1.5 h-11 px-5 rounded-lg border border-border bg-background text-foreground text-[14px] font-medium tracking-tight hover:bg-muted transition-colors"
+            >
+              <span className="material-symbols-outlined text-[16px]">call</span>
+              문의하기
             </a>
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-950 text-gray-400 py-12">
-        <div className="max-w-2xl mx-auto px-4">
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-6">
-            <div>
-              <span className="text-xl font-bold text-white">POJANG.ONE</span>
-              <p className="text-sm mt-1">포장주문 전용 서비스</p>
+      <footer className="border-t border-border">
+        <div className="max-w-3xl mx-auto px-5 py-10">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+            <div className="flex items-center gap-2">
+              <span className="size-6 rounded-md bg-foreground flex items-center justify-center">
+                <span className="text-background text-[11px] font-bold tracking-tight">P</span>
+              </span>
+              <div>
+                <p className="text-[13px] font-semibold tracking-tight">pojang.one</p>
+                <p className="text-[11px] text-muted-foreground">포장주문 전용 서비스</p>
+              </div>
             </div>
-            <div className="flex gap-6 text-sm">
-              <Link to="/terms" className="hover:text-white transition-colors">이용약관</Link>
-              <Link to="/privacy" className="hover:text-white transition-colors">개인정보처리방침</Link>
+            <div className="flex gap-5 text-[12px] text-muted-foreground">
+              <Link to="/terms" className="hover:text-foreground transition-colors">
+                이용약관
+              </Link>
+              <Link to="/privacy" className="hover:text-foreground transition-colors">
+                개인정보처리방침
+              </Link>
             </div>
           </div>
-          <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm">
-            <p>&copy; 2025 POJANG.ONE. All rights reserved.</p>
+          <div className="border-t border-border mt-8 pt-6">
+            <p className="text-[11px] text-muted-foreground tabular-nums">
+              © 2025 pojang.one. All rights reserved.
+            </p>
           </div>
         </div>
       </footer>

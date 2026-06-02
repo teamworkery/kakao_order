@@ -877,24 +877,24 @@ export default function OrderPage({
       )}
 
       {/* Top Navigation Bar */}
-      <header className="flex items-center justify-between px-4 py-3 bg-white/90 backdrop-blur-md sticky top-0 z-40 border-b border-gray-100 transition-colors">
+      <header className="flex items-center justify-between px-4 h-14 bg-white/80 backdrop-blur-xl sticky top-0 z-40 border-b border-border">
         <button
           onClick={() => window.history.back()}
-          className="size-11 flex items-center justify-center rounded-full hover:bg-gray-100 active:bg-gray-200 text-gray-800 transition-colors"
+          className="size-10 flex items-center justify-center rounded-md hover:bg-muted text-foreground transition-colors"
           aria-label="뒤로 가기"
         >
-          <span className="material-symbols-outlined">arrow_back</span>
+          <span className="material-symbols-outlined text-[22px]">arrow_back</span>
         </button>
-        <h1 className="text-lg font-bold text-gray-900 tracking-tight">
+        <h1 className="text-[15px] font-semibold text-foreground tracking-tight truncate max-w-[60%]">
           {storename}
         </h1>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           {isAuthenticated && userEmail && (
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-50 border border-gray-200">
-              <span className="material-symbols-outlined text-gray-600 text-sm">
+            <div className="hidden sm:flex items-center gap-1.5 px-2.5 h-8 rounded-md bg-muted">
+              <span className="material-symbols-outlined text-muted-foreground text-[16px]">
                 account_circle
               </span>
-              <span className="text-xs font-medium text-gray-700 max-w-[120px] truncate">
+              <span className="text-xs font-medium text-muted-foreground max-w-[120px] truncate">
                 {userEmail}
               </span>
             </div>
@@ -904,22 +904,12 @@ export default function OrderPage({
               <input type="hidden" name="actionType" value="logout" />
               <button
                 type="submit"
-                className="size-10 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-800 transition-colors"
+                className="size-10 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground transition-colors"
                 title="로그아웃"
               >
-                <span className="material-symbols-outlined">logout</span>
+                <span className="material-symbols-outlined text-[20px]">logout</span>
               </button>
             </Form>
-          )}
-          {!isAuthenticated && (
-            <>
-              <button className="size-10 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-800 transition-colors">
-                <span className="material-symbols-outlined">search</span>
-              </button>
-              <button className="size-10 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-800 transition-colors">
-                <span className="material-symbols-outlined">share</span>
-              </button>
-            </>
           )}
         </div>
       </header>
@@ -951,66 +941,67 @@ export default function OrderPage({
       )}
 
       {/* Restaurant Hero Section */}
-      <div className="p-4 bg-white">
-        <div className="relative w-full aspect-video rounded-xl overflow-hidden mb-4 bg-gray-200 group">
+      <div className="px-4 pt-4 pb-6 bg-background">
+        <div className="relative w-full aspect-[16/10] rounded-xl overflow-hidden bg-muted group">
           {/* 가게 이미지 우선 사용, 없으면 메뉴 아이템 이미지 사용 */}
           {store_image ? (
-            <div
-              className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
-              style={{ backgroundImage: `url(${store_image})` }}
-            ></div>
+            <img
+              src={store_image}
+              alt={storename}
+              loading="eager"
+              className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
+            />
           ) : featuredItem?.image ? (
-            <div
-              className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
-              style={{ backgroundImage: `url(${featuredItem.image})` }}
-            ></div>
+            <img
+              src={featuredItem.image}
+              alt={storename}
+              loading="eager"
+              className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
+            />
           ) : (
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-primary/40 flex items-center justify-center">
-              <span className="material-symbols-outlined text-6xl text-primary/50">
+            <div className="absolute inset-0 bg-gradient-to-br from-muted to-secondary flex items-center justify-center">
+              <span className="material-symbols-outlined text-6xl text-muted-foreground/40">
                 restaurant
               </span>
             </div>
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent"></div>
           <div className="absolute bottom-4 left-4 right-4 text-white">
-            <h2 className="text-3xl font-extrabold tracking-tight mb-1">
+            <h2 className="text-[26px] font-semibold tracking-tight mb-2 leading-tight">
               {storename}
             </h2>
-            <div className="flex items-center flex-wrap gap-3 text-sm font-medium">
+            <div className="flex items-center flex-wrap gap-1.5 text-[13px] font-medium">
               {/* 가게 전화번호 */}
               {storenumber && (
                 <a
                   href={`tel:${storenumber}`}
-                  className="flex items-center gap-1 bg-white/20 backdrop-blur-sm px-2 py-1 rounded-lg hover:bg-white/30 transition-colors"
+                  className="flex items-center gap-1 bg-white/15 backdrop-blur-md px-2.5 h-7 rounded-md hover:bg-white/25 transition-colors"
                 >
-                  <span className="material-symbols-outlined text-white text-lg">
+                  <span className="material-symbols-outlined text-white text-[15px]">
                     call
                   </span>
                   {storenumber}
                 </a>
               )}
               {/* 예상 준비 시간 */}
-              <span className="flex items-center gap-1 bg-white/20 backdrop-blur-sm px-2 py-1 rounded-lg">
-                <span className="material-symbols-outlined text-white text-lg">
+              <span className="flex items-center gap-1 bg-white/15 backdrop-blur-md px-2.5 h-7 rounded-md">
+                <span className="material-symbols-outlined text-white text-[15px]">
                   schedule
                 </span>
                 약 {prepTime}분
               </span>
               {/* 영업 상태 */}
               {(() => {
-                // 영업시간 정보가 없으면 표시하지 않음
                 if (!todayHours) return null;
 
-                // 휴무일인 경우
                 if (todayHours.is_closed) {
                   return (
-                    <span className="bg-gray-500 px-2 py-1 rounded-lg text-white">
+                    <span className="bg-white/15 backdrop-blur-md px-2.5 h-7 inline-flex items-center rounded-md text-white">
                       오늘 휴무
                     </span>
                   );
                 }
 
-                // 영업시간 확인
                 const now = new Date();
                 const currentTime = now.getHours() * 60 + now.getMinutes();
 
@@ -1026,11 +1017,12 @@ export default function OrderPage({
                 if (openTime !== null && closeTime !== null) {
                   const isOpen = currentTime >= openTime && currentTime < closeTime;
                   return isOpen ? (
-                    <span className="bg-green-500 px-2 py-1 rounded-lg text-white">
+                    <span className="inline-flex items-center gap-1.5 bg-emerald-500/95 px-2.5 h-7 rounded-md text-white">
+                      <span className="size-1.5 rounded-full bg-white"></span>
                       영업중
                     </span>
                   ) : (
-                    <span className="bg-gray-500 px-2 py-1 rounded-lg text-white">
+                    <span className="bg-white/15 backdrop-blur-md px-2.5 h-7 inline-flex items-center rounded-md text-white">
                       영업종료
                     </span>
                   );
@@ -1041,139 +1033,138 @@ export default function OrderPage({
             </div>
           </div>
         </div>
-        {store_description && (
-          <p className="text-gray-500 text-sm leading-relaxed px-1">
-            {store_description}
-          </p>
-        )}
-        {!store_description && (
-          <p className="text-gray-500 text-sm leading-relaxed px-1">
-            맛있는 음식을 빠르고 편리하게 주문하세요.
+        {(store_description || true) && (
+          <p className="text-muted-foreground text-[13px] leading-relaxed mt-4 px-0.5">
+            {store_description || "맛있는 음식을 빠르고 편리하게 주문하세요."}
           </p>
         )}
       </div>
 
       {/* Sticky Category Navigation */}
-      <div className="sticky top-[64px] z-30 bg-white border-b border-gray-100 shadow-sm">
-        <nav className="flex overflow-x-auto no-scrollbar px-4 gap-8 py-0">
+      <div className="sticky top-14 z-30 bg-background/85 backdrop-blur-xl border-b border-border">
+        <nav className="flex overflow-x-auto no-scrollbar px-4 gap-6">
           <button
             onClick={() => setSelectedCategory(null)}
-            className="relative flex flex-col items-center gap-3 pt-4 pb-3 min-w-max group"
+            className="relative flex items-center pt-3.5 pb-3 min-w-max"
           >
             <span
-              className={`text-sm tracking-wide font-bold ${
-                selectedCategory === null ? "text-primary" : "text-gray-500"
+              className={`text-[13px] tracking-tight font-medium transition-colors ${
+                selectedCategory === null ? "text-foreground" : "text-muted-foreground hover:text-foreground"
               }`}
             >
               전체
             </span>
-            <span
-              className={`absolute bottom-0 w-full h-1 rounded-t-full transition-colors ${
-                selectedCategory === null ? "bg-primary" : "bg-transparent"
-              }`}
-            ></span>
+            {selectedCategory === null && (
+              <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-foreground rounded-full"></span>
+            )}
           </button>
           {categories.map((cat: Pick<Category, "id" | "name" | "display_order">) => (
             <button
               key={cat.id}
               onClick={() => setSelectedCategory(cat.id)}
-              className="relative flex flex-col items-center gap-3 pt-4 pb-3 min-w-max group"
+              className="relative flex items-center pt-3.5 pb-3 min-w-max"
             >
               <span
-                className={`text-sm tracking-wide font-bold transition-colors ${
+                className={`text-[13px] tracking-tight font-medium transition-colors ${
                   selectedCategory === cat.id
-                    ? "text-primary"
-                    : "text-gray-500 group-hover:text-gray-900"
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {cat.name}
               </span>
-              <span
-                className={`absolute bottom-0 w-full h-1 rounded-t-full transition-colors ${
-                  selectedCategory === cat.id
-                    ? "bg-primary"
-                    : "bg-transparent group-hover:bg-gray-200"
-                }`}
-              ></span>
+              {selectedCategory === cat.id && (
+                <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-foreground rounded-full"></span>
+              )}
             </button>
           ))}
         </nav>
       </div>
 
       {/* Menu Content */}
-      <main className="flex flex-col p-4 gap-8 bg-background-light">
+      <main className="flex flex-col px-4 pb-48 pt-2 gap-10 bg-background">
         {/* Featured Item (First Item - Large Card) */}
         {featuredItem && (
           <section>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-gray-900 tracking-tight">
+            <div className="flex items-baseline justify-between mb-3">
+              <h3 className="text-[15px] font-semibold text-foreground tracking-tight">
                 {categories.find(
                   (c: Pick<Category, "id" | "name" | "display_order">) => c.id === featuredItem?.category_id
                 )?.name || "추천 메뉴"}
               </h3>
+              <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+                Featured
+              </span>
             </div>
-            <div className="flex flex-col gap-5">
-              <div className="flex flex-col bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
-                <div className="relative h-56 w-full bg-gray-100 overflow-hidden">
-                  {featuredItem.image ? (
-                    <img
-                      src={featuredItem.image}
-                      alt={featuredItem.name}
-                      loading="lazy"
-                      className="absolute inset-0 w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="absolute inset-0 bg-gray-200 flex items-center justify-center">
-                      <span className="material-symbols-outlined text-6xl text-gray-400">
-                        lunch_dining
-                      </span>
-                    </div>
-                  )}
-                </div>
-                <div className="p-5 flex flex-col gap-3">
-                  <div className="flex justify-between items-start">
-                    <h4 className="text-lg font-bold text-gray-900 leading-tight">
-                      {featuredItem.name}
-                    </h4>
-                    <span className="text-lg font-bold text-gray-900">
-                      {formatPrice(featuredItem.price)}원
+            <article className="flex flex-col bg-card rounded-xl border border-border overflow-hidden">
+              <div className="relative aspect-[4/3] w-full bg-muted overflow-hidden">
+                {featuredItem.image ? (
+                  <img
+                    src={featuredItem.image}
+                    alt={featuredItem.name}
+                    loading="lazy"
+                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 hover:scale-[1.02]"
+                  />
+                ) : (
+                  <div className="absolute inset-0 bg-muted flex items-center justify-center">
+                    <span className="material-symbols-outlined text-6xl text-muted-foreground/40">
+                      lunch_dining
                     </span>
                   </div>
-                  <p className="text-gray-500 text-sm leading-relaxed">
-                    {featuredItem.description || ""}
+                )}
+              </div>
+              <div className="p-5 flex flex-col gap-3">
+                <div className="flex justify-between items-start gap-3">
+                  <h4 className="text-[17px] font-semibold text-foreground leading-tight tracking-tight">
+                    {featuredItem.name}
+                  </h4>
+                  <span className="text-[15px] font-semibold text-foreground tabular-nums whitespace-nowrap">
+                    {formatPrice(featuredItem.price)}원
+                  </span>
+                </div>
+                {featuredItem.description && (
+                  <p className="text-muted-foreground text-[13px] leading-relaxed">
+                    {featuredItem.description}
                   </p>
-                  {/* Quantity Control */}
-                  <div className="mt-2 flex items-center justify-end">
-                    <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                )}
+                {/* Quantity Control */}
+                <div className="mt-1 flex items-center justify-end">
+                  {getItemQuantity(featuredItem.id) > 0 ? (
+                    <div className="inline-flex items-center bg-muted rounded-lg h-10 p-1">
                       <button
                         type="button"
                         onClick={() => decreaseQuantity(featuredItem)}
-                        className="size-11 flex items-center justify-center bg-white rounded-md shadow-sm text-gray-600 hover:text-primary active:scale-95 transition-all"
-                        disabled={getItemQuantity(featuredItem.id) === 0}
+                        className="size-8 flex items-center justify-center rounded-md text-foreground hover:bg-background transition-colors"
                         aria-label={`${featuredItem.name} 수량 감소`}
                       >
-                        <span className="material-symbols-outlined text-xl">
-                          remove
-                        </span>
+                        <span className="material-symbols-outlined text-[18px]">remove</span>
                       </button>
-                      <span className="w-12 text-center font-bold text-gray-900 text-base">
+                      <span className="w-9 text-center font-semibold text-foreground text-[13px] tabular-nums">
                         {getItemQuantity(featuredItem.id)}
                       </span>
                       <button
                         type="button"
                         onClick={() => increaseQuantity(featuredItem)}
-                        className="size-11 flex items-center justify-center bg-white rounded-md shadow-sm text-gray-600 hover:text-primary active:scale-95 transition-all"
+                        className="size-8 flex items-center justify-center rounded-md text-foreground hover:bg-background transition-colors"
                         aria-label={`${featuredItem.name} 수량 증가`}
                       >
-                        <span className="material-symbols-outlined text-xl">
-                          add
-                        </span>
+                        <span className="material-symbols-outlined text-[18px]">add</span>
                       </button>
                     </div>
-                  </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => increaseQuantity(featuredItem)}
+                      className="inline-flex items-center gap-1.5 h-10 px-4 rounded-lg bg-secondary text-secondary-foreground text-[13px] font-medium hover:bg-secondary/80 transition-colors"
+                      aria-label={`${featuredItem.name} 담기`}
+                    >
+                      담기
+                      <span className="material-symbols-outlined text-[16px]">add</span>
+                    </button>
+                  )}
                 </div>
               </div>
-            </div>
+            </article>
           </section>
         )}
 
@@ -1181,87 +1172,86 @@ export default function OrderPage({
         {regularItems.length > 0 && (
           <section>
             {featuredItem && (
-              <div className="flex items-center justify-between mb-4 mt-2">
-                <h3 className="text-xl font-bold text-gray-900 tracking-tight">
+              <div className="flex items-baseline justify-between mb-3">
+                <h3 className="text-[15px] font-semibold text-foreground tracking-tight">
                   {regularItems[0]?.category || "메뉴"}
                 </h3>
+                <span className="text-[11px] font-medium text-muted-foreground tabular-nums">
+                  {regularItems.length}개
+                </span>
               </div>
             )}
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-3">
               {regularItems.map((item: MenuItemWithCategory) => (
-                <div
+                <article
                   key={item.id}
-                  className="group flex bg-white rounded-xl p-3 shadow-sm border border-gray-100 gap-4 hover:shadow-md transition-all"
+                  className="group flex bg-card rounded-xl p-3 border border-border gap-3.5 hover:border-foreground/15 transition-colors"
                 >
                   {item.image ? (
                     <img
                       src={item.image}
                       alt={item.name}
                       loading="lazy"
-                      className="size-28 rounded-lg bg-gray-100 object-cover shrink-0"
+                      className="size-28 rounded-lg bg-muted object-cover shrink-0"
                     />
                   ) : (
-                    <div className="size-28 rounded-lg bg-gray-50 shrink-0 flex items-center justify-center text-gray-300">
-                      <span className="material-symbols-outlined text-[40px]">
+                    <div className="size-28 rounded-lg bg-muted shrink-0 flex items-center justify-center text-muted-foreground/40">
+                      <span className="material-symbols-outlined text-[36px]">
                         lunch_dining
                       </span>
                     </div>
                   )}
-                  <div className="flex flex-col flex-1 justify-between py-0.5">
-                    <div>
-                      <h4 className="text-base font-bold text-gray-900 group-hover:text-primary transition-colors">
+                  <div className="flex flex-col flex-1 justify-between py-0.5 min-w-0">
+                    <div className="min-w-0">
+                      <h4 className="text-[15px] font-semibold text-foreground tracking-tight truncate">
                         {item.name}
                       </h4>
-                      <p className="text-gray-500 text-xs mt-1.5 leading-relaxed line-clamp-2">
-                        {item.description || ""}
-                      </p>
+                      {item.description && (
+                        <p className="text-muted-foreground text-[12px] mt-1 leading-relaxed line-clamp-2">
+                          {item.description}
+                        </p>
+                      )}
                     </div>
-                    <div className="flex items-center justify-between mt-3">
-                      <span className="font-bold text-gray-900 text-lg">
+                    <div className="flex items-center justify-between mt-3 gap-2">
+                      <span className="font-semibold text-foreground text-[15px] tabular-nums">
                         {formatPrice(item.price)}원
                       </span>
                       {getItemQuantity(item.id) > 0 ? (
-                        <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                        <div className="inline-flex items-center bg-muted rounded-lg h-9 p-0.5">
                           <button
                             type="button"
                             onClick={() => decreaseQuantity(item)}
-                            className="size-11 flex items-center justify-center text-gray-600 hover:text-primary transition-colors"
+                            className="size-8 flex items-center justify-center rounded-md text-foreground hover:bg-background transition-colors"
                             aria-label={`${item.name} 수량 감소`}
                           >
-                            <span className="material-symbols-outlined text-lg">
-                              remove
-                            </span>
+                            <span className="material-symbols-outlined text-[16px]">remove</span>
                           </button>
-                          <span className="w-8 text-center font-bold text-gray-900 text-sm">
+                          <span className="w-7 text-center font-semibold text-foreground text-[12px] tabular-nums">
                             {getItemQuantity(item.id)}
                           </span>
                           <button
                             type="button"
                             onClick={() => increaseQuantity(item)}
-                            className="size-11 flex items-center justify-center text-gray-600 hover:text-primary transition-colors"
+                            className="size-8 flex items-center justify-center rounded-md text-foreground hover:bg-background transition-colors"
                             aria-label={`${item.name} 수량 증가`}
                           >
-                            <span className="material-symbols-outlined text-lg">
-                              add
-                            </span>
+                            <span className="material-symbols-outlined text-[16px]">add</span>
                           </button>
                         </div>
                       ) : (
                         <button
                           type="button"
                           onClick={() => increaseQuantity(item)}
-                          className="bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-900 px-4 py-2.5 rounded-lg text-sm font-bold flex items-center gap-1.5 transition-colors min-h-[44px]"
+                          className="inline-flex items-center justify-center gap-1 h-9 px-3.5 rounded-lg bg-secondary text-secondary-foreground text-[12px] font-medium hover:bg-secondary/80 transition-colors"
                           aria-label={`${item.name} 담기`}
                         >
                           담기
-                          <span className="material-symbols-outlined text-sm font-bold">
-                            add
-                          </span>
+                          <span className="material-symbols-outlined text-[14px]">add</span>
                         </button>
                       )}
                     </div>
                   </div>
-                </div>
+                </article>
               ))}
             </div>
           </section>
@@ -1270,37 +1260,35 @@ export default function OrderPage({
 
       {/* Fixed Bottom Order Bar */}
       <div className="fixed bottom-0 z-50 w-full max-w-[480px]">
-        {/* Gradient fade */}
-        <div className="h-8 bg-gradient-to-b from-transparent to-white/10 w-full pointer-events-none"></div>
-        <div className="bg-white border-t border-gray-100 shadow-[0_-8px_30px_rgba(0,0,0,0.12)] p-4 rounded-t-2xl">
+        <div className="bg-background/95 backdrop-blur-xl border-t border-border px-4 pt-3 pb-[max(12px,env(safe-area-inset-bottom))]">
           {!isAuthenticated ? (
             /* Kakao Login Button - Always shown when not authenticated */
-            <div className="space-y-3">
-              <p className="text-center text-sm text-gray-500">주문하려면 로그인이 필요해요</p>
+            <div className="space-y-2.5">
+              <p className="text-center text-[12px] text-muted-foreground">주문하려면 로그인이 필요해요</p>
               <button
                 onClick={handleKakaoLogin}
-                className="w-full bg-[#FEE500] hover:bg-[#fdd800] active:bg-[#f5d000] text-[#3C1E1E] font-bold py-4 rounded-xl shadow-lg transition-all group active:scale-[0.98] min-h-[56px] flex items-center justify-center gap-2"
+                className="w-full bg-[#FEE500] hover:bg-[#FDD800] active:bg-[#F5D000] text-[#3C1E1E] font-medium h-12 rounded-lg transition-colors flex items-center justify-center gap-2 tracking-tight"
               >
-                <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <svg className="w-[18px] h-[18px] fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path d="M12 3C6.48 3 2 6.48 2 10.76C2 13.62 3.86 16.12 6.64 17.41L5.64 21.05C5.57 21.32 5.86 21.56 6.11 21.38L10.39 18.53C10.91 18.59 11.45 18.62 12 18.62C17.52 18.62 22 15.14 22 10.86C22 6.58 17.52 3 12 3Z"></path>
                 </svg>
-                <span className="text-[15px]">카카오로 간편 로그인</span>
+                <span className="text-[14px]">카카오로 간편 로그인</span>
               </button>
             </div>
           ) : (
             /* Order Summary & Checkout Action - Always shown when authenticated */
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2.5">
               {/* Phone Number Input - only show if user doesn't have phone number in profile */}
               {!userPhoneNumber && (
-                <div className="bg-gray-50 rounded-xl p-4">
+                <div className="bg-muted rounded-lg p-3">
                   <label
                     htmlFor="phoneNumber"
-                    className="block text-sm font-bold text-gray-700 mb-2"
+                    className="block text-[12px] font-medium text-foreground mb-1"
                   >
-                    연락처를 입력해주세요
+                    연락처
                   </label>
-                  <p className="text-xs text-gray-500 mb-2">
-                    주문 확인 및 픽업 안내를 위해 필요합니다.
+                  <p className="text-[11px] text-muted-foreground mb-2">
+                    주문 확인 및 픽업 안내용
                   </p>
                   <PhoneInput
                     id="phoneNumber"
@@ -1314,18 +1302,18 @@ export default function OrderPage({
 
               {/* 주문 에러 메시지 */}
               {orderError && (
-                <div className="mb-3 px-4 py-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-red-700 text-sm animate-pulse">
-                  <span className="material-symbols-outlined text-base">error</span>
+                <div className="px-3 py-2.5 bg-destructive/5 border border-destructive/20 rounded-lg flex items-center gap-2 text-destructive text-[12px]">
+                  <span className="material-symbols-outlined text-[16px]">error</span>
                   <span>{orderError}</span>
                 </div>
               )}
 
-              <div className="flex items-center gap-4">
-                <div className="flex flex-col pl-1">
-                  <span className="text-xs text-gray-500 font-medium">
-                    총 {orderItems.reduce((sum, item) => sum + item.quantity, 0)}개
+              <div className="flex items-center gap-3">
+                <div className="flex flex-col">
+                  <span className="text-[11px] text-muted-foreground font-medium tabular-nums">
+                    {orderItems.reduce((sum, item) => sum + item.quantity, 0)}개
                   </span>
-                  <span className="text-2xl font-bold text-gray-900 tracking-tight">
+                  <span className="text-[20px] font-semibold text-foreground tracking-tight tabular-nums leading-none mt-0.5">
                     {formatPrice(totalAmount)}원
                   </span>
                 </div>
@@ -1344,16 +1332,16 @@ export default function OrderPage({
                   <button
                     type="submit"
                     disabled={!canOrder}
-                    className={`w-full font-bold py-4 rounded-xl shadow-lg flex items-center justify-between px-6 transition-all min-h-[56px] ${
+                    className={`w-full h-12 rounded-lg flex items-center justify-center gap-2 transition-colors font-medium tracking-tight text-[14px] ${
                       !isStoreOpen
-                        ? "bg-gray-400 cursor-not-allowed"
-                        : "bg-primary hover:bg-orange-600 shadow-orange-500/30 group active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-                    } text-white`}
+                        ? "bg-muted text-muted-foreground cursor-not-allowed"
+                        : "bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed"
+                    }`}
                     aria-label={!isStoreOpen ? "영업 종료" : canOrder ? `${formatPrice(totalAmount)}원 주문하기` : "주문 조건을 확인해주세요"}
                   >
-                    <span className="text-[15px]">{!isStoreOpen ? "영업 종료" : "주문하기"}</span>
-                    {isStoreOpen && (
-                      <span className="bg-white/20 group-hover:bg-white/30 text-white text-xs font-bold px-2.5 py-1 rounded-md transition-colors">
+                    <span>{!isStoreOpen ? "영업 종료" : "주문하기"}</span>
+                    {isStoreOpen && orderItems.length > 0 && (
+                      <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-md bg-white/20 text-[11px] font-semibold tabular-nums">
                         {orderItems.reduce((sum, item) => sum + item.quantity, 0)}
                       </span>
                     )}

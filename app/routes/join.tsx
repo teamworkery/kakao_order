@@ -28,22 +28,12 @@ const formSchema = z
   });
 
 // SSR 인증 상태 체크 (서버에서 실행)
+// 점주(Partner Portal) 전용 — 로그인된 사용자는 /admin(없으면 온보딩)으로 보낸다.
 export async function loader({ request }: Route.LoaderArgs) {
   const serverclient = makeSSRClient(request);
   const userResponse = await serverclient.client.auth.getUser();
   if (userResponse.data?.user) {
-    // 프로필 확인하여 role에 따라 리다이렉트
-    const { data: profile } = await serverclient.client
-      .from("profiles")
-      .select("role")
-      .eq("profile_id", userResponse.data.user.id)
-      .maybeSingle();
-
-    if (profile?.role === "customer") {
-      throw redirect("/", { headers: serverclient.headers });
-    } else {
-      throw redirect("/admin", { headers: serverclient.headers });
-    }
+    throw redirect("/admin", { headers: serverclient.headers });
   }
 
   return null;
@@ -53,12 +43,37 @@ export default function JoinPage({ loaderData }: Route.ComponentProps) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [agreed, setAgreed] = useState(false);
   const navigate = useNavigate();
+
+  // 카카오로 회원가입 (점주 포털 → /admin 온보딩으로)
+  const handleKakaoJoin = async () => {
+    if (!agreed) {
+      setError("이용약관 및 개인정보처리방침에 동의해주세요.");
+      return;
+    }
+    const baseUrl =
+      (import.meta.env.VITE_APP_URL as string | undefined) ||
+      window.location.origin;
+    const { error: oauthError } = await browserClient.auth.signInWithOAuth({
+      provider: "kakao",
+      options: { redirectTo: `${baseUrl}/auth/callback?next=/admin` },
+    });
+    if (oauthError) {
+      setError("카카오 회원가입 중 오류가 발생했습니다. 다시 시도해주세요.");
+    }
+  };
 
   const doJoin = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
     setSuccess(null);
+
+    if (!agreed) {
+      setError("이용약관 및 개인정보처리방침에 동의해주세요.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     const formData = new FormData(event.currentTarget);
@@ -227,10 +242,25 @@ export default function JoinPage({ loaderData }: Route.ComponentProps) {
                     <span>{success}</span>
                   </div>
                 )}
+                {/* 약관 동의 */}
+                <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={agreed}
+                    onChange={(e) => setAgreed(e.target.checked)}
+                    className="mt-0.5 size-4 rounded border-gray-300 text-primary focus:ring-primary"
+                  />
+                  <span className="text-sm text-gray-600 leading-relaxed">
+                    <Link to="/terms" target="_blank" className="text-primary font-semibold hover:underline">이용약관</Link>
+                    {" 및 "}
+                    <Link to="/privacy" target="_blank" className="text-primary font-semibold hover:underline">개인정보처리방침</Link>
+                    에 동의합니다. <span className="text-primary">*</span>
+                  </span>
+                </label>
                 {/* Sign Up Button */}
                 <button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !agreed}
                   className="w-full h-12 bg-primary hover:bg-[#d66a1f] text-white font-bold rounded-lg transition-all shadow-[0_4px_14px_0_rgba(238,124,43,0.39)] hover:shadow-[0_6px_20px_rgba(238,124,43,0.23)] hover:-translate-y-0.5 active:translate-y-0 text-base disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {isSubmitting ? (
@@ -247,14 +277,18 @@ export default function JoinPage({ loaderData }: Route.ComponentProps) {
                 <div className="flex-grow border-t border-gray-200"></div>
               </div>
               {/* Social Login (Kakao) */}
-              <button className="w-full h-12 bg-[#FEE500] hover:bg-[#fadd00] text-[#3c1e1e] font-bold rounded-lg transition-colors flex items-center justify-center gap-2 relative overflow-hidden">
+              <button
+                type="button"
+                onClick={handleKakaoJoin}
+                className="w-full h-12 bg-[#FEE500] hover:bg-[#fadd00] text-[#3c1e1e] font-bold rounded-lg transition-colors flex items-center justify-center gap-2 relative overflow-hidden"
+              >
                 <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path d="M12 3C6.48 3 2 6.48 2 10.76C2 13.62 3.86 16.12 6.64 17.41L5.64 21.05C5.57 21.32 5.86 21.56 6.11 21.38L10.39 18.53C10.91 18.59 11.45 18.62 12 18.62C17.52 18.62 22 15.14 22 10.86C22 6.58 17.52 3 12 3Z"></path>
                 </svg>
                 <span>카카오로 회원가입</span>
               </button>
               <p className="mt-8 text-center text-xs text-gray-400 leading-relaxed">
-                계속 진행하면 <a className="underline hover:text-gray-600" href="#">이용약관</a> 및 <a className="underline hover:text-gray-600" href="#">개인정보처리방침</a>에 동의하는 것으로 간주됩니다.
+                계속 진행하면 <Link className="underline hover:text-gray-600" to="/terms">이용약관</Link> 및 <Link className="underline hover:text-gray-600" to="/privacy">개인정보처리방침</Link>에 동의하는 것으로 간주됩니다.
               </p>
             </div>
           </div>

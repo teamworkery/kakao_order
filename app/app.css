@@ -80,9 +80,9 @@
 
 :root {
   /* Base */
-  --radius: 0.5rem;
+  --radius: 0.625rem;
 
-  /* Core colors */
+  /* Core colors — warm off-white base */
   --background: #f8f7f6;
   --background-light: #fdfcfb;
   --foreground: #181411;
@@ -95,12 +95,12 @@
   --popover: #ffffff;
   --popover-foreground: #181411;
 
-  /* Primary (Orange theme) */
+  /* Primary (Orange brand) */
   --primary: #ee7c2b;
   --primary-foreground: #ffffff;
   --primary-light: #fef3eb;
 
-  /* Secondary */
+  /* Secondary — warm beige */
   --secondary: #f4f2f0;
   --secondary-foreground: #181411;
 

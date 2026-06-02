@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "~/common/components/ui/button";
 import type { Route } from "./+types/login";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import InputPair from "~/common/components/input-pair";
 import { LoaderCircle } from "lucide-react";
 import { z } from "zod";
@@ -20,22 +20,13 @@ const formSchema = z.object({
 });
 
 // SSR 인증 상태 체크 (서버에서 실행)
+// 이 페이지는 점주(Partner Portal) 전용이므로, 로그인된 사용자는 /admin 으로 보낸다.
+// (가게가 아직 없으면 /admin 이 온보딩 화면을 띄운다.)
 export async function loader({ request }: Route.LoaderArgs) {
   const serverclient = makeSSRClient(request);
   const userResponse = await serverclient.client.auth.getUser();
   if (userResponse.data?.user) {
-    // 프로필 확인하여 role에 따라 리다이렉트
-    const { data: profile } = await serverclient.client
-      .from("profiles")
-      .select("role")
-      .eq("profile_id", userResponse.data.user.id)
-      .maybeSingle();
-
-    if (profile?.role === "customer") {
-      throw redirect("/", { headers: serverclient.headers });
-    } else {
-      throw redirect("/admin", { headers: serverclient.headers });
-    }
+    throw redirect("/admin", { headers: serverclient.headers });
   }
 
   return null;
@@ -45,6 +36,22 @@ export default function LoginPage({ loaderData }: Route.ComponentProps) {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const resetSuccess = searchParams.get("reset") === "success";
+
+  // 카카오 로그인 (점주 포털 → 성공 시 /admin 으로)
+  const handleKakaoLogin = async () => {
+    const baseUrl =
+      (import.meta.env.VITE_APP_URL as string | undefined) ||
+      window.location.origin;
+    const { error: oauthError } = await browserClient.auth.signInWithOAuth({
+      provider: "kakao",
+      options: { redirectTo: `${baseUrl}/auth/callback?next=/admin` },
+    });
+    if (oauthError) {
+      setError("카카오 로그인 중 오류가 발생했습니다. 다시 시도해주세요.");
+    }
+  };
 
   const doLogin = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -139,6 +146,12 @@ export default function LoginPage({ loaderData }: Route.ComponentProps) {
                 <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">다시 오신 것을 환영합니다</h2>
                 <p className="text-gray-500">계정 정보를 입력하여 대시보드에 접속하세요.</p>
               </div>
+              {resetSuccess && (
+                <div className="mb-5 flex items-center gap-2 text-green-600 text-sm bg-green-50 p-3 rounded-lg border border-green-100">
+                  <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                  <span>비밀번호가 변경되었습니다. 새 비밀번호로 로그인해주세요.</span>
+                </div>
+              )}
               <form action="#" className="space-y-5" onSubmit={doLogin}>
                 {/* Email Input */}
                 <label className="block">
@@ -161,7 +174,7 @@ export default function LoginPage({ loaderData }: Route.ComponentProps) {
                 <label className="block">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-foreground text-sm font-semibold">비밀번호</span>
-                    <a className="text-sm text-primary font-bold hover:underline" href="#">비밀번호를 잊으셨나요?</a>
+                    <Link className="text-sm text-primary font-bold hover:underline" to="/forgot-password">비밀번호를 잊으셨나요?</Link>
                   </div>
                   <div className="relative group">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors">
@@ -207,14 +220,18 @@ export default function LoginPage({ loaderData }: Route.ComponentProps) {
                 <div className="flex-grow border-t border-gray-200"></div>
               </div>
               {/* Social Login (Kakao) */}
-              <button className="w-full h-12 bg-[#FEE500] hover:bg-[#fadd00] text-[#3c1e1e] font-bold rounded-lg transition-colors flex items-center justify-center gap-2 relative overflow-hidden">
+              <button
+                type="button"
+                onClick={handleKakaoLogin}
+                className="w-full h-12 bg-[#FEE500] hover:bg-[#fadd00] text-[#3c1e1e] font-bold rounded-lg transition-colors flex items-center justify-center gap-2 relative overflow-hidden"
+              >
                 <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path d="M12 3C6.48 3 2 6.48 2 10.76C2 13.62 3.86 16.12 6.64 17.41L5.64 21.05C5.57 21.32 5.86 21.56 6.11 21.38L10.39 18.53C10.91 18.59 11.45 18.62 12 18.62C17.52 18.62 22 15.14 22 10.86C22 6.58 17.52 3 12 3Z"></path>
                 </svg>
                 <span>카카오로 로그인</span>
               </button>
               <p className="mt-8 text-center text-xs text-gray-400 leading-relaxed">
-                계속 진행하면 <a className="underline hover:text-gray-600" href="#">이용약관</a> 및 <a className="underline hover:text-gray-600" href="#">개인정보처리방침</a>에 동의하는 것으로 간주됩니다.
+                계속 진행하면 <Link className="underline hover:text-gray-600" to="/terms">이용약관</Link> 및 <Link className="underline hover:text-gray-600" to="/privacy">개인정보처리방침</Link>에 동의하는 것으로 간주됩니다.
               </p>
             </div>
           </div>
