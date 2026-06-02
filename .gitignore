@@ -8,3 +8,4 @@
 
 # n8n MCP 설정 (Bearer 토큰 포함 — 커밋 금지)
 .mcp.json
+.vercel

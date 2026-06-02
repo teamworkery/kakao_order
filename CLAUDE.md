@@ -3,9 +3,9 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## ⏭️ 다음 작업
-- **현재 상태**: `refactor` 브랜치. 최근 커밋 `67654b9`(옵션) ← `f0ec8f0`(RLS2) ← `49181b6`(등록+온보딩). **굿모닝차이나** 등록(`/goodmorning-china`, 메뉴 129·사진 self-host·실옵션 시드). **셀프 온보딩+인증 보완**(가게 개설 마법사→`role=owner`, slug 검증, 비번재설정, 약관, 카카오버튼). **RLS Phase 2 적용**(`public_stores` 뷰). **메뉴 옵션/사이즈 시스템 완료**(그룹·추가요금, 손님 모달·점주 관리·주문 반영). 운영 DB는 Management API로 적용(`.env` `SUPABASE_ACCESS_TOKEN`=kakao_order sbp_ PAT). typecheck/build/E2E 통과.
+- **현재 상태**: `refactor` 브랜치. 최근 커밋 `79c5d04`(주문SMS) ← `67654b9`(옵션) ← `f0ec8f0`(RLS2) ← `49181b6`(등록+온보딩). **굿모닝차이나** 등록(`/goodmorning-china`, 메뉴 129·사진 self-host·실옵션 시드). **셀프 온보딩+인증 보완**(가게 개설 마법사→`role=owner`, slug 검증, 비번재설정, 약관, 카카오버튼). **RLS Phase 2 적용**(`public_stores` 뷰). **메뉴 옵션/사이즈 시스템 완료**. **주문 알림 SMS(알리고) 실연동 완료** — n8n MCP(`.mcp.json`)로 워크플로우 2개(`kakao_order_store_sms`·`kakao_order_customer_sms`) 생성·active, 실발송 확인, 앱 `.env` `/webhook/` 전환. 운영 DB는 Management API로 적용(`.env` `SUPABASE_ACCESS_TOKEN`=kakao_order sbp_ PAT). typecheck/build/E2E 통과.
 - **다음 작업 (전부 사용자 확인/외부 계정/배포 필요 — 진행 전 문의)**:
-  1. **카카오 알림톡 실 발송 검증** (최우선) — n8n 이 실제 카카오 비즈니스 API 호출하는지 + 템플릿 승인 상태
+  1. **카카오 알림톡 전환** — 비즈채널·발신프로필·템플릿 승인 후 n8n HTTP 노드를 알림톡 엔드포인트로 교체(SMS는 폴백 유지). 현재는 SMS 실발송 가동 중.
   2. **커스텀 SMTP 연결** — 가입 이메일 인증·비번 재설정 메일 실발송 (Supabase 기본 SMTP는 운영 부적합)
   3. **도메인 배포** — `pojang.one` DNS+SSL + 카카오 OAuth redirect 등록 + `VITE_APP_URL` prod 전환 (현재 localhost)
   4. `N8N_WEBHOOK_STORE_SECRET` 생성 → `.env` + n8n 동기화 (`$name.tsx:343`)
