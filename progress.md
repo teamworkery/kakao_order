@@ -1,5 +1,15 @@
 # progress
 
+## 2026-06-03 (오후) — 홈페이지 "따뜻한 포장마차" 리디자인 + 배포
+
+사용자 피드백("내가 만든 것/네가 만든 것 디자인이 뒤죽박죽, 홈이 못생겼고 Shadcn이 안 어울린다") 대응. 진단 결과 홈(`index.tsx`)이 **전형적 미니멀 SaaS 템플릿**(흑·회색 일색, 자기 주황 브랜드 미사용, border-t 칸막이, 이모지 플레이스홀더)이었고, 정작 Shadcn 컴포넌트는 거의 안 쓰고 손으로 짠 상태 → "Shadcn 문제"가 아니라 **톤 부재**가 원인. 미감 방향을 **포장마차(이름 pojang과 직결: 등불 주황·차콜·크림)**로 commit하고 홈부터 재작업.
+
+- **전역 토큰(`app.css`)**: 차가운 흰색 → 크림 베이스(`--background:#fbf6ef`), 웜 베이지 보더(`#ece1d3`)·secondary/muted(`#f3ebe0`), `--radius` 0.625→0.875. 포장마차 웜 그림자 3종(`--shadow-warm`/`-lg`/`--shadow-glow`, 검정 대신 주황빛) `@theme`에 추가.
+- **폰트(`root.tsx`)**: Pretendard(동적 서브셋 CDN) 추가 + `--font-sans`·body 우선 적용 → 기존 한글=시스템폰트/라틴=Jakarta로 따로 놀던 문제 해소(Plus Jakarta는 라틴 보조로 강등).
+- **`index.tsx` 전면 재작성**: 등불 radial-glow 히어로, "포장 주문" 주황 마커 하이라이트, rounded-full+shadow-glow CTA, 둥근 카드+웜 그림자, 주황 아이콘 원, 섹션 리듬(크림↔웜베이지)+ **한밤 포장마차 출시기념 섹션**(차콜 `#241a13`+주황 글로우+🏮). 깨져있던 `/sample` 링크를 실가게 `/goodmorning-china`로 교체. 공용 `<Eyebrow>` 컴포넌트로 라벨 통일.
+- **검증**: build·typecheck 통과. Playwright로 데스크탑/모바일/`/goodmorning-china`/`/login` 스크린샷 확인 — 토큰만 바꿔도 손님화면·로그인이 자동 일관화됨(대시보드 Shadcn은 그대로 유지가 정답). 사용자 요청으로 히어로 하단 "샘플 치킨집" 미리보기 카드 제거(폰 목업 데모의 동명 카드는 유지).
+- **배포**: `refactor`→`master` ff·push(`0001a19`) → Vercel 자동배포 → `www.pojang.one` 새 홈 라이브 확인.
+
 ## 2026-06-03 — refactor 브랜치 운영 배포 (Vercel / www.pojang.one)
 
 `refactor`의 누적 작업(17커밋: 가게등록·메뉴옵션·RLS2·주문SMS·온보딩)을 운영에 반영. 배포 전 현황 점검에서 **이미 `pojang.one`이 Vercel(`kakao-order` 프로젝트)에 연결·SSL 정상**이지만 마지막 prod 배포가 15일 전 `master`라 `/goodmorning-china` 404였음(DNS는 추가작업 불필요, "배포 최신화"가 실제 과제였음). prod·로컬이 **동일 Supabase**(`wkhgugajknrvpcobwlrv`)·`VITE_APP_URL=https://www.pojang.one`(기존부터 올바름) 확인.

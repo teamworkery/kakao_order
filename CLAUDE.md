@@ -3,7 +3,7 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## ⏭️ 다음 작업
-- **현재 상태**: `refactor` 브랜치. **prod 배포 완료(2026-06-03)** — `refactor`→`master` ff 병합·push, Vercel `kakao-order` 프로젝트가 `master` 자동배포 → `www.pojang.one` 최신화. 배포 전 prod에 없던 env 3개(`SUPABASE_SERVICE_ROLE_KEY`·`N8N_WEBHOOK_URL`·`N8N_WEBHOOK_URL_STORE`)를 Vercel production에 주입. 검증: `/`·`/join`·`/login`·`/forgot-password`·`/goodmorning-china` 200(이전 404), `/admin` 302. prod·로컬 동일 Supabase(`wkhgugajknrvpcobwlrv`), `VITE_APP_URL`은 기존부터 `https://www.pojang.one`. 앞선 작업: 주문SMS(알리고)·메뉴옵션·RLS2·굿모닝차이나 등록.
+- **현재 상태**: `refactor` 브랜치. **홈페이지 "따뜻한 포장마차" 리디자인 → prod 배포 완료(2026-06-03)** — 차가운 미니멀 SaaS 톤을 웜 브랜드 톤으로 전환. `app.css` 토큰을 크림 베이스(`#fbf6ef`)·웜 베이지 보더·radius 0.875로, 웜 그림자 토큰(`shadow-warm/-lg/glow`) 추가, **Pretendard 한글폰트**(`root.tsx`)로 한/영 톤 통일. `index.tsx` 전면 재작성(등불 글로우 히어로·둥근 카드·한밤 포장마차 출시기념 섹션, 데모 링크를 실가게 `/goodmorning-china`로). 토큰만 바꿔도 손님화면·로그인 자동 일관화, **대시보드는 Shadcn 유지**. `0001a19`까지 `master` ff·push로 prod 라이브 확인. **앞선 배포(같은 날)**: `refactor` 누적분(가게등록·옵션·RLS2·주문SMS)을 최초 배포 + env 3개(`SUPABASE_SERVICE_ROLE_KEY`·`N8N_WEBHOOK_URL`·`N8N_WEBHOOK_URL_STORE`) Vercel production 주입. prod·로컬 동일 Supabase(`wkhgugajknrvpcobwlrv`), `VITE_APP_URL`=`https://www.pojang.one`.
 - **다음 작업 (전부 사용자 확인/외부 계정 필요 — 진행 전 문의)**:
   1. **카카오 OAuth prod 수동검증** — `www.pojang.one`에서 카카오 로그인 1회 실행해 redirect(`/auth/callback`) 정상 확인(도메인 불변이라 기존 등록 유효 추정).
   2. **카카오 알림톡 전환** — 비즈채널·발신프로필·템플릿 승인 후 n8n HTTP 노드를 알림톡 엔드포인트로 교체(SMS는 폴백 유지). 현재는 SMS 실발송 가동 중.
