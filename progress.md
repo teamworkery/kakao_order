@@ -13,7 +13,13 @@
 - **카카오 버튼**: login/join의 죽어있던 버튼을 `signInWithOAuth`로 연결(next=/admin).
 - **관리자 사이드바**: 하드코딩 "영업중"/"10:00-22:00"를 실제 store_hours 기반 계산으로 교체.
 - 검증: `npm run typecheck` 통과, dev 서버에서 신규 4라우트 200, `/admin` 비로그인 302→/login, 가게 페이지 회귀 없음.
-- **미반영(사용자 확인/외부 필요)**: 카카오 알림톡 실발송·템플릿 승인, 도메인/SSL/OAuth redirect, 커스텀 SMTP(메일 실발송), N8N_WEBHOOK_STORE_SECRET, .env DATABASE_URL 교정, RLS Phase 2(public_stores VIEW), 메뉴 옵션/사이즈 시스템, 1계정 다점포.
+- 커밋 `49181b6`.
+
+**RLS Phase 2 (커밋 `f0ec8f0`)** — `profiles_select_public`(USING true)이 익명에게 모든 가게의 email/customernumber까지 노출하던 문제. `public_stores` 뷰(공개 컬럼만, 뷰 소유자 권한으로 RLS 우회→전 가게 공개) 신설 + `profiles` 직접 공개 SELECT 제거 + 본인 행만 SELECT 정책. 가게 조회 경로 3곳($name 로더/액션, admin slug 중복확인)을 뷰로 전환. 운영 DB 적용은 Management API(`api.supabase.com/v1/projects/{ref}/database/query`)로 — 단, `.env`의 기존 `SUPABASE_ACCESS_TOKEN`이 옛 형식이라 401, 사용자가 새 `sbp_` PAT(kakao_order 계정) 발급해 `.env` 교체 후 적용. 검증: 익명 `profiles.email` 0건, `public_stores`는 정상. 뷰 nullable 컬럼 때문에 $name 로더에 profile_id non-null 가드 추가.
+
+**메뉴 옵션/사이즈 시스템 (커밋 `67654b9`)** — `menu_option_groups`(min/max 선택) + `menu_options`(추가요금) + `orderitem.options`(jsonb 스냅샷) + RLS. 손님($name): 옵션 있는 메뉴는 모달로 단일(radio)/복수(checkbox)·필수검증·실시간 가격, 옵션 조합별 장바구니 라인(합성 키), 확인모달 라인별 수량조정. 점주(admin): 메뉴 카드 '옵션 관리' 모달에서 그룹/옵션 CRUD(useFetcher로 무리로드 revalidate). 점주 주문상세+알림 payload에 옵션 표시. 굿모닝차이나 실옵션 시드(곱빼기·소스·토핑, `scripts/seed_goodmorning_options.mjs`). 옵션 바텀시트가 쿠키배너(z-50)에 가려 모달 z-[60]로 상향. Playwright로 옵션선택→가격변동(8000→9000)→담기 E2E 검증.
+
+- **여전히 미반영(사용자 확인/외부 필요)**: 카카오 알림톡 실발송·템플릿 승인, 도메인/SSL/OAuth redirect, 커스텀 SMTP(메일 실발송), N8N_WEBHOOK_STORE_SECRET(n8n 동기화), .env DATABASE_URL 교정(host가 타 프로젝트 `szmdt…`), 1계정 다점포.
 
 ## 2026-05-27
 

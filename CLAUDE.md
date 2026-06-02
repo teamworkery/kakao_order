@@ -3,15 +3,14 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## ⏭️ 다음 작업
-- **현재 상태**: `refactor` 브랜치 (commit `d03af4f` + 미커밋). RLS baseline 운영 적용 완료. **굿모닝차이나(부천 상동) 실가게 등록 완료** (`/goodmorning-china`, 메뉴 129·사진 self-host `public/menu-images/`, 시드 `scripts/seed_goodmorning_china.mjs`·`scripts/update_goodmorning_images.mjs`). **셀프서비스 온보딩+인증 보완 완료** (점주 가입→가게 개설 마법사→`role=owner` 승격, slug 검증, 비번 재설정 `/forgot-password`·`/reset-password`, 약관 동의, 카카오 버튼 동작, 사이드바 실 영업상태). typecheck 통과.
-- **다음 작업 (대부분 사용자 확인/외부 계정/배포 필요 — 진행 전 문의)**:
+- **현재 상태**: `refactor` 브랜치. 최근 커밋 `67654b9`(옵션) ← `f0ec8f0`(RLS2) ← `49181b6`(등록+온보딩). **굿모닝차이나** 등록(`/goodmorning-china`, 메뉴 129·사진 self-host·실옵션 시드). **셀프 온보딩+인증 보완**(가게 개설 마법사→`role=owner`, slug 검증, 비번재설정, 약관, 카카오버튼). **RLS Phase 2 적용**(`public_stores` 뷰). **메뉴 옵션/사이즈 시스템 완료**(그룹·추가요금, 손님 모달·점주 관리·주문 반영). 운영 DB는 Management API로 적용(`.env` `SUPABASE_ACCESS_TOKEN`=kakao_order sbp_ PAT). typecheck/build/E2E 통과.
+- **다음 작업 (전부 사용자 확인/외부 계정/배포 필요 — 진행 전 문의)**:
   1. **카카오 알림톡 실 발송 검증** (최우선) — n8n 이 실제 카카오 비즈니스 API 호출하는지 + 템플릿 승인 상태
   2. **커스텀 SMTP 연결** — 가입 이메일 인증·비번 재설정 메일 실발송 (Supabase 기본 SMTP는 운영 부적합)
   3. **도메인 배포** — `pojang.one` DNS+SSL + 카카오 OAuth redirect 등록 + `VITE_APP_URL` prod 전환 (현재 localhost)
   4. `N8N_WEBHOOK_STORE_SECRET` 생성 → `.env` + n8n 동기화 (`$name.tsx:343`)
-  5. `.env` 정리 — `DATABASE_URL` host 를 운영 ref(`wkhgugajknrvpcobwlrv`)로 교체
-  6. RLS Phase 2 — `profiles` email/customernumber 보호 → `public_stores` VIEW 분리 + `/$name` lookup 변경 (운영 보안 변경, 사인오프 필요)
-  7. (제품 결정) 메뉴 옵션/사이즈 modifier 시스템, 1계정 다점포
+  5. `.env` 정리 — `DATABASE_URL` host 가 타 프로젝트(`szmdt…`), 운영 ref(`wkhgugajknrvpcobwlrv`)로 교체
+  6. (제품 결정) 1계정 다점포
 - **시작 명령어**: `npm run dev` / 회귀 검증 `curl localhost:5173/goodmorning-china -o /dev/null -w "%{http_code}\n"`
 
 ## Project Overview
