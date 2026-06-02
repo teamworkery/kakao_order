@@ -8,6 +8,18 @@ import PhoneInput, { getRawPhoneNumber, validatePhoneNumber } from "~/common/com
 
 type MenuItem = Database["public"]["Tables"]["menuItem"]["Row"];
 type Category = Database["public"]["Tables"]["categories"]["Row"];
+type OptionGroupRow = Database["public"]["Tables"]["menu_option_groups"]["Row"];
+type OptionRow = Database["public"]["Tables"]["menu_options"]["Row"];
+
+// 옵션 그룹 + 하위 선택지
+type OptionGroup = OptionGroupRow & { menu_options: OptionRow[] };
+
+// 주문 라인에 저장되는 선택 옵션 스냅샷
+interface SelectedOption {
+  groupName: string;
+  optionName: string;
+  priceDelta: number;
+}
 
 // MenuItem에 카테고리 정보가 조인된 타입
 type MenuItemWithCategory = MenuItem & {
@@ -20,10 +32,12 @@ type MyLoaderArgs = {
 };
 
 interface OrderItem {
-  id: string;
+  id: string; // 장바구니 라인 키 (옵션 조합 포함 시 합성 키)
+  menuItemId?: string; // 실제 메뉴 id (옵션 라인일 때 id와 다름)
   name: string;
-  price: number;
+  price: number; // 옵션 추가요금이 반영된 단가
   quantity: number;
+  options?: SelectedOption[];
 }
 
 // Action 반환 타입 정의
@@ -76,7 +90,7 @@ export const loader = async ({ request, params }: MyLoaderArgs) => {
   const today = new Date().getDay();
 
   // 두 번째 단계: 모든 쿼리를 병렬로 실행
-  const [menuItemsResult, categoriesResult, todayHoursResult, userDataResult] = await Promise.all([
+  const [menuItemsResult, categoriesResult, todayHoursResult, optionGroupsResult, userDataResult] = await Promise.all([
     // 메뉴 아이템 조회
     getMenuItems(client, profile_id),
     // 카테고리 목록 조회
@@ -92,6 +106,12 @@ export const loader = async ({ request, params }: MyLoaderArgs) => {
       .eq("profile_id", profile_id)
       .eq("day_of_week", today)
       .maybeSingle(),
+    // 메뉴 옵션 그룹 + 선택지 조회
+    client
+      .from("menu_option_groups")
+      .select("*, menu_options(*)")
+      .eq("profile_id", profile_id)
+      .order("display_order", { ascending: true }),
     // 인증 상태 확인
     client.auth.getUser(),
   ]);
@@ -99,6 +119,7 @@ export const loader = async ({ request, params }: MyLoaderArgs) => {
   const menuItems = menuItemsResult;
   const categories = categoriesResult.data || [];
   const todayHours = todayHoursResult.data;
+  const optionGroups = (optionGroupsResult.data as OptionGroup[] | null) || [];
   const user = userDataResult.data?.user || null;
 
   // 로그인한 사용자의 프로필 정보 가져오기
@@ -128,6 +149,7 @@ export const loader = async ({ request, params }: MyLoaderArgs) => {
   return {
     menuItems,
     categories,
+    optionGroups,
     user,
     userEmail: userProfile?.email || user?.email || null,
     name,
@@ -170,9 +192,12 @@ export const saveOrder = async (
   // 2) 주문 아이템(orderItem) 저장 (여러개)
   const orderItemRows = orderItems.map((item: OrderItem) => ({
     orderId: order.order_id,
-    menuItemId: item.id,
+    menuItemId: item.menuItemId ?? item.id,
     quantity: item.quantity,
     price: item.price,
+    options: (item.options && item.options.length
+      ? item.options
+      : null) as Database["public"]["Tables"]["orderitem"]["Insert"]["options"],
   }));
 
   const { error: itemError } = await client
@@ -389,6 +414,7 @@ export default function OrderPage({
   const {
     menuItems,
     categories,
+    optionGroups,
     user: initialUser,
     userEmail,
     name,
@@ -408,8 +434,139 @@ export default function OrderPage({
   const [showPhoneModal, setShowPhoneModal] = useState(needsPhoneNumber);
   const [phoneInput, setPhoneInput] = useState("");
   const [showOrderConfirmModal, setShowOrderConfirmModal] = useState(false);
+  const [optionModalItem, setOptionModalItem] = useState<MenuItemWithCategory | null>(null);
+  const [optionSel, setOptionSel] = useState<Record<string, string[]>>({});
+  const [optionQty, setOptionQty] = useState(1);
   const location = useLocation();
   const fetcher = useFetcher();
+
+  // 메뉴 id별 옵션 그룹 매핑
+  const optionGroupsByItem = useMemo(() => {
+    const map = new Map<string, OptionGroup[]>();
+    for (const g of (optionGroups as OptionGroup[]) || []) {
+      const arr = map.get(g.menu_item_id) || [];
+      arr.push(g);
+      map.set(g.menu_item_id, arr);
+    }
+    for (const arr of map.values()) {
+      arr.sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
+      for (const g of arr)
+        (g.menu_options || []).sort(
+          (a, b) => (a.display_order ?? 0) - (b.display_order ?? 0)
+        );
+    }
+    return map;
+  }, [optionGroups]);
+
+  // 옵션 모달 열기 (단일 필수 그룹은 첫 선택지 기본 선택)
+  const openOptionModal = (item: MenuItemWithCategory) => {
+    const groups = optionGroupsByItem.get(item.id) || [];
+    const init: Record<string, string[]> = {};
+    for (const g of groups) {
+      if (g.min_select >= 1 && g.max_select <= 1) {
+        const first = (g.menu_options || []).find((o) => o.is_active);
+        init[g.id] = first ? [first.id] : [];
+      } else {
+        init[g.id] = [];
+      }
+    }
+    setOptionSel(init);
+    setOptionQty(1);
+    setOptionModalItem(item);
+  };
+
+  // 옵션 선택 토글 (단일=교체, 복수=max 한도 내 토글)
+  const toggleOption = (g: OptionGroup, optionId: string) => {
+    setOptionSel((prev) => {
+      const cur = prev[g.id] || [];
+      if (g.max_select <= 1) return { ...prev, [g.id]: [optionId] };
+      const has = cur.includes(optionId);
+      if (has) return { ...prev, [g.id]: cur.filter((x) => x !== optionId) };
+      if (cur.length >= g.max_select) return prev; // 최대 초과 → 무시
+      return { ...prev, [g.id]: [...cur, optionId] };
+    });
+  };
+
+  // 현재 모달 선택의 추가요금 합계
+  const optionDelta = useMemo(() => {
+    if (!optionModalItem) return 0;
+    const groups = optionGroupsByItem.get(optionModalItem.id) || [];
+    let d = 0;
+    for (const g of groups)
+      for (const oid of optionSel[g.id] || []) {
+        const o = (g.menu_options || []).find((x) => x.id === oid);
+        if (o) d += Number(o.price_delta) || 0;
+      }
+    return d;
+  }, [optionModalItem, optionSel, optionGroupsByItem]);
+
+  // 옵션 라인 장바구니 담기
+  const addOptionLineToCart = () => {
+    const item = optionModalItem;
+    if (!item) return;
+    const groups = optionGroupsByItem.get(item.id) || [];
+    for (const g of groups) {
+      const sel = optionSel[g.id] || [];
+      if (g.min_select >= 1 && sel.length < g.min_select) {
+        alert(`'${g.name}' 옵션을 선택해주세요.`);
+        return;
+      }
+    }
+    const selected: SelectedOption[] = [];
+    const selIds: string[] = [];
+    let delta = 0;
+    for (const g of groups) {
+      for (const oid of optionSel[g.id] || []) {
+        const o = (g.menu_options || []).find((x) => x.id === oid);
+        if (o) {
+          selected.push({
+            groupName: g.name,
+            optionName: o.name,
+            priceDelta: Number(o.price_delta) || 0,
+          });
+          selIds.push(oid);
+          delta += Number(o.price_delta) || 0;
+        }
+      }
+    }
+    const lineId = selIds.length
+      ? `${item.id}::${[...selIds].sort().join(",")}`
+      : item.id;
+    const unitPrice = item.price + delta;
+    const summary = selected.map((s) => s.optionName).join("/");
+    const lineName = summary ? `${item.name} (${summary})` : item.name;
+    setOrderItems((prev) => {
+      const idx = prev.findIndex((l) => l.id === lineId);
+      if (idx >= 0) {
+        const cp = [...prev];
+        cp[idx] = { ...cp[idx], quantity: cp[idx].quantity + optionQty };
+        return cp;
+      }
+      return [
+        ...prev,
+        {
+          id: lineId,
+          menuItemId: item.id,
+          name: lineName,
+          price: unitPrice,
+          quantity: optionQty,
+          options: selected,
+        },
+      ];
+    });
+    setOptionModalItem(null);
+  };
+
+  // 장바구니 라인 수량 조정 (확인 모달용 · 옵션 라인 포함)
+  const adjustLine = (lineId: string, delta: number) => {
+    setOrderItems((prev) =>
+      prev.flatMap((l) => {
+        if (l.id !== lineId) return [l];
+        const q = l.quantity + delta;
+        return q <= 0 ? [] : [{ ...l, quantity: q }];
+      })
+    );
+  };
 
   // 프로필에서 가져온 전화번호가 있으면 사용, 없으면 입력한 전화번호 사용 (하이픈 제거)
   const rawPhoneNumber = getRawPhoneNumber(phoneNumber);
@@ -704,11 +861,82 @@ export default function OrderPage({
     [menuItems, selectedCategory, featuredItem?.id]
   );
 
+  // 메뉴 카드의 담기 컨트롤: 옵션 있으면 옵션 모달, 없으면 수량 스테퍼
+  const renderAddControl = (item: MenuItemWithCategory, size: "lg" | "sm") => {
+    const groups = optionGroupsByItem.get(item.id) || [];
+    const big = size === "lg";
+    if (groups.length > 0) {
+      const totalQty = orderItems
+        .filter((l) => (l.menuItemId ?? l.id) === item.id)
+        .reduce((s, l) => s + l.quantity, 0);
+      return (
+        <button
+          type="button"
+          onClick={() => openOptionModal(item)}
+          className={`inline-flex items-center justify-center gap-1.5 rounded-lg bg-secondary text-secondary-foreground font-medium hover:bg-secondary/80 transition-colors ${
+            big ? "h-10 px-4 text-[13px]" : "h-9 px-3.5 text-[12px]"
+          }`}
+          aria-label={`${item.name} 옵션 선택`}
+        >
+          <span className="material-symbols-outlined text-[16px]">tune</span>
+          {totalQty > 0 ? `옵션 추가 · ${totalQty}` : "옵션 선택"}
+        </button>
+      );
+    }
+    const qty = getItemQuantity(item.id);
+    if (qty > 0) {
+      return (
+        <div
+          className={`inline-flex items-center bg-muted rounded-lg ${
+            big ? "h-10 p-1" : "h-9 p-0.5"
+          }`}
+        >
+          <button
+            type="button"
+            onClick={() => decreaseQuantity(item)}
+            className="size-8 flex items-center justify-center rounded-md text-foreground hover:bg-background transition-colors"
+            aria-label={`${item.name} 수량 감소`}
+          >
+            <span className="material-symbols-outlined text-[16px]">remove</span>
+          </button>
+          <span
+            className={`text-center font-semibold text-foreground tabular-nums ${
+              big ? "w-9 text-[13px]" : "w-7 text-[12px]"
+            }`}
+          >
+            {qty}
+          </span>
+          <button
+            type="button"
+            onClick={() => increaseQuantity(item)}
+            className="size-8 flex items-center justify-center rounded-md text-foreground hover:bg-background transition-colors"
+            aria-label={`${item.name} 수량 증가`}
+          >
+            <span className="material-symbols-outlined text-[16px]">add</span>
+          </button>
+        </div>
+      );
+    }
+    return (
+      <button
+        type="button"
+        onClick={() => increaseQuantity(item)}
+        className={`inline-flex items-center justify-center gap-1.5 rounded-lg bg-secondary text-secondary-foreground font-medium hover:bg-secondary/80 transition-colors ${
+          big ? "h-10 px-4 text-[13px]" : "h-9 px-3.5 text-[12px]"
+        }`}
+        aria-label={`${item.name} 담기`}
+      >
+        담기
+        <span className="material-symbols-outlined text-[16px]">add</span>
+      </button>
+    );
+  };
+
   return (
     <div className="w-full max-w-[480px] bg-background-light min-h-screen shadow-2xl relative pb-46 flex flex-col mx-auto">
       {/* 전화번호 입력 모달 */}
       {showPhoneModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md">
             <div className="text-center mb-6">
               <div className="mx-auto w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mb-4">
@@ -758,7 +986,7 @@ export default function OrderPage({
 
       {/* 주문 확인 모달 */}
       {showOrderConfirmModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col">
             {/* 헤더 */}
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
@@ -803,14 +1031,40 @@ export default function OrderPage({
                 </div>
                 <div className="divide-y divide-gray-100">
                   {orderItems.map((item) => (
-                    <div key={item.id} className="p-4 flex justify-between items-center">
-                      <div className="flex-1">
+                    <div key={item.id} className="p-4 flex justify-between items-start gap-3">
+                      <div className="flex-1 min-w-0">
                         <p className="font-medium text-gray-900">{item.name}</p>
-                        <p className="text-sm text-gray-500">
-                          {formatPrice(item.price)}원 x {item.quantity}
+                        {item.options && item.options.length > 0 && (
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            {item.options.map((o) => o.optionName).join(", ")}
+                          </p>
+                        )}
+                        <p className="text-sm text-gray-500 mt-0.5">
+                          {formatPrice(item.price)}원
                         </p>
+                        <div className="inline-flex items-center bg-gray-100 rounded-lg h-8 mt-2 p-0.5">
+                          <button
+                            type="button"
+                            onClick={() => adjustLine(item.id, -1)}
+                            className="size-7 flex items-center justify-center rounded-md hover:bg-white"
+                            aria-label="수량 감소"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">remove</span>
+                          </button>
+                          <span className="w-8 text-center text-sm font-semibold tabular-nums">
+                            {item.quantity}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => adjustLine(item.id, 1)}
+                            className="size-7 flex items-center justify-center rounded-md hover:bg-white"
+                            aria-label="수량 증가"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">add</span>
+                          </button>
+                        </div>
                       </div>
-                      <p className="font-bold text-gray-900">
+                      <p className="font-bold text-gray-900 tabular-nums whitespace-nowrap">
                         {formatPrice(item.price * item.quantity)}원
                       </p>
                     </div>
@@ -875,6 +1129,133 @@ export default function OrderPage({
           </div>
         </div>
       )}
+
+      {/* 옵션 선택 모달 */}
+      {optionModalItem &&
+        (() => {
+          const item = optionModalItem;
+          const groups = optionGroupsByItem.get(item.id) || [];
+          const unit = item.price + optionDelta;
+          return (
+            <div className="fixed inset-0 bg-black/50 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
+              <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-xl max-h-[85vh] flex flex-col">
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                  <h2 className="text-lg font-bold text-gray-900 truncate pr-2">
+                    {item.name}
+                  </h2>
+                  <button
+                    onClick={() => setOptionModalItem(null)}
+                    className="text-gray-400 hover:text-gray-600 p-1 shrink-0"
+                    aria-label="닫기"
+                  >
+                    <span className="material-symbols-outlined">close</span>
+                  </button>
+                </div>
+                <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+                  {groups.map((g) => (
+                    <div key={g.id}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className="font-bold text-gray-800 text-[15px]">
+                          {g.name}
+                        </h3>
+                        {g.min_select >= 1 ? (
+                          <span className="text-[11px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                            필수
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-gray-400">선택</span>
+                        )}
+                        {g.max_select > 1 && (
+                          <span className="text-[11px] text-gray-400">
+                            최대 {g.max_select}개
+                          </span>
+                        )}
+                      </div>
+                      <div className="space-y-1.5">
+                        {(g.menu_options || [])
+                          .filter((o) => o.is_active)
+                          .map((o) => {
+                            const checked = (optionSel[g.id] || []).includes(
+                              o.id
+                            );
+                            return (
+                              <label
+                                key={o.id}
+                                className={`flex items-center justify-between gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
+                                  checked
+                                    ? "border-primary bg-primary/5"
+                                    : "border-gray-200 hover:border-gray-300"
+                                }`}
+                              >
+                                <div className="flex items-center gap-2.5">
+                                  <input
+                                    type={g.max_select <= 1 ? "radio" : "checkbox"}
+                                    name={`grp-${g.id}`}
+                                    checked={checked}
+                                    onChange={() => toggleOption(g, o.id)}
+                                    className="size-4 text-primary focus:ring-primary"
+                                  />
+                                  <span className="text-[14px] text-gray-800">
+                                    {o.name}
+                                  </span>
+                                </div>
+                                {Number(o.price_delta) !== 0 && (
+                                  <span className="text-[13px] font-medium text-gray-500 tabular-nums">
+                                    {Number(o.price_delta) > 0 ? "+" : ""}
+                                    {formatPrice(Number(o.price_delta))}원
+                                  </span>
+                                )}
+                              </label>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  ))}
+                  {/* 수량 */}
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="font-bold text-gray-800 text-[15px]">수량</span>
+                    <div className="inline-flex items-center bg-muted rounded-lg h-10 p-1">
+                      <button
+                        type="button"
+                        onClick={() => setOptionQty((q) => Math.max(1, q - 1))}
+                        className="size-8 flex items-center justify-center rounded-md hover:bg-background"
+                        aria-label="수량 감소"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">
+                          remove
+                        </span>
+                      </button>
+                      <span className="w-9 text-center font-semibold tabular-nums">
+                        {optionQty}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setOptionQty((q) => q + 1)}
+                        className="size-8 flex items-center justify-center rounded-md hover:bg-background"
+                        aria-label="수량 증가"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">
+                          add
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-4 border-t border-gray-100">
+                  <button
+                    onClick={addOptionLineToCart}
+                    className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-bold rounded-xl flex items-center justify-center gap-2"
+                  >
+                    담기
+                    <span className="tabular-nums">
+                      {formatPrice(unit * optionQty)}원
+                    </span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
       {/* Top Navigation Bar */}
       <header className="flex items-center justify-between px-4 h-14 bg-white/80 backdrop-blur-xl sticky top-0 z-40 border-b border-border">
@@ -1127,41 +1508,9 @@ export default function OrderPage({
                     {featuredItem.description}
                   </p>
                 )}
-                {/* Quantity Control */}
+                {/* Quantity / Option Control */}
                 <div className="mt-1 flex items-center justify-end">
-                  {getItemQuantity(featuredItem.id) > 0 ? (
-                    <div className="inline-flex items-center bg-muted rounded-lg h-10 p-1">
-                      <button
-                        type="button"
-                        onClick={() => decreaseQuantity(featuredItem)}
-                        className="size-8 flex items-center justify-center rounded-md text-foreground hover:bg-background transition-colors"
-                        aria-label={`${featuredItem.name} 수량 감소`}
-                      >
-                        <span className="material-symbols-outlined text-[18px]">remove</span>
-                      </button>
-                      <span className="w-9 text-center font-semibold text-foreground text-[13px] tabular-nums">
-                        {getItemQuantity(featuredItem.id)}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => increaseQuantity(featuredItem)}
-                        className="size-8 flex items-center justify-center rounded-md text-foreground hover:bg-background transition-colors"
-                        aria-label={`${featuredItem.name} 수량 증가`}
-                      >
-                        <span className="material-symbols-outlined text-[18px]">add</span>
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => increaseQuantity(featuredItem)}
-                      className="inline-flex items-center gap-1.5 h-10 px-4 rounded-lg bg-secondary text-secondary-foreground text-[13px] font-medium hover:bg-secondary/80 transition-colors"
-                      aria-label={`${featuredItem.name} 담기`}
-                    >
-                      담기
-                      <span className="material-symbols-outlined text-[16px]">add</span>
-                    </button>
-                  )}
+                  {renderAddControl(featuredItem, "lg")}
                 </div>
               </div>
             </article>
@@ -1216,39 +1565,7 @@ export default function OrderPage({
                       <span className="font-semibold text-foreground text-[15px] tabular-nums">
                         {formatPrice(item.price)}원
                       </span>
-                      {getItemQuantity(item.id) > 0 ? (
-                        <div className="inline-flex items-center bg-muted rounded-lg h-9 p-0.5">
-                          <button
-                            type="button"
-                            onClick={() => decreaseQuantity(item)}
-                            className="size-8 flex items-center justify-center rounded-md text-foreground hover:bg-background transition-colors"
-                            aria-label={`${item.name} 수량 감소`}
-                          >
-                            <span className="material-symbols-outlined text-[16px]">remove</span>
-                          </button>
-                          <span className="w-7 text-center font-semibold text-foreground text-[12px] tabular-nums">
-                            {getItemQuantity(item.id)}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => increaseQuantity(item)}
-                            className="size-8 flex items-center justify-center rounded-md text-foreground hover:bg-background transition-colors"
-                            aria-label={`${item.name} 수량 증가`}
-                          >
-                            <span className="material-symbols-outlined text-[16px]">add</span>
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => increaseQuantity(item)}
-                          className="inline-flex items-center justify-center gap-1 h-9 px-3.5 rounded-lg bg-secondary text-secondary-foreground text-[12px] font-medium hover:bg-secondary/80 transition-colors"
-                          aria-label={`${item.name} 담기`}
-                        >
-                          담기
-                          <span className="material-symbols-outlined text-[14px]">add</span>
-                        </button>
-                      )}
+                      {renderAddControl(item, "sm")}
                     </div>
                   </div>
                 </article>

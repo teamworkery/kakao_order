@@ -53,6 +53,116 @@ export type Database = {
           },
         ]
       }
+      menu_option_groups: {
+        Row: {
+          created_at: string
+          display_order: number
+          id: string
+          max_select: number
+          menu_item_id: string
+          min_select: number
+          name: string
+          profile_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          max_select?: number
+          menu_item_id: string
+          min_select?: number
+          name: string
+          profile_id: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          max_select?: number
+          menu_item_id?: string
+          min_select?: number
+          name?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_option_groups_menu_item_id_fkey"
+            columns: ["menu_item_id"]
+            isOneToOne: false
+            referencedRelation: "menuItem"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "menu_option_groups_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "menu_option_groups_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_stores"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      menu_options: {
+        Row: {
+          created_at: string
+          display_order: number
+          group_id: string
+          id: string
+          is_active: boolean
+          name: string
+          price_delta: number
+          profile_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          group_id: string
+          id?: string
+          is_active?: boolean
+          name: string
+          price_delta?: number
+          profile_id: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          group_id?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          price_delta?: number
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_options_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "menu_option_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "menu_options_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "menu_options_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_stores"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       menuItem: {
         Row: {
           category: string | null
@@ -230,6 +340,7 @@ export type Database = {
         Row: {
           id: string
           menuItemId: string | null
+          options: Json | null
           orderId: string | null
           price: number
           quantity: number
@@ -237,6 +348,7 @@ export type Database = {
         Insert: {
           id?: string
           menuItemId?: string | null
+          options?: Json | null
           orderId?: string | null
           price: number
           quantity: number
@@ -244,6 +356,7 @@ export type Database = {
         Update: {
           id?: string
           menuItemId?: string | null
+          options?: Json | null
           orderId?: string | null
           price?: number
           quantity?: number

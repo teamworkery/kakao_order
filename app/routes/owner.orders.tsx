@@ -26,12 +26,14 @@ type OrderRow = {
   estimated_pickup_time: string | null;
 };
 
+type SelectedOption = { groupName: string; optionName: string; priceDelta: number };
 type OrderItemWithMenu = {
   id: string;
   orderId: string;
   menuItemId: string;
   quantity: number;
   price: number;
+  options?: SelectedOption[] | null;
   menuItem?: { id: string; name: string; price: number } | null;
 };
 
@@ -126,7 +128,7 @@ export async function action({ request }: Route.ActionArgs) {
       .from("orderitem")
       .select(
         `
-        id, orderId, menuItemId, quantity, price,
+        id, orderId, menuItemId, quantity, price, options,
         menuItem:menuItemId ( id, name, price )
       `
       )
@@ -152,6 +154,9 @@ export async function action({ request }: Route.ActionArgs) {
         id: it.id,
         menuItemId: it.menuItemId,
         menuName: it.menuItem?.name || `#${it.menuItemId}`,
+        options: Array.isArray(it.options)
+          ? (it.options as { optionName: string }[]).map((o) => o.optionName)
+          : [],
         quantity: it.quantity,
         price: it.price,
         subtotal: it.price * it.quantity,
@@ -445,6 +450,7 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
             menuItemId,
             quantity,
             price,
+            options,
             menuItem:menuItemId ( id, name, price )
           `
           )
@@ -1177,6 +1183,11 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
                               {it.price.toLocaleString()}원
                             </span>
                           </div>
+                          {Array.isArray(it.options) && it.options.length > 0 && (
+                            <p className="text-xs text-primary mt-1 font-medium">
+                              {it.options.map((o) => o.optionName).join(", ")}
+                            </p>
+                          )}
                         </div>
                         <div className="font-bold text-lg text-primary self-center">
                           x{it.quantity}

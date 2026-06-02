@@ -6,6 +6,7 @@ import {
   useLoaderData,
   useActionData,
   useNavigation,
+  useFetcher,
 } from "react-router";
 import type { Database, Tables } from "database.types";
 import { browserClient, makeSSRClient } from "~/supa_clients";
@@ -15,6 +16,9 @@ import type { Route } from "./+types/admin";
 type MenuItem = Database["public"]["Tables"]["menuItem"]["Row"];
 type Category = Tables<"categories">;
 type Profile = Tables<"profiles">;
+type AdminOptionGroup = Tables<"menu_option_groups"> & {
+  menu_options: Tables<"menu_options">[];
+};
 
 // 영업 시간 타입
 type StoreHour = {
@@ -64,7 +68,7 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
     }
 
     const userId = userData.user.id;
-    const [menuItems, profileResult, categoriesResult, storeHoursResult] = await Promise.all([
+    const [menuItems, profileResult, categoriesResult, storeHoursResult, optionGroupsResult] = await Promise.all([
       getadminMenuItems(client, userId),
       client.from("profiles").select("*").eq("profile_id", userId).single(),
       client
@@ -77,6 +81,11 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
         .select("*")
         .eq("profile_id", userId)
         .order("day_of_week", { ascending: true }),
+      client
+        .from("menu_option_groups")
+        .select("*, menu_options(*)")
+        .eq("profile_id", userId)
+        .order("display_order", { ascending: true }),
     ]);
 
     // 프로필이 아직 없거나(신규 가입), owner가 아니거나, 가게명이 없으면 온보딩 필요
@@ -90,6 +99,7 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
       userId,
       categories: categoriesResult.data || [],
       storeHours: storeHoursResult.data || [],
+      optionGroups: optionGroupsResult.data || [],
       needsOnboarding,
     };
   } catch (error) {
@@ -595,6 +605,92 @@ export async function action({ request }: ActionFunctionArgs) {
         return Response.json({ success: true, type: "updatePrepTime" });
       }
 
+      case "addOptionGroup": {
+        const menuItemId = formData.get("menu_item_id") as string;
+        const groupName = (formData.get("groupName") as string)?.trim();
+        const minSelect = Number(formData.get("min_select") ?? 0);
+        const maxSelect = Number(formData.get("max_select") ?? 1);
+        if (!menuItemId || !groupName) {
+          return Response.json({ error: "옵션 그룹 이름을 입력해주세요." }, { status: 400 });
+        }
+        const { count } = await client
+          .from("menu_option_groups")
+          .select("*", { count: "exact", head: true })
+          .eq("menu_item_id", menuItemId);
+        const { error } = await client.from("menu_option_groups").insert([
+          {
+            profile_id,
+            menu_item_id: menuItemId,
+            name: groupName,
+            min_select: Math.max(0, isNaN(minSelect) ? 0 : minSelect),
+            max_select: Math.max(1, isNaN(maxSelect) ? 1 : maxSelect),
+            display_order: (count || 0) + 1,
+          },
+        ]);
+        if (error) {
+          console.error("옵션 그룹 추가 오류:", error);
+          return Response.json({ error: "옵션 그룹 추가에 실패했습니다." }, { status: 500 });
+        }
+        return Response.json({ success: true, type: "option" });
+      }
+
+      case "deleteOptionGroup": {
+        const groupId = formData.get("groupId") as string;
+        if (!groupId) return Response.json({ error: "그룹 ID가 필요합니다." }, { status: 400 });
+        const { error } = await client
+          .from("menu_option_groups")
+          .delete()
+          .eq("id", groupId)
+          .eq("profile_id", profile_id);
+        if (error) {
+          console.error("옵션 그룹 삭제 오류:", error);
+          return Response.json({ error: "옵션 그룹 삭제에 실패했습니다." }, { status: 500 });
+        }
+        return Response.json({ success: true, type: "option" });
+      }
+
+      case "addOption": {
+        const groupId = formData.get("group_id") as string;
+        const optionName = (formData.get("optionName") as string)?.trim();
+        const priceDelta = Number(formData.get("price_delta") ?? 0);
+        if (!groupId || !optionName) {
+          return Response.json({ error: "옵션 이름을 입력해주세요." }, { status: 400 });
+        }
+        const { count } = await client
+          .from("menu_options")
+          .select("*", { count: "exact", head: true })
+          .eq("group_id", groupId);
+        const { error } = await client.from("menu_options").insert([
+          {
+            profile_id,
+            group_id: groupId,
+            name: optionName,
+            price_delta: isNaN(priceDelta) ? 0 : priceDelta,
+            display_order: (count || 0) + 1,
+          },
+        ]);
+        if (error) {
+          console.error("옵션 추가 오류:", error);
+          return Response.json({ error: "옵션 추가에 실패했습니다." }, { status: 500 });
+        }
+        return Response.json({ success: true, type: "option" });
+      }
+
+      case "deleteOption": {
+        const optionId = formData.get("optionId") as string;
+        if (!optionId) return Response.json({ error: "옵션 ID가 필요합니다." }, { status: 400 });
+        const { error } = await client
+          .from("menu_options")
+          .delete()
+          .eq("id", optionId)
+          .eq("profile_id", profile_id);
+        if (error) {
+          console.error("옵션 삭제 오류:", error);
+          return Response.json({ error: "옵션 삭제에 실패했습니다." }, { status: 500 });
+        }
+        return Response.json({ success: true, type: "option" });
+      }
+
       default:
         return Response.json(
           { error: "알 수 없는 액션입니다." },
@@ -781,9 +877,24 @@ function Toast({
 
 // 메인 컴포넌트
 export default function AdminMenuPage() {
-  const { menuItems, userProfile, categories, storeHours, needsOnboarding } = useLoaderData<typeof loader>();
+  const { menuItems, userProfile, categories, storeHours, optionGroups, needsOnboarding } = useLoaderData<typeof loader>();
   const actionData = useActionData<ActionData>();
   const navigation = useNavigation();
+  const optionFetcher = useFetcher();
+
+  // 옵션 관리 모달 대상 메뉴 id
+  const [optionMgrItemId, setOptionMgrItemId] = useState<string | null>(null);
+
+  // 메뉴 id별 옵션 그룹
+  const optionGroupsByItem = useMemo(() => {
+    const map = new Map<string, AdminOptionGroup[]>();
+    for (const g of (optionGroups as AdminOptionGroup[]) || []) {
+      const arr = map.get(g.menu_item_id) || [];
+      arr.push(g);
+      map.set(g.menu_item_id, arr);
+    }
+    return map;
+  }, [optionGroups]);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<MenuItem>>({});
@@ -1253,6 +1364,182 @@ export default function AdminMenuPage() {
           onClose={() => setShowToast(null)}
         />
       )}
+
+      {/* 옵션 관리 모달 */}
+      {optionMgrItemId &&
+        (() => {
+          const item =
+            (menuItems as MenuItem[]).find((m) => m.id === optionMgrItemId) ||
+            localMenuItems.find((m) => m.id === optionMgrItemId);
+          const groups = optionGroupsByItem.get(optionMgrItemId) || [];
+          const busy = optionFetcher.state !== "idle";
+          const err = (optionFetcher.data as { error?: string } | undefined)?.error;
+          return (
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+              <div className="bg-white w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl shadow-xl max-h-[88vh] flex flex-col">
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-900">옵션 관리</h2>
+                    <p className="text-xs text-gray-500 mt-0.5">{item?.name}</p>
+                  </div>
+                  <button
+                    onClick={() => setOptionMgrItemId(null)}
+                    className="text-gray-400 hover:text-gray-600 p-1"
+                    aria-label="닫기"
+                  >
+                    <span className="material-symbols-outlined">close</span>
+                  </button>
+                </div>
+                <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+                  {err && (
+                    <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg p-3">
+                      {err}
+                    </div>
+                  )}
+                  {groups.length === 0 && (
+                    <p className="text-sm text-gray-400 text-center py-4">
+                      아직 옵션 그룹이 없습니다. 아래에서 추가하세요.
+                      <br />
+                      (예: 사이즈, 곱빼기, 면 변경)
+                    </p>
+                  )}
+                  {groups.map((g) => (
+                    <div key={g.id} className="border border-gray-200 rounded-xl overflow-hidden">
+                      <div className="flex items-center justify-between bg-gray-50 px-4 py-2.5 border-b border-gray-100">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-gray-800 text-sm">{g.name}</span>
+                          <span className="text-[11px] text-gray-500">
+                            {g.min_select >= 1 ? "필수" : "선택"} ·{" "}
+                            {g.max_select <= 1 ? "단일" : `최대 ${g.max_select}`}
+                          </span>
+                        </div>
+                        <optionFetcher.Form method="post">
+                          <input type="hidden" name="actionType" value="deleteOptionGroup" />
+                          <input type="hidden" name="groupId" value={g.id} />
+                          <button
+                            type="submit"
+                            className="text-red-500 hover:text-red-700 text-xs font-medium"
+                            disabled={busy}
+                            onClick={(e) => {
+                              if (!confirm(`'${g.name}' 그룹을 삭제할까요? 하위 옵션도 모두 삭제됩니다.`)) e.preventDefault();
+                            }}
+                          >
+                            그룹 삭제
+                          </button>
+                        </optionFetcher.Form>
+                      </div>
+                      <div className="divide-y divide-gray-100">
+                        {(g.menu_options || []).map((o) => (
+                          <div key={o.id} className="flex items-center justify-between px-4 py-2">
+                            <span className="text-sm text-gray-700">{o.name}</span>
+                            <div className="flex items-center gap-3">
+                              <span className="text-xs text-gray-500 tabular-nums">
+                                {Number(o.price_delta) > 0 ? "+" : ""}
+                                {Number(o.price_delta).toLocaleString()}원
+                              </span>
+                              <optionFetcher.Form method="post">
+                                <input type="hidden" name="actionType" value="deleteOption" />
+                                <input type="hidden" name="optionId" value={o.id} />
+                                <button
+                                  type="submit"
+                                  className="text-gray-400 hover:text-red-500"
+                                  disabled={busy}
+                                  title="옵션 삭제"
+                                >
+                                  <span className="material-symbols-outlined text-[18px]">close</span>
+                                </button>
+                              </optionFetcher.Form>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      {/* 옵션 추가 */}
+                      <optionFetcher.Form
+                        method="post"
+                        className="flex items-center gap-2 px-4 py-2.5 bg-gray-50/50 border-t border-gray-100"
+                        key={`addopt-${g.id}-${(g.menu_options || []).length}`}
+                      >
+                        <input type="hidden" name="actionType" value="addOption" />
+                        <input type="hidden" name="group_id" value={g.id} />
+                        <input
+                          name="optionName"
+                          placeholder="옵션명 (예: 곱빼기)"
+                          required
+                          className="flex-1 min-w-0 border border-gray-200 px-3 py-1.5 rounded-lg text-sm"
+                        />
+                        <input
+                          name="price_delta"
+                          type="number"
+                          step="100"
+                          defaultValue="0"
+                          className="w-24 border border-gray-200 px-2 py-1.5 rounded-lg text-sm"
+                          title="추가요금(원)"
+                        />
+                        <button
+                          type="submit"
+                          disabled={busy}
+                          className="shrink-0 bg-gray-800 text-white text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-gray-700"
+                        >
+                          추가
+                        </button>
+                      </optionFetcher.Form>
+                    </div>
+                  ))}
+
+                  {/* 새 옵션 그룹 추가 */}
+                  <optionFetcher.Form
+                    method="post"
+                    className="border border-dashed border-gray-300 rounded-xl p-4 space-y-3"
+                    key={`addgrp-${groups.length}`}
+                  >
+                    <input type="hidden" name="actionType" value="addOptionGroup" />
+                    <input type="hidden" name="menu_item_id" value={optionMgrItemId} />
+                    <p className="text-sm font-semibold text-gray-700">새 옵션 그룹</p>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <input
+                        name="groupName"
+                        placeholder="그룹명 (예: 사이즈, 면 변경)"
+                        required
+                        className="flex-1 border border-gray-200 px-3 py-2 rounded-lg text-sm"
+                      />
+                      <select
+                        name="min_select"
+                        className="border border-gray-200 px-2 py-2 rounded-lg text-sm"
+                        defaultValue="0"
+                      >
+                        <option value="0">선택(0)</option>
+                        <option value="1">필수(1)</option>
+                      </select>
+                      <input
+                        name="max_select"
+                        type="number"
+                        min="1"
+                        defaultValue="1"
+                        className="w-20 border border-gray-200 px-2 py-2 rounded-lg text-sm"
+                        title="최대 선택 수"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={busy}
+                      className="w-full sm:w-auto bg-primary text-white text-sm font-semibold px-5 py-2 rounded-lg hover:bg-primary/90"
+                    >
+                      그룹 추가
+                    </button>
+                  </optionFetcher.Form>
+                </div>
+                <div className="p-4 border-t border-gray-100">
+                  <button
+                    onClick={() => setOptionMgrItemId(null)}
+                    className="w-full py-2.5 text-gray-600 font-medium hover:bg-gray-100 rounded-xl"
+                  >
+                    완료
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
       {/* Top Navigation Bar */}
       <header className="flex-none flex items-center justify-between whitespace-nowrap border-b border-solid border-border bg-white px-6 py-3 z-20 shadow-sm">
@@ -2408,6 +2695,21 @@ export default function AdminMenuPage() {
                                   </span>
                                 </div>
                                 <div className="flex gap-1">
+                                  <button
+                                    className="relative p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                                    title="옵션 관리"
+                                    onClick={() => setOptionMgrItemId(item.id)}
+                                    disabled={isSubmitting}
+                                  >
+                                    <span className="material-symbols-outlined text-[20px]">
+                                      tune
+                                    </span>
+                                    {(optionGroupsByItem.get(item.id)?.length || 0) > 0 && (
+                                      <span className="absolute -top-0.5 -right-0.5 bg-primary text-white text-[9px] font-bold rounded-full size-4 flex items-center justify-center">
+                                        {optionGroupsByItem.get(item.id)!.length}
+                                      </span>
+                                    )}
+                                  </button>
                                   <button
                                     className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
                                     title="메뉴 수정"
