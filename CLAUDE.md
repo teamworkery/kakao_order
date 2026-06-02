@@ -3,15 +3,15 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## ⏭️ 다음 작업
-- **현재 상태**: `refactor` 브랜치. 최근 커밋 `79c5d04`(주문SMS) ← `67654b9`(옵션) ← `f0ec8f0`(RLS2) ← `49181b6`(등록+온보딩). **굿모닝차이나** 등록(`/goodmorning-china`, 메뉴 129·사진 self-host·실옵션 시드). **셀프 온보딩+인증 보완**(가게 개설 마법사→`role=owner`, slug 검증, 비번재설정, 약관, 카카오버튼). **RLS Phase 2 적용**(`public_stores` 뷰). **메뉴 옵션/사이즈 시스템 완료**. **주문 알림 SMS(알리고) 실연동 완료** — n8n MCP(`.mcp.json`)로 워크플로우 2개(`kakao_order_store_sms`·`kakao_order_customer_sms`) 생성·active, 실발송 확인, 앱 `.env` `/webhook/` 전환. 운영 DB는 Management API로 적용(`.env` `SUPABASE_ACCESS_TOKEN`=kakao_order sbp_ PAT). typecheck/build/E2E 통과.
-- **다음 작업 (전부 사용자 확인/외부 계정/배포 필요 — 진행 전 문의)**:
-  1. **카카오 알림톡 전환** — 비즈채널·발신프로필·템플릿 승인 후 n8n HTTP 노드를 알림톡 엔드포인트로 교체(SMS는 폴백 유지). 현재는 SMS 실발송 가동 중.
-  2. **커스텀 SMTP 연결** — 가입 이메일 인증·비번 재설정 메일 실발송 (Supabase 기본 SMTP는 운영 부적합)
-  3. **도메인 배포** — `pojang.one` DNS+SSL + 카카오 OAuth redirect 등록 + `VITE_APP_URL` prod 전환 (현재 localhost)
+- **현재 상태**: `refactor` 브랜치. **prod 배포 완료(2026-06-03)** — `refactor`→`master` ff 병합·push, Vercel `kakao-order` 프로젝트가 `master` 자동배포 → `www.pojang.one` 최신화. 배포 전 prod에 없던 env 3개(`SUPABASE_SERVICE_ROLE_KEY`·`N8N_WEBHOOK_URL`·`N8N_WEBHOOK_URL_STORE`)를 Vercel production에 주입. 검증: `/`·`/join`·`/login`·`/forgot-password`·`/goodmorning-china` 200(이전 404), `/admin` 302. prod·로컬 동일 Supabase(`wkhgugajknrvpcobwlrv`), `VITE_APP_URL`은 기존부터 `https://www.pojang.one`. 앞선 작업: 주문SMS(알리고)·메뉴옵션·RLS2·굿모닝차이나 등록.
+- **다음 작업 (전부 사용자 확인/외부 계정 필요 — 진행 전 문의)**:
+  1. **카카오 OAuth prod 수동검증** — `www.pojang.one`에서 카카오 로그인 1회 실행해 redirect(`/auth/callback`) 정상 확인(도메인 불변이라 기존 등록 유효 추정).
+  2. **카카오 알림톡 전환** — 비즈채널·발신프로필·템플릿 승인 후 n8n HTTP 노드를 알림톡 엔드포인트로 교체(SMS는 폴백 유지). 현재는 SMS 실발송 가동 중.
+  3. **커스텀 SMTP 연결** — 가입 이메일 인증·비번 재설정 메일 실발송 (Supabase 기본 SMTP는 시간당 수통 제한·스팸함行 → 운영 부적합). 제공자 미정. `SUPABASE_ACCESS_TOKEN`이 있으면 Management API로 주입 가능하나, **현재 `.env`의 PAT은 만료/손상(JWT decode 실패)** → 재발급 필요.
   4. `N8N_WEBHOOK_STORE_SECRET` 생성 → `.env` + n8n 동기화 (`$name.tsx:343`)
-  5. `.env` 정리 — `DATABASE_URL` host 가 타 프로젝트(`szmdt…`), 운영 ref(`wkhgugajknrvpcobwlrv`)로 교체
+  5. `.env` 정리 — `DATABASE_URL` host 가 타 프로젝트(`szmdt…`), 운영 ref(`wkhgugajknrvpcobwlrv`)로 교체 + `SUPABASE_ACCESS_TOKEN` 재발급
   6. (제품 결정) 1계정 다점포
-- **시작 명령어**: `npm run dev` / 회귀 검증 `curl localhost:5173/goodmorning-china -o /dev/null -w "%{http_code}\n"`
+- **시작 명령어**: `npm run dev` / prod 회귀 검증 `curl https://www.pojang.one/goodmorning-china -o /dev/null -w "%{http_code}\n"`
 
 ## Project Overview
 

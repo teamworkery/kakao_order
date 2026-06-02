@@ -1,5 +1,14 @@
 # progress
 
+## 2026-06-03 — refactor 브랜치 운영 배포 (Vercel / www.pojang.one)
+
+`refactor`의 누적 작업(17커밋: 가게등록·메뉴옵션·RLS2·주문SMS·온보딩)을 운영에 반영. 배포 전 현황 점검에서 **이미 `pojang.one`이 Vercel(`kakao-order` 프로젝트)에 연결·SSL 정상**이지만 마지막 prod 배포가 15일 전 `master`라 `/goodmorning-china` 404였음(DNS는 추가작업 불필요, "배포 최신화"가 실제 과제였음). prod·로컬이 **동일 Supabase**(`wkhgugajknrvpcobwlrv`)·`VITE_APP_URL=https://www.pojang.one`(기존부터 올바름) 확인.
+
+- **빠진 env 주입**: prod에 `SUPABASE_SERVICE_ROLE_KEY`·`N8N_WEBHOOK_URL`·`N8N_WEBHOOK_URL_STORE`가 없어 로컬 `.env` 값으로 Vercel production에 추가(`vercel env add`). 기존 5개 외 신규 코드가 쓰는 변수 보강.
+- **배포 방식**: `master`가 `refactor`에 0커밋 뒤져 **fast-forward 병합** → `git push origin master` → GitHub 연동 자동배포(빌드 34s, Ready). 사전 `npm run build` exit 0 확인.
+- **검증**: `/`·`/join`·`/login`·`/forgot-password`·`/goodmorning-china` 모두 200(이전 404 해소), goodmorning 페이지에 실제 메뉴 렌더, `/admin` 302(인증 게이트 정상).
+- **미완/주의**: 카카오 OAuth는 도메인 불변이라 기존 등록 유효 추정 → **실로그인 1회 수동검증 권장**. `SUPABASE_ACCESS_TOKEN`(Management API용 PAT)이 만료/손상("JWT could not be decoded")이라 auth config를 코드로 확인 못함 → 재발급 필요. SMTP는 사용자 결정으로 **보류**(제공자 미정).
+
 ## 2026-06-02 (오후) — 주문 알림 SMS(Aligo) 발송 연동
 
 n8n MCP를 이 프로젝트에 설치(`.mcp.json`, Rental_service와 동일한 공용 Railway 인스턴스 `primary-production-628d`, 토큰 포함→gitignore). 재시작 후 연결. **Aligo SMS 발송 워크플로우 2개 구축**(레퍼런스 `~/MoatAI/koreainvest_PoC_03/n8n/workflow_v14.ts` 의 Send SMS(ALIGO) 노드):
