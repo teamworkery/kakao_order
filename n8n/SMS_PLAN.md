@@ -68,8 +68,22 @@
 - **가게**(order.created): `site.storeName`, `order.items[].{name,price,quantity}`, `order.totalAmount`, `order.customerPhone`, `notify.phone`
 - **고객**(order.accepted): `store.storename`, `items[].{menuName,options[],quantity}`, `order.totalAmount`, `order.phoneNumber`
 
-## 다음 (MCP 연결 후)
-1. n8n MCP로 인스턴스의 기존 `kakao_store`/`kakao_customer` 워크플로우 확인
-2. 위 구조로 2개 생성/패치 + Aligo 노드 검증
-3. 테스트 발송(testmode 또는 본인 번호) → 정상 확인
-4. `/webhook/` 전환 + active + 앱 `.env` 갱신
+## ✅ 구축 완료 (2026-06-02)
+MCP(`primary-production-628d`)로 워크플로우 2개 생성·활성·검증:
+
+| 용도 | 워크플로우 ID | webhook path | 상태 |
+|---|---|---|---|
+| 가게 알림 | `vgbsEofC9kLMJQ7i` (kakao_order_store_sms) | `kakao_store` | active, testmode=N |
+| 고객 알림 | `3OdyLnA9plF1gBRv` (kakao_order_customer_sms) | `kakao_customer` | active, testmode=N |
+
+- 구조: `Webhook(POST) → Code(문구 조립) → HTTP(Aligo /send/, LMS)`
+- Aligo 계정 `woomin914` / 발신 `01096643237` (HTTP 노드 body에 직접). 키는 n8n 인스턴스에만 존재.
+- 검증: testmode=Y 실행 2건 모두 `result_code:1, success_cnt:1` → 실발송(N) 전환 → 운영 웹훅 실호출 200.
+- 앱 `.env`: `/webhook-test/` → `/webhook/` 교체 완료(gitignore).
+
+### 운영 주의
+- 가게 알림 수신번호 = 그 가게 `storenumber`. **굿모닝차이나는 032-327-9696(유선)이라 SMS 미수신** — 실테스트는 모바일 번호를 storenumber로 둔 가게로.
+- 옛 stub 워크플로우 `kakao_order_for_store`(`Pd2YYLa5gsHcETim`)·`kakao_order_for_customer`(`ZL1CaV3LHbmHnhpc`)는 비활성 — 정리(삭제) 가능.
+
+### 카카오 알림톡 전환 시 (나중)
+- 비즈채널·발신프로필·템플릿 승인 후, HTTP 노드를 `kakaoapi.aligo.in/akv10/alimtalk/send/`로 교체(senderkey·tpl_code 추가). SMS는 알림톡 실패 시 폴백으로 유지 권장.

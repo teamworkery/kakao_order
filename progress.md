@@ -1,5 +1,15 @@
 # progress
 
+## 2026-06-02 (오후) — 주문 알림 SMS(Aligo) 발송 연동
+
+n8n MCP를 이 프로젝트에 설치(`.mcp.json`, Rental_service와 동일한 공용 Railway 인스턴스 `primary-production-628d`, 토큰 포함→gitignore). 재시작 후 연결. **Aligo SMS 발송 워크플로우 2개 구축**(레퍼런스 `~/MoatAI/koreainvest_PoC_03/n8n/workflow_v14.ts` 의 Send SMS(ALIGO) 노드):
+- `kakao_order_store_sms`(`vgbsEofC9kLMJQ7i`, path `kakao_store`) — 주문 생성 시 가게 사장님 알림
+- `kakao_order_customer_sms`(`3OdyLnA9plF1gBRv`, path `kakao_customer`) — 점주 수락 시 손님 알림
+- 각 `Webhook→Code(문구 조립)→HTTP(apis.aligo.in/send/, LMS)`. SDK 코드 방식으로 validate→create→update. Aligo 계정 woomin914/발신 01096643237.
+- 검증: testmode=Y 실행 2건 `result_code:1` → 실발송(N) 전환 → publish(active) → 운영 웹훅 실호출 200(본인 번호 실발송 확인).
+- 발견: 앱 `.env` 웹훅이 `/webhook-test/`(테스트 URL)였음 → `/webhook/`로 교체. 기존 stub 워크플로우 2개(Pd2YYLa5gsHcETim·ZL1CaV3LHbmHnhpc)는 MCP 비공개·비활성, 삭제 가능.
+- 우선 SMS, 카카오 알림톡은 비즈채널·템플릿 승인 후 전환 예정. 상세 `n8n/SMS_PLAN.md`.
+
 ## 2026-06-02
 
 **굿모닝차이나(부천 상동) 실가게 등록** — 영업 시연용으로 네이버 플레이스(place/13115778) 실제 데이터를 운영 DB(`wkhgugajknrvpcobwlrv`)에 시드. 네이버는 Claude WebFetch 차단 + 봇 탐지 → Playwright(headless chromium, 자동화 플래그 제거·실 UA·느린 페이싱)로 우회 크롤링. `pcmap.place.naver.com` 메뉴 페이지에서 "펼쳐서 더보기" 전부 클릭해 전체 메뉴 확보, `window.__APOLLO_STATE__`에서 전화(032-327-9696)·주소(경기 부천시 원미구 송내대로265번길 85, 뱅뱅프라자 2층)·편의(포장·배달) 추출, 블로그 리뷰에서 영업시간(매일 10:00~21:30) 확보. 시드 스크립트 `scripts/seed_goodmorning_china.mjs` (service-role): 오너 auth 유저 생성→프로필(role=owner)→카테고리 15개→메뉴 129개→영업시간 7일. 네이버 중복 노출 섹션(대표메뉴·새로운메뉴·여름별미)은 dedupe로 제외. 익명 키(손님 RLS 경로)로 129개 정상 조회 검증. **메뉴 옵션/사이즈 시스템 부재**라 변형(S/L·간짜장변경)을 별도 항목으로 넣음.
