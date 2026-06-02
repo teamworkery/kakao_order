@@ -23,10 +23,16 @@ export const links: Route.LinksFunction = () => [
   // DNS prefetch as fallback for browsers that don't support preconnect
   { rel: "dns-prefetch", href: "https://fonts.googleapis.com" },
   { rel: "dns-prefetch", href: "https://fonts.gstatic.com" },
-  // Plus Jakarta Sans font with font-display: swap for better loading performance
+  { rel: "preconnect", href: "https://cdn.jsdelivr.net" },
+  // Pretendard — 한글 우선 본문 폰트(한/영 톤 통일). 동적 서브셋으로 용량 최소화.
   {
     rel: "stylesheet",
-    href: "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+    href: "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css",
+  },
+  // Plus Jakarta Sans — 라틴 보조 폰트
+  {
+    rel: "stylesheet",
+    href: "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap",
   },
   // Material Symbols Outlined - optimized to load only needed weights (400, 500, 600)
   // Using FILL=0 (outline style) and specific weights instead of full range
