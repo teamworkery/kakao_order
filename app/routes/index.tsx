@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router";
+import { BrandLogo, BrandMark } from "~/common/components/brand-logo";
 
 const DEMO_STORE = "/goodmorning-china";
 
@@ -20,11 +21,8 @@ export default function Index() {
       {/* Top Nav */}
       <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/70">
         <div className="max-w-5xl mx-auto px-5 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
-            <span className="text-[20px] leading-none">🏮</span>
-            <span className="text-[16px] font-bold tracking-tight">
-              pojang<span className="text-primary">.one</span>
-            </span>
+          <Link to="/" className="flex items-center">
+            <BrandLogo markClassName="size-6 text-primary" />
           </Link>
           <div className="flex items-center gap-1">
             <Link
@@ -41,7 +39,7 @@ export default function Index() {
             </Link>
             <Link
               to="/join"
-              className="inline-flex items-center h-10 px-4 text-[13px] font-semibold bg-primary text-primary-foreground hover:bg-primary/90 hover:-translate-y-0.5 transition-all rounded-full shadow-warm"
+              className="inline-flex items-center h-10 px-4 text-[13px] font-semibold bg-primary text-primary-foreground hover:bg-primary/90 hover:-translate-y-0.5 transition-all rounded-full shadow-card"
             >
               시작하기
             </Link>
@@ -71,7 +69,7 @@ export default function Index() {
         {/* 등불 글로우 */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-[520px] bg-[radial-gradient(60%_60%_at_50%_-5%,rgba(238,124,43,0.20),transparent_70%)]"
+          className="pointer-events-none absolute inset-x-0 top-0 h-[520px] bg-[radial-gradient(55%_55%_at_50%_-5%,rgba(238,124,43,0.08),transparent_70%)]"
         />
         <div className="relative max-w-3xl mx-auto px-5 pt-16 pb-20 sm:pt-24 sm:pb-28 text-center">
           <div className="inline-flex items-center gap-2 h-8 px-3.5 mb-7 rounded-full bg-primary-light border border-primary/20 text-primary">
@@ -154,7 +152,7 @@ export default function Index() {
             ].map((c) => (
               <div
                 key={c.title}
-                className="flex flex-col bg-card border border-border rounded-2xl p-6 shadow-warm"
+                className="flex flex-col bg-card border border-border rounded-2xl p-6 shadow-card"
               >
                 <div className="size-11 rounded-2xl bg-primary-light flex items-center justify-center mb-4">
                   <span className="material-symbols-outlined text-primary text-[22px]">
@@ -204,9 +202,9 @@ export default function Index() {
             ].map((c) => (
               <div
                 key={c.title}
-                className="flex flex-col bg-card border border-border rounded-2xl p-6 shadow-warm hover:-translate-y-1 hover:shadow-warm-lg transition-all"
+                className="flex flex-col bg-card border border-border rounded-2xl p-6 shadow-card hover:-translate-y-1 hover:shadow-card-lg transition-all"
               >
-                <div className="size-11 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center mb-4 shadow-warm">
+                <div className="size-11 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center mb-4 shadow-card">
                   <span className="material-symbols-outlined text-[22px]">{c.icon}</span>
                 </div>
                 <h3 className="text-[16px] font-bold tracking-tight mb-1.5">{c.title}</h3>
@@ -232,7 +230,7 @@ export default function Index() {
             ].map((s) => (
               <div
                 key={s.num}
-                className="flex flex-col bg-card border border-border rounded-2xl p-6 shadow-warm"
+                className="flex flex-col bg-card border border-border rounded-2xl p-6 shadow-card"
               >
                 <span className="size-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[15px] font-bold tabular-nums mb-4">
                   {s.num}
@@ -257,8 +255,8 @@ export default function Index() {
           </p>
 
           <div className="max-w-md">
-            <div className="relative border-2 border-primary/30 rounded-3xl p-8 bg-card shadow-warm-lg">
-              <span className="absolute -top-3 left-8 inline-flex items-center h-6 px-3 rounded-full bg-primary text-primary-foreground text-[11px] font-bold tracking-tight shadow-warm">
+            <div className="relative border-2 border-primary/30 rounded-3xl p-8 bg-card shadow-card-lg">
+              <span className="absolute -top-3 left-8 inline-flex items-center h-6 px-3 rounded-full bg-primary text-primary-foreground text-[11px] font-bold tracking-tight shadow-card">
                 주문 수수료 0%
               </span>
               <div className="flex items-baseline gap-1.5 mb-1">
@@ -308,15 +306,11 @@ export default function Index() {
         </div>
       </section>
 
-      {/* Launch event — 한밤 포장마차 */}
-      <section className="relative overflow-hidden bg-[#241a13] text-[#fbf6ef]">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(50%_70%_at_85%_0%,rgba(238,124,43,0.28),transparent_60%)]"
-        />
-        <div className="relative max-w-3xl mx-auto px-5 py-20 sm:py-24">
+      {/* Launch event — 출시 기념 */}
+      <section className="bg-primary-light/50 border-y border-primary/15">
+        <div className="max-w-3xl mx-auto px-5 py-20 sm:py-24">
           <div className="inline-flex items-center gap-2 mb-4">
-            <span className="text-[22px]">🏮</span>
+            <BrandMark className="size-5 text-primary" />
             <span className="text-[12px] font-bold tracking-[0.12em] text-primary uppercase">
               출시 기념
             </span>
@@ -324,16 +318,16 @@ export default function Index() {
           <h2 className="text-[28px] sm:text-[36px] font-extrabold tracking-tight leading-tight mb-3">
             베타 한정 혜택.
           </h2>
-          <p className="text-[15px] sm:text-[16px] text-[#fbf6ef]/70 mb-10 max-w-xl">
+          <p className="text-[15px] sm:text-[16px] text-muted-foreground mb-10 max-w-xl">
             선착순 5팀에 한해 진행됩니다.
           </p>
           <div className="grid sm:grid-cols-2 gap-4 mb-10">
-            <div className="rounded-2xl border border-[#fbf6ef]/15 bg-[#fbf6ef]/[0.04] p-6">
-              <p className="text-[13px] text-[#fbf6ef]/60 mb-1.5">1개월 결제 시</p>
+            <div className="rounded-2xl border border-border bg-card p-6 shadow-card">
+              <p className="text-[13px] text-muted-foreground mb-1.5">1개월 결제 시</p>
               <p className="text-[22px] font-bold tracking-tight text-primary">3개월 이용</p>
             </div>
-            <div className="rounded-2xl border border-[#fbf6ef]/15 bg-[#fbf6ef]/[0.04] p-6">
-              <p className="text-[13px] text-[#fbf6ef]/60 mb-1.5">
+            <div className="rounded-2xl border border-border bg-card p-6 shadow-card">
+              <p className="text-[13px] text-muted-foreground mb-1.5">
                 카카오채널 개설 대행 <span className="line-through ml-1">3만원</span>
               </p>
               <p className="text-[22px] font-bold tracking-tight text-primary">무료</p>
@@ -362,7 +356,7 @@ export default function Index() {
           <div className="grid sm:grid-cols-[auto_1fr] gap-10 sm:gap-14 items-center">
             {/* Phone Mockup */}
             <div className="mx-auto">
-              <div className="relative w-[260px] h-[520px] rounded-[2.75rem] bg-foreground p-2.5 shadow-warm-lg">
+              <div className="relative w-[260px] h-[520px] rounded-[2.75rem] bg-foreground p-2.5 shadow-card-lg">
                 <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-24 h-5 bg-foreground rounded-b-2xl z-10" />
                 <div className="w-full h-full rounded-[2.25rem] overflow-hidden bg-background flex flex-col">
                   <div className="h-12 border-b border-border flex items-center justify-center gap-1.5">
@@ -417,7 +411,7 @@ export default function Index() {
               <li className="pt-3">
                 <Link
                   to={DEMO_STORE}
-                  className="inline-flex items-center justify-center gap-1.5 h-11 px-5 rounded-full border border-border bg-card text-foreground text-[14px] font-semibold tracking-tight hover:bg-secondary hover:-translate-y-0.5 transition-all shadow-warm"
+                  className="inline-flex items-center justify-center gap-1.5 h-11 px-5 rounded-full border border-border bg-card text-foreground text-[14px] font-semibold tracking-tight hover:bg-secondary hover:-translate-y-0.5 transition-all shadow-card"
                 >
                   <span className="material-symbols-outlined text-[18px]">touch_app</span>
                   데모 체험하기
@@ -456,7 +450,7 @@ export default function Index() {
             ].map((item) => (
               <details
                 key={item.q}
-                className="group rounded-2xl border border-border bg-card px-5 shadow-warm open:shadow-warm-lg transition-shadow"
+                className="group rounded-2xl border border-border bg-card px-5 shadow-card open:shadow-card-lg transition-shadow"
               >
                 <summary className="flex items-center justify-between py-5 cursor-pointer list-none">
                   <span className="text-[15px] font-semibold text-foreground tracking-tight">
@@ -479,10 +473,10 @@ export default function Index() {
       <section className="relative overflow-hidden bg-secondary/40 border-t border-border">
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-[320px] bg-[radial-gradient(60%_80%_at_50%_120%,rgba(238,124,43,0.18),transparent_70%)]"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-[320px] bg-[radial-gradient(55%_75%_at_50%_120%,rgba(238,124,43,0.07),transparent_70%)]"
         />
         <div className="relative max-w-3xl mx-auto px-5 py-20 sm:py-28 text-center">
-          <span className="text-[40px]">🏮</span>
+          <BrandMark className="size-11 text-primary mx-auto block" />
           <h2 className="text-[28px] sm:text-[38px] font-extrabold tracking-tight leading-tight mt-3 mb-4">
             오늘부터 우리 가게,
             <br />
@@ -513,8 +507,8 @@ export default function Index() {
       <footer className="border-t border-border bg-background">
         <div className="max-w-3xl mx-auto px-5 py-10">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
-            <div className="flex items-center gap-2">
-              <span className="text-[20px]">🏮</span>
+            <div className="flex items-center gap-2.5">
+              <BrandMark className="size-6 text-primary" />
               <div>
                 <p className="text-[14px] font-bold tracking-tight">
                   pojang<span className="text-primary">.one</span>

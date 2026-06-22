@@ -13,6 +13,10 @@ import { makeSSRClient } from "./supa_clients";
 import { CookieConsent } from "./common/components/cookie-consent";
 
 export const links: Route.LinksFunction = () => [
+  // Favicon — 신규 pojang.one 마크 (SVG 우선, .ico 레거시 폴백)
+  { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
+  { rel: "alternate icon", href: "/favicon.ico", sizes: "32x32" },
+  { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
   // Preconnect hints for faster font loading
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
   {

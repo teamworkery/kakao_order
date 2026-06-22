@@ -257,18 +257,18 @@ export default function PhoneInputPage({
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-      <div className="w-full max-w-md bg-white rounded-lg shadow-md p-8">
+    <div className="min-h-screen flex items-center justify-center bg-muted/50 p-4">
+      <div className="w-full max-w-md bg-card rounded-lg shadow-md p-8">
         {isProcessing ? (
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
             <h1 className="text-2xl font-bold mb-2">주문 처리 중...</h1>
-            <p className="text-gray-600">잠시만 기다려주세요.</p>
+            <p className="text-muted-foreground">잠시만 기다려주세요.</p>
           </div>
         ) : (
           <>
             <h1 className="text-2xl font-bold mb-2">전화번호 입력</h1>
-            <p className="text-gray-600 mb-6">
+            <p className="text-muted-foreground mb-6">
               주문을 위해 전화번호를 입력해주세요.
             </p>
 
@@ -289,7 +289,7 @@ export default function PhoneInputPage({
               </div>
 
               {error && (
-                <div className="text-red-500 text-sm bg-red-50 p-3 rounded flex items-center gap-2">
+                <div className="text-destructive text-sm bg-destructive/10 p-3 rounded flex items-center gap-2">
                   <span className="material-symbols-outlined text-base">error</span>
                   {error}
                 </div>

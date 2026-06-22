@@ -85,14 +85,14 @@ export default function OrderSuccessPage({ loaderData }: { loaderData: LoaderDat
 
   if (!order) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-        <div className="w-full max-w-md bg-white rounded-2xl shadow-sm p-8 text-center">
+      <div className="min-h-screen flex items-center justify-center bg-muted/50 p-4">
+        <div className="w-full max-w-md bg-card rounded-2xl shadow-sm p-8 text-center">
           <div className="mb-6">
-            <div className="mx-auto w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-6">
-              <span className="material-symbols-outlined text-red-600 text-4xl">search_off</span>
+            <div className="mx-auto w-20 h-20 bg-destructive/10 rounded-full flex items-center justify-center mb-6">
+              <span className="material-symbols-outlined text-destructive text-4xl">search_off</span>
             </div>
-            <h1 className="text-xl font-bold text-gray-900 mb-3">주문을 찾을 수 없어요</h1>
-            <p className="text-gray-600 leading-relaxed">
+            <h1 className="text-xl font-bold text-foreground mb-3">주문을 찾을 수 없어요</h1>
+            <p className="text-muted-foreground leading-relaxed">
               주문 정보가 없거나 이미 처리된 주문입니다.
               <br />
               문제가 계속되면 가게에 문의해주세요.
@@ -136,21 +136,21 @@ export default function OrderSuccessPage({ loaderData }: { loaderData: LoaderDat
   const pickupTime = formatPickupTime(order.estimated_pickup_time);
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <div className="min-h-screen bg-muted/50 py-8 px-4">
       <div className="w-full max-w-md mx-auto space-y-4">
         {/* 성공 헤더 */}
-        <div className="bg-white rounded-xl shadow-sm p-6 text-center">
-          <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-            <span className="material-symbols-outlined text-green-600 text-3xl">check_circle</span>
+        <div className="bg-card rounded-xl shadow-sm p-6 text-center">
+          <div className="mx-auto w-16 h-16 bg-success/10 rounded-full flex items-center justify-center mb-4">
+            <span className="material-symbols-outlined text-success text-3xl">check_circle</span>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">주문이 완료되었습니다!</h1>
-          <p className="text-gray-600">음식점 확인 후 알림톡이 발송됩니다.</p>
+          <h1 className="text-2xl font-bold text-foreground mb-2">주문이 완료되었습니다!</h1>
+          <p className="text-muted-foreground">음식점 확인 후 알림톡이 발송됩니다.</p>
         </div>
 
         {/* 주문 상태 */}
-        <div className="bg-white rounded-xl shadow-sm p-4">
+        <div className="bg-card rounded-xl shadow-sm p-4">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-600">주문 상태</span>
+            <span className="text-sm text-muted-foreground">주문 상태</span>
             {statusColors && (
               <span className={`px-3 py-1 rounded-full text-sm font-bold ${statusColors.bg} ${statusColors.text}`}>
                 {statusLabel}
@@ -175,19 +175,19 @@ export default function OrderSuccessPage({ loaderData }: { loaderData: LoaderDat
         )}
 
         {/* 가게 정보 */}
-        <div className="bg-white rounded-xl shadow-sm p-4">
-          <h3 className="font-bold text-gray-900 mb-3">가게 정보</h3>
+        <div className="bg-card rounded-xl shadow-sm p-4">
+          <h3 className="font-bold text-foreground mb-3">가게 정보</h3>
           <div className="space-y-2">
             <div className="flex items-center gap-3">
-              <span className="material-symbols-outlined text-gray-400">store</span>
-              <span className="text-gray-700">{order.profile?.storename || "가게 이름 없음"}</span>
+              <span className="material-symbols-outlined text-muted-foreground">store</span>
+              <span className="text-foreground/80">{order.profile?.storename || "가게 이름 없음"}</span>
             </div>
             {order.profile?.storenumber && (
               <a
                 href={`tel:${order.profile.storenumber}`}
                 className="flex items-center gap-3 text-primary hover:underline"
               >
-                <span className="material-symbols-outlined text-gray-400">call</span>
+                <span className="material-symbols-outlined text-muted-foreground">call</span>
                 <span>{order.profile.storenumber}</span>
               </a>
             )}
@@ -195,26 +195,26 @@ export default function OrderSuccessPage({ loaderData }: { loaderData: LoaderDat
         </div>
 
         {/* 주문 내역 */}
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <div className="p-4 border-b border-gray-100">
-            <h3 className="font-bold text-gray-900">주문 내역</h3>
-            <p className="text-xs text-gray-500 mt-1">주문번호: {order.order_id.slice(0, 8)}</p>
+        <div className="bg-card rounded-xl shadow-sm overflow-hidden">
+          <div className="p-4 border-b border-border">
+            <h3 className="font-bold text-foreground">주문 내역</h3>
+            <p className="text-xs text-muted-foreground mt-1">주문번호: {order.order_id.slice(0, 8)}</p>
           </div>
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-border">
             {items.map((item: OrderItem) => (
               <div key={item.id} className="p-4 flex justify-between items-center">
                 <div>
-                  <p className="font-medium text-gray-900">{item.menuItem?.name || "메뉴"}</p>
-                  <p className="text-sm text-gray-500">수량: {item.quantity}개</p>
+                  <p className="font-medium text-foreground">{item.menuItem?.name || "메뉴"}</p>
+                  <p className="text-sm text-muted-foreground">수량: {item.quantity}개</p>
                 </div>
-                <p className="font-bold text-gray-900">
+                <p className="font-bold text-foreground">
                   ₩{(item.price * item.quantity).toLocaleString()}
                 </p>
               </div>
             ))}
           </div>
-          <div className="p-4 bg-gray-50 border-t border-gray-100 flex justify-between items-center">
-            <span className="font-bold text-gray-700">총 결제금액</span>
+          <div className="p-4 bg-muted/50 border-t border-border flex justify-between items-center">
+            <span className="font-bold text-foreground/80">총 결제금액</span>
             <span className="text-xl font-bold text-primary">
               ₩{order.totalAmount?.toLocaleString() || 0}
             </span>

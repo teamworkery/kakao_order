@@ -12,6 +12,7 @@ import type { Database, Tables } from "database.types";
 import { browserClient, makeSSRClient } from "~/supa_clients";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Route } from "./+types/admin";
+import { BrandMark } from "~/common/components/brand-logo";
 
 type MenuItem = Database["public"]["Tables"]["menuItem"]["Row"];
 type Category = Tables<"categories">;
@@ -810,8 +811,8 @@ function ImageUploadInput({
 
       {/* 에러 메시지 */}
       {error && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-sm text-red-700 flex items-center gap-2">
+        <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+          <p className="text-sm text-destructive flex items-center gap-2">
             <span>❌</span>
             {error}
           </p>
@@ -824,12 +825,12 @@ function ImageUploadInput({
           <img
             src={value}
             alt="업로드된 이미지"
-            className="w-32 h-24 object-cover rounded-lg border-2 border-gray-200 shadow-sm"
+            className="w-32 h-24 object-cover rounded-lg border-2 border-border shadow-sm"
           />
           <button
             type="button"
             onClick={() => onChange("")}
-            className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold shadow-lg transition-colors"
+            className="absolute -top-2 -right-2 bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold shadow-lg transition-colors"
             disabled={disabled}
             title="이미지 삭제"
           >
@@ -856,7 +857,7 @@ function Toast({
     return () => clearTimeout(timer);
   }, [onClose]);
 
-  const bgColor = type === "success" ? "bg-green-500" : "bg-red-500";
+  const bgColor = type === "success" ? "bg-success" : "bg-destructive";
 
   return (
     <div
@@ -866,7 +867,7 @@ function Toast({
         <span>{message}</span>
         <button
           onClick={onClose}
-          className="ml-2 text-white hover:text-gray-200"
+          className="ml-2 text-white hover:text-muted-foreground"
         >
           ×
         </button>
@@ -1250,14 +1251,13 @@ export default function AdminMenuPage() {
   if (needsOnboarding) {
     return (
       <div className="min-h-screen bg-background-light font-display antialiased text-foreground flex flex-col">
-        <header className="w-full px-6 py-4 lg:px-12 flex items-center justify-between border-b border-border bg-white">
-          <div className="flex items-center gap-3">
-            <div className="text-primary size-8">
-              <svg fill="currentColor" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                <path d="M24 4C25.7818 14.2173 33.7827 22.2182 44 24C33.7827 25.7818 25.7818 33.7827 24 44C22.2182 33.7827 14.2173 25.7818 4 24C14.2173 22.2182 22.2182 14.2173 24 4Z"></path>
-              </svg>
-            </div>
-            <h2 className="text-xl font-bold leading-tight tracking-tight">Partner Portal</h2>
+        <header className="w-full px-6 py-4 lg:px-12 flex items-center justify-between border-b border-border bg-card">
+          <div className="flex items-center gap-2.5">
+            <BrandMark className="size-8 text-primary" />
+            <h2 className="text-xl font-extrabold leading-tight tracking-tight">
+              pojang<span className="text-primary">.one</span>
+              <span className="ml-2 align-middle text-[12px] font-semibold text-muted-foreground">파트너</span>
+            </h2>
           </div>
           <Form method="post">
             <input type="hidden" name="actionType" value="logout" />
@@ -1268,13 +1268,13 @@ export default function AdminMenuPage() {
         </header>
 
         <main className="flex-1 flex items-center justify-center p-4 lg:p-8">
-          <div className="bg-white w-full max-w-lg rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] p-8 sm:p-10">
+          <div className="bg-card w-full max-w-lg rounded-2xl shadow-card p-8 sm:p-10">
             <div className="mb-8">
               <div className="size-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                 <span className="material-symbols-outlined text-primary text-2xl">storefront</span>
               </div>
               <h1 className="text-2xl font-bold text-foreground mb-2">가게 개설하기</h1>
-              <p className="text-gray-500 text-sm leading-relaxed">
+              <p className="text-muted-foreground text-sm leading-relaxed">
                 기본 정보만 입력하면 바로 주문 페이지가 만들어집니다. 메뉴·영업시간·사진은 개설 후 언제든 추가할 수 있어요.
               </p>
             </div>
@@ -1291,7 +1291,7 @@ export default function AdminMenuPage() {
                   required
                   placeholder="예: 굿모닝차이나"
                   defaultValue={userProfile?.storename || ""}
-                  className="w-full h-12 px-4 rounded-lg bg-gray-50 border border-gray-200 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary transition-all outline-none"
+                  className="w-full h-12 px-4 rounded-lg bg-muted/50 border border-border focus:bg-card focus:border-primary focus:ring-1 focus:ring-primary transition-all outline-none"
                 />
               </div>
 
@@ -1306,9 +1306,9 @@ export default function AdminMenuPage() {
                   onChange={(e) => setOnboardSlug(e.target.value)}
                   placeholder="goodmorning-china"
                   pattern="[A-Za-z0-9][A-Za-z0-9\-]{1,30}[A-Za-z0-9]"
-                  className="w-full h-12 px-4 rounded-lg bg-gray-50 border border-gray-200 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary transition-all outline-none"
+                  className="w-full h-12 px-4 rounded-lg bg-muted/50 border border-border focus:bg-card focus:border-primary focus:ring-1 focus:ring-primary transition-all outline-none"
                 />
-                <p className="text-xs text-gray-500 mt-2">
+                <p className="text-xs text-muted-foreground mt-2">
                   손님에게 공유할 주소예요. 영문 소문자·숫자·하이픈(-), 3~32자.
                   {normalizedSlug && (
                     <span className="block mt-1 text-primary font-medium break-all">
@@ -1326,12 +1326,12 @@ export default function AdminMenuPage() {
                   name="storenumber"
                   placeholder="예: 032-327-9696"
                   defaultValue={userProfile?.storenumber || ""}
-                  className="w-full h-12 px-4 rounded-lg bg-gray-50 border border-gray-200 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary transition-all outline-none"
+                  className="w-full h-12 px-4 rounded-lg bg-muted/50 border border-border focus:bg-card focus:border-primary focus:ring-1 focus:ring-primary transition-all outline-none"
                 />
               </div>
 
               {actionData?.error && (
-                <div className="flex items-center gap-2 text-red-500 text-sm bg-red-50 p-3 rounded-lg border border-red-100">
+                <div className="flex items-center gap-2 text-destructive text-sm bg-destructive/10 p-3 rounded-lg border border-destructive/20">
                   <span className="material-symbols-outlined text-[18px]">error</span>
                   <span>{actionData.error}</span>
                 </div>
@@ -1376,15 +1376,15 @@ export default function AdminMenuPage() {
           const err = (optionFetcher.data as { error?: string } | undefined)?.error;
           return (
             <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-              <div className="bg-white w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl shadow-xl max-h-[88vh] flex flex-col">
-                <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <div className="bg-card w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl shadow-xl max-h-[88vh] flex flex-col">
+                <div className="px-5 py-4 border-b border-border flex items-center justify-between">
                   <div>
-                    <h2 className="text-lg font-bold text-gray-900">옵션 관리</h2>
-                    <p className="text-xs text-gray-500 mt-0.5">{item?.name}</p>
+                    <h2 className="text-lg font-bold text-foreground">옵션 관리</h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">{item?.name}</p>
                   </div>
                   <button
                     onClick={() => setOptionMgrItemId(null)}
-                    className="text-gray-400 hover:text-gray-600 p-1"
+                    className="text-muted-foreground hover:text-muted-foreground p-1"
                     aria-label="닫기"
                   >
                     <span className="material-symbols-outlined">close</span>
@@ -1392,23 +1392,23 @@ export default function AdminMenuPage() {
                 </div>
                 <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
                   {err && (
-                    <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg p-3">
+                    <div className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg p-3">
                       {err}
                     </div>
                   )}
                   {groups.length === 0 && (
-                    <p className="text-sm text-gray-400 text-center py-4">
+                    <p className="text-sm text-muted-foreground text-center py-4">
                       아직 옵션 그룹이 없습니다. 아래에서 추가하세요.
                       <br />
                       (예: 사이즈, 곱빼기, 면 변경)
                     </p>
                   )}
                   {groups.map((g) => (
-                    <div key={g.id} className="border border-gray-200 rounded-xl overflow-hidden">
-                      <div className="flex items-center justify-between bg-gray-50 px-4 py-2.5 border-b border-gray-100">
+                    <div key={g.id} className="border border-border rounded-xl overflow-hidden">
+                      <div className="flex items-center justify-between bg-muted/50 px-4 py-2.5 border-b border-border">
                         <div className="flex items-center gap-2">
-                          <span className="font-semibold text-gray-800 text-sm">{g.name}</span>
-                          <span className="text-[11px] text-gray-500">
+                          <span className="font-semibold text-foreground text-sm">{g.name}</span>
+                          <span className="text-[11px] text-muted-foreground">
                             {g.min_select >= 1 ? "필수" : "선택"} ·{" "}
                             {g.max_select <= 1 ? "단일" : `최대 ${g.max_select}`}
                           </span>
@@ -1418,7 +1418,7 @@ export default function AdminMenuPage() {
                           <input type="hidden" name="groupId" value={g.id} />
                           <button
                             type="submit"
-                            className="text-red-500 hover:text-red-700 text-xs font-medium"
+                            className="text-destructive hover:text-destructive/80 text-xs font-medium"
                             disabled={busy}
                             onClick={(e) => {
                               if (!confirm(`'${g.name}' 그룹을 삭제할까요? 하위 옵션도 모두 삭제됩니다.`)) e.preventDefault();
@@ -1428,12 +1428,12 @@ export default function AdminMenuPage() {
                           </button>
                         </optionFetcher.Form>
                       </div>
-                      <div className="divide-y divide-gray-100">
+                      <div className="divide-y divide-border">
                         {(g.menu_options || []).map((o) => (
                           <div key={o.id} className="flex items-center justify-between px-4 py-2">
-                            <span className="text-sm text-gray-700">{o.name}</span>
+                            <span className="text-sm text-foreground/80">{o.name}</span>
                             <div className="flex items-center gap-3">
-                              <span className="text-xs text-gray-500 tabular-nums">
+                              <span className="text-xs text-muted-foreground tabular-nums">
                                 {Number(o.price_delta) > 0 ? "+" : ""}
                                 {Number(o.price_delta).toLocaleString()}원
                               </span>
@@ -1442,7 +1442,7 @@ export default function AdminMenuPage() {
                                 <input type="hidden" name="optionId" value={o.id} />
                                 <button
                                   type="submit"
-                                  className="text-gray-400 hover:text-red-500"
+                                  className="text-muted-foreground hover:text-destructive"
                                   disabled={busy}
                                   title="옵션 삭제"
                                 >
@@ -1456,7 +1456,7 @@ export default function AdminMenuPage() {
                       {/* 옵션 추가 */}
                       <optionFetcher.Form
                         method="post"
-                        className="flex items-center gap-2 px-4 py-2.5 bg-gray-50/50 border-t border-gray-100"
+                        className="flex items-center gap-2 px-4 py-2.5 bg-muted/50 border-t border-border"
                         key={`addopt-${g.id}-${(g.menu_options || []).length}`}
                       >
                         <input type="hidden" name="actionType" value="addOption" />
@@ -1465,20 +1465,20 @@ export default function AdminMenuPage() {
                           name="optionName"
                           placeholder="옵션명 (예: 곱빼기)"
                           required
-                          className="flex-1 min-w-0 border border-gray-200 px-3 py-1.5 rounded-lg text-sm"
+                          className="flex-1 min-w-0 border border-border px-3 py-1.5 rounded-lg text-sm"
                         />
                         <input
                           name="price_delta"
                           type="number"
                           step="100"
                           defaultValue="0"
-                          className="w-24 border border-gray-200 px-2 py-1.5 rounded-lg text-sm"
+                          className="w-24 border border-border px-2 py-1.5 rounded-lg text-sm"
                           title="추가요금(원)"
                         />
                         <button
                           type="submit"
                           disabled={busy}
-                          className="shrink-0 bg-gray-800 text-white text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-gray-700"
+                          className="shrink-0 bg-foreground text-background text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-foreground/90"
                         >
                           추가
                         </button>
@@ -1489,22 +1489,22 @@ export default function AdminMenuPage() {
                   {/* 새 옵션 그룹 추가 */}
                   <optionFetcher.Form
                     method="post"
-                    className="border border-dashed border-gray-300 rounded-xl p-4 space-y-3"
+                    className="border border-dashed border-border rounded-xl p-4 space-y-3"
                     key={`addgrp-${groups.length}`}
                   >
                     <input type="hidden" name="actionType" value="addOptionGroup" />
                     <input type="hidden" name="menu_item_id" value={optionMgrItemId} />
-                    <p className="text-sm font-semibold text-gray-700">새 옵션 그룹</p>
+                    <p className="text-sm font-semibold text-foreground/80">새 옵션 그룹</p>
                     <div className="flex flex-col sm:flex-row gap-2">
                       <input
                         name="groupName"
                         placeholder="그룹명 (예: 사이즈, 면 변경)"
                         required
-                        className="flex-1 border border-gray-200 px-3 py-2 rounded-lg text-sm"
+                        className="flex-1 border border-border px-3 py-2 rounded-lg text-sm"
                       />
                       <select
                         name="min_select"
-                        className="border border-gray-200 px-2 py-2 rounded-lg text-sm"
+                        className="border border-border px-2 py-2 rounded-lg text-sm"
                         defaultValue="0"
                       >
                         <option value="0">선택(0)</option>
@@ -1515,7 +1515,7 @@ export default function AdminMenuPage() {
                         type="number"
                         min="1"
                         defaultValue="1"
-                        className="w-20 border border-gray-200 px-2 py-2 rounded-lg text-sm"
+                        className="w-20 border border-border px-2 py-2 rounded-lg text-sm"
                         title="최대 선택 수"
                       />
                     </div>
@@ -1528,10 +1528,10 @@ export default function AdminMenuPage() {
                     </button>
                   </optionFetcher.Form>
                 </div>
-                <div className="p-4 border-t border-gray-100">
+                <div className="p-4 border-t border-border">
                   <button
                     onClick={() => setOptionMgrItemId(null)}
-                    className="w-full py-2.5 text-gray-600 font-medium hover:bg-gray-100 rounded-xl"
+                    className="w-full py-2.5 text-muted-foreground font-medium hover:bg-muted rounded-xl"
                   >
                     완료
                   </button>
@@ -1542,7 +1542,7 @@ export default function AdminMenuPage() {
         })()}
 
       {/* Top Navigation Bar */}
-      <header className="flex-none flex items-center justify-between whitespace-nowrap border-b border-solid border-border bg-white px-6 py-3 z-20 shadow-sm">
+      <header className="flex-none flex items-center justify-between whitespace-nowrap border-b border-solid border-border bg-card px-6 py-3 z-20 shadow-sm">
         <div className="flex items-center gap-8">
           <div className="flex items-center gap-4">
             <div className="size-8 text-primary">
@@ -1632,7 +1632,7 @@ export default function AdminMenuPage() {
       {/* Main Layout */}
       <div className="flex flex-1 h-full overflow-hidden">
         {/* Sidebar */}
-        <aside className="hidden md:flex flex-col w-72 bg-white border-r border-border overflow-y-auto">
+        <aside className="hidden md:flex flex-col w-72 bg-card border-r border-border overflow-y-auto">
           <div className="p-6 flex flex-col gap-6">
             {/* Store Info Card */}
             <div className="bg-background-light p-4 rounded-xl border border-border flex flex-col gap-4">
@@ -1645,13 +1645,13 @@ export default function AdminMenuPage() {
                 <div
                   className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${
                     todayStoreStatus.open
-                      ? "bg-green-100 text-green-700 border-green-200"
-                      : "bg-gray-100 text-gray-500 border-gray-200"
+                      ? "bg-success/10 text-success border-success/20"
+                      : "bg-muted text-muted-foreground border-border"
                   }`}
                 >
                   <span
                     className={`size-1.5 rounded-full ${
-                      todayStoreStatus.open ? "bg-green-600 animate-pulse" : "bg-gray-400"
+                      todayStoreStatus.open ? "bg-success animate-pulse" : "bg-muted-foreground"
                     }`}
                   ></span>{" "}
                   {todayStoreStatus.label}
@@ -1671,7 +1671,7 @@ export default function AdminMenuPage() {
                 </span>
                 <span>{todayStoreStatus.range || "영업시간을 설정해주세요"}</span>
               </div>
-              <button className="w-full h-8 flex items-center justify-center rounded-lg bg-white border border-border text-foreground text-xs font-medium hover:bg-gray-50 transition-colors">
+              <button className="w-full h-8 flex items-center justify-center rounded-lg bg-card border border-border text-foreground text-xs font-medium hover:bg-muted transition-colors">
                 가게 정보 수정
               </button>
             </div>
@@ -1762,7 +1762,7 @@ export default function AdminMenuPage() {
           <div className="flex-1 overflow-y-auto px-4 pb-20 md:px-6">
             <div className="max-w-2xl mx-auto space-y-6 pt-6">
               {/* 메뉴 추가 폼 */}
-              <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+              <div className="bg-card rounded-2xl shadow-sm overflow-hidden">
                 <div className="bg-primary/10 px-6 py-4 border-b border-primary/20">
                   <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
                     새 메뉴 추가
@@ -1775,7 +1775,7 @@ export default function AdminMenuPage() {
                     {/* 기본 정보 그룹 */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-foreground/80 mb-2">
                           메뉴명 <span className="text-primary">*</span>
                         </label>
                         <input
@@ -1790,7 +1790,7 @@ export default function AdminMenuPage() {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-foreground/80 mb-2">
                           가격 (원) <span className="text-primary">*</span>
                         </label>
                         <input
@@ -1809,7 +1809,7 @@ export default function AdminMenuPage() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-foreground/80 mb-2">
                         설명
                       </label>
                       <input
@@ -1817,7 +1817,7 @@ export default function AdminMenuPage() {
                         placeholder="메뉴에 대한 간단한 설명을 입력하세요"
                         value={addForm.description}
                         onChange={handleAddChange}
-                        className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-base"
+                        className="w-full border border-border px-4 py-3 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-base"
                         disabled={isSubmitting}
                       />
                     </div>
@@ -1825,7 +1825,7 @@ export default function AdminMenuPage() {
                     {/* 카테고리와 상태 */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-foreground/80 mb-2">
                           카테고리
                         </label>
                         <select
@@ -1845,7 +1845,7 @@ export default function AdminMenuPage() {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-foreground/80 mb-2">
                           상태
                         </label>
                         <select
@@ -1863,7 +1863,7 @@ export default function AdminMenuPage() {
 
                     {/* 이미지 업로드 */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-foreground/80 mb-2">
                         메뉴 이미지 <span className="text-primary">*</span>
                       </label>
                       <ImageUploadInput
@@ -1897,8 +1897,8 @@ export default function AdminMenuPage() {
               </div>
 
               {/* 카테고리 관리 */}
-              <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-                <div className="bg-green-50 px-6 py-4 border-b border-green-100">
+              <div className="bg-card rounded-2xl shadow-sm overflow-hidden">
+                <div className="bg-success/10 px-6 py-4 border-b border-success/20">
                   <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
                     카테고리 관리
                   </h2>
@@ -1919,13 +1919,13 @@ export default function AdminMenuPage() {
                           value={categoryName}
                           onChange={(e) => setCategoryName(e.target.value)}
                           placeholder="새 카테고리 이름 (예: 버거, 음료, 사이드)"
-                          className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-base"
+                          className="w-full border border-border px-4 py-3 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-base"
                           disabled={isSubmitting}
                         />
                       </div>
                       <button
                         type="submit"
-                        className="bg-green-500 hover:bg-green-600 text-white font-semibold px-6 py-3 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="bg-success hover:bg-success/90 text-success-foreground font-semibold px-6 py-3 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                         disabled={isSubmitting || !categoryName.trim()}
                       >
                         추가
@@ -1933,12 +1933,12 @@ export default function AdminMenuPage() {
                     </Form>
 
                     {/* 카테고리 목록 */}
-                    <div className="border-t border-gray-200 pt-4">
-                      <h3 className="text-sm font-medium text-gray-700 mb-3">
+                    <div className="border-t border-border pt-4">
+                      <h3 className="text-sm font-medium text-foreground/80 mb-3">
                         카테고리 목록 ({localCategories.length}개)
                       </h3>
                       {localCategories.length === 0 ? (
-                        <p className="text-gray-500 text-sm py-4">
+                        <p className="text-muted-foreground text-sm py-4">
                           등록된 카테고리가 없습니다.
                         </p>
                       ) : (
@@ -1946,13 +1946,13 @@ export default function AdminMenuPage() {
                           {localCategories.map((cat, index) => (
                             <div
                               key={cat.id}
-                              className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
+                              className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border border-border"
                             >
                               <div className="flex items-center gap-3">
-                                <span className="text-gray-400 text-sm font-medium w-6">
+                                <span className="text-muted-foreground text-sm font-medium w-6">
                                   {index + 1}
                                 </span>
-                                <span className="font-medium text-gray-900">
+                                <span className="font-medium text-foreground">
                                   {cat.name}
                                 </span>
                               </div>
@@ -1969,7 +1969,7 @@ export default function AdminMenuPage() {
                                 />
                                 <button
                                   type="submit"
-                                  className="text-red-500 hover:text-red-700 text-sm font-medium disabled:opacity-50"
+                                  className="text-destructive hover:text-destructive/80 text-sm font-medium disabled:opacity-50"
                                   disabled={isSubmitting}
                                   onClick={(e) => {
                                     if (
@@ -1994,7 +1994,7 @@ export default function AdminMenuPage() {
               </div>
 
               {/* 가게 정보 관리 */}
-              <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+              <div className="bg-card rounded-2xl shadow-sm overflow-hidden">
                 <div className="bg-blue-50 px-6 py-4 border-b border-blue-100">
                   <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
                     가게 정보 관리
@@ -2010,7 +2010,7 @@ export default function AdminMenuPage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-foreground/80 mb-2">
                           가게 주소 (URL) <span className="text-blue-500">*</span>
                         </label>
                         <input
@@ -2019,16 +2019,16 @@ export default function AdminMenuPage() {
                           placeholder="goodmorning-china"
                           pattern="[A-Za-z0-9][A-Za-z0-9\-]{1,30}[A-Za-z0-9]"
                           defaultValue={userProfile?.name || ""}
-                          className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
+                          className="w-full border border-border px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
                           disabled={isSubmitting || isUpdatingProfile}
                         />
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-xs text-muted-foreground mt-1">
                           손님 주문 페이지 주소 · 영문 소문자·숫자·하이픈(-), 3~32자
                         </p>
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-foreground/80 mb-2">
                           가게명 <span className="text-blue-500">*</span>
                         </label>
                         <input
@@ -2036,27 +2036,27 @@ export default function AdminMenuPage() {
                           required
                           placeholder="예: 맛있는 족발집"
                           defaultValue={userProfile?.storename || ""}
-                          className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
+                          className="w-full border border-border px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
                           disabled={isSubmitting || isUpdatingProfile}
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-foreground/80 mb-2">
                         가게 전화번호
                       </label>
                       <input
                         name="storenumber"
                         placeholder="예: 02-1234-5678"
                         defaultValue={userProfile?.storenumber || ""}
-                        className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
+                        className="w-full border border-border px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
                         disabled={isSubmitting || isUpdatingProfile}
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-foreground/80 mb-2">
                         가게 이미지
                       </label>
                       <ImageUploadInput
@@ -2074,7 +2074,7 @@ export default function AdminMenuPage() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-foreground/80 mb-2">
                         가게 설명
                       </label>
                       <textarea
@@ -2083,10 +2083,10 @@ export default function AdminMenuPage() {
                         defaultValue={userProfile?.store_description || ""}
                         maxLength={500}
                         rows={4}
-                        className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base resize-none"
+                        className="w-full border border-border px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base resize-none"
                         disabled={isSubmitting || isUpdatingProfile}
                       />
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-muted-foreground mt-1">
                         {(userProfile?.store_description || "").length}
                         /500자
                       </p>
@@ -2110,7 +2110,7 @@ export default function AdminMenuPage() {
               </div>
 
               {/* 영업 시간 관리 */}
-              <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+              <div className="bg-card rounded-2xl shadow-sm overflow-hidden">
                 <div className="bg-purple-50 px-6 py-4 border-b border-purple-100">
                   <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
                     영업 시간 관리
@@ -2131,12 +2131,12 @@ export default function AdminMenuPage() {
                           key={hour.day_of_week}
                           className={`flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-lg border ${
                             hour.is_closed
-                              ? "bg-gray-50 border-gray-200"
-                              : "bg-white border-gray-200"
+                              ? "bg-muted/50 border-border"
+                              : "bg-card border-border"
                           }`}
                         >
                           {/* 요일 */}
-                          <div className="w-20 font-medium text-gray-900">
+                          <div className="w-20 font-medium text-foreground">
                             {DAY_NAMES[hour.day_of_week]}
                           </div>
 
@@ -2153,9 +2153,9 @@ export default function AdminMenuPage() {
                                 };
                                 setLocalStoreHours(newHours);
                               }}
-                              className="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
+                              className="w-4 h-4 text-purple-600 rounded border-border focus:ring-purple-500"
                             />
-                            <span className="text-sm text-gray-600">휴무</span>
+                            <span className="text-sm text-muted-foreground">휴무</span>
                           </label>
 
                           {/* 시간 선택 */}
@@ -2172,9 +2172,9 @@ export default function AdminMenuPage() {
                                   };
                                   setLocalStoreHours(newHours);
                                 }}
-                                className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                className="px-3 py-2 border border-border rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                               />
-                              <span className="text-gray-500">~</span>
+                              <span className="text-muted-foreground">~</span>
                               <input
                                 type="time"
                                 value={hour.close_time || "22:00"}
@@ -2186,13 +2186,13 @@ export default function AdminMenuPage() {
                                   };
                                   setLocalStoreHours(newHours);
                                 }}
-                                className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                className="px-3 py-2 border border-border rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                               />
                             </div>
                           )}
 
                           {hour.is_closed && (
-                            <span className="text-sm text-gray-500 italic">휴무일입니다</span>
+                            <span className="text-sm text-muted-foreground italic">휴무일입니다</span>
                           )}
                         </div>
                       ))}
@@ -2215,7 +2215,7 @@ export default function AdminMenuPage() {
               </div>
 
               {/* 기본 조리 시간 설정 */}
-              <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+              <div className="bg-card rounded-2xl shadow-sm overflow-hidden">
                 <div className="bg-amber-50 px-6 py-4 border-b border-amber-100">
                   <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
                     기본 조리 시간 설정
@@ -2226,10 +2226,10 @@ export default function AdminMenuPage() {
                     <input type="hidden" name="actionType" value="updatePrepTime" />
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-foreground/80 mb-2">
                         기본 조리 소요 시간 (분)
                       </label>
-                      <p className="text-xs text-gray-500 mb-3">
+                      <p className="text-xs text-muted-foreground mb-3">
                         주문 접수 시 기본으로 제안되는 픽업 예정 시간입니다. 주문별로 조정할 수 있습니다.
                       </p>
                       <div className="flex items-center gap-4">
@@ -2240,10 +2240,10 @@ export default function AdminMenuPage() {
                           max="180"
                           value={defaultPrepTime}
                           onChange={(e) => setDefaultPrepTime(Number(e.target.value))}
-                          className="w-32 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-base"
+                          className="w-32 px-4 py-3 border border-border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-base"
                           disabled={isSubmitting}
                         />
-                        <span className="text-gray-600">분</span>
+                        <span className="text-muted-foreground">분</span>
                       </div>
                     </div>
 
@@ -2264,7 +2264,7 @@ export default function AdminMenuPage() {
               </div>
 
               {/* Page Heading & Actions */}
-              <div className="flex-none p-4 md:px-6 md:pt-6 md:pb-4 bg-white/50 backdrop-blur-sm z-10">
+              <div className="flex-none p-4 md:px-6 md:pt-6 md:pb-4 bg-card/50 backdrop-blur-sm z-10">
                 <div className="max-w-2xl mx-auto flex flex-col gap-6">
                   <div className="flex flex-wrap justify-between gap-4 items-end">
                     <div className="flex flex-col gap-1">
@@ -2293,7 +2293,7 @@ export default function AdminMenuPage() {
                       </p>
                     </div>
                     <div className="flex gap-3">
-                      <button className="hidden sm:flex items-center justify-center gap-2 h-10 px-4 rounded-xl border border-border bg-white text-foreground text-sm font-bold hover:bg-gray-50 transition-colors">
+                      <button className="hidden sm:flex items-center justify-center gap-2 h-10 px-4 rounded-xl border border-border bg-card text-foreground text-sm font-bold hover:bg-muted transition-colors">
                         <span className="material-symbols-outlined text-[20px]">
                           swap_vert
                         </span>
@@ -2322,7 +2322,7 @@ export default function AdminMenuPage() {
                     </div>
                   </div>
                   {/* Filters Toolbar */}
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-2 rounded-xl border border-border shadow-sm">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-card p-2 rounded-xl border border-border shadow-sm">
                     <div className="flex-1 relative max-w-md">
                       <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
                         search
@@ -2340,13 +2340,13 @@ export default function AdminMenuPage() {
                         </span>{" "}
                         전체
                       </button>
-                      <button className="flex shrink-0 items-center gap-2 px-3 py-1.5 rounded-lg bg-background-light text-muted-foreground hover:bg-gray-200 transition-colors text-xs font-medium">
+                      <button className="flex shrink-0 items-center gap-2 px-3 py-1.5 rounded-lg bg-background-light text-muted-foreground hover:bg-muted transition-colors text-xs font-medium">
                         <span className="material-symbols-outlined text-[16px]">
                           check_circle
                         </span>{" "}
                         판매중
                       </button>
-                      <button className="flex shrink-0 items-center gap-2 px-3 py-1.5 rounded-lg bg-background-light text-muted-foreground hover:bg-gray-200 transition-colors text-xs font-medium">
+                      <button className="flex shrink-0 items-center gap-2 px-3 py-1.5 rounded-lg bg-background-light text-muted-foreground hover:bg-muted transition-colors text-xs font-medium">
                         <span className="material-symbols-outlined text-[16px]">
                           cancel
                         </span>{" "}
@@ -2360,7 +2360,7 @@ export default function AdminMenuPage() {
               <div className="flex-1 overflow-y-auto px-4 pb-20 md:px-6">
                 <div className="max-w-2xl mx-auto">
                   {filteredMenuItems.length === 0 ? (
-                    <div className="col-span-full p-12 text-center bg-white rounded-2xl border border-dashed border-gray-300">
+                    <div className="col-span-full p-12 text-center bg-card rounded-2xl border border-dashed border-border">
                       <div className="mx-auto w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-6">
                         <span className="material-symbols-outlined text-primary text-4xl">restaurant_menu</span>
                       </div>
@@ -2456,7 +2456,7 @@ export default function AdminMenuPage() {
 
                             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
                               <div className="lg:col-span-2">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-sm font-medium text-foreground/80 mb-2">
                                   이미지
                                 </label>
                                 <ImageUploadInput
@@ -2468,7 +2468,7 @@ export default function AdminMenuPage() {
 
                               <div className="lg:col-span-4 space-y-3">
                                 <div>
-                                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                                  <label className="block text-sm font-medium text-foreground/80 mb-1">
                                     메뉴명
                                   </label>
                                   <input
@@ -2482,7 +2482,7 @@ export default function AdminMenuPage() {
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                                  <label className="block text-sm font-medium text-foreground/80 mb-1">
                                     설명
                                   </label>
                                   <input
@@ -2495,7 +2495,7 @@ export default function AdminMenuPage() {
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                                  <label className="block text-sm font-medium text-foreground/80 mb-1">
                                     카테고리
                                   </label>
                                   <select
@@ -2516,7 +2516,7 @@ export default function AdminMenuPage() {
                               </div>
 
                               <div className="lg:col-span-2">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                <label className="block text-sm font-medium text-foreground/80 mb-1">
                                   가격 (원)
                                 </label>
                                 <input
@@ -2524,21 +2524,21 @@ export default function AdminMenuPage() {
                                   onChange={handleEditChange}
                                   name="editPrice"
                                   type="number"
-                                  className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                  className="w-full border border-border px-3 py-2 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                                   disabled={isSubmitting}
                                   min="0"
                                 />
                               </div>
 
                               <div className="lg:col-span-1">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                <label className="block text-sm font-medium text-foreground/80 mb-1">
                                   상태
                                 </label>
                                 <select
                                   value={editForm.isActive ? "true" : "false"}
                                   onChange={handleEditChange}
                                   name="editIsActive"
-                                  className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                  className="w-full border border-border px-3 py-2 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                                   disabled={isSubmitting}
                                 >
                                   <option value="true">활성</option>
@@ -2547,7 +2547,7 @@ export default function AdminMenuPage() {
                               </div>
 
                               <div className="lg:col-span-3">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                <label className="block text-sm font-medium text-foreground/80 mb-1">
                                   작업
                                 </label>
                                 <div className="flex gap-2">
@@ -2568,7 +2568,7 @@ export default function AdminMenuPage() {
                                   </button>
                                   <button
                                     type="button"
-                                    className="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-lg transition-colors duration-200"
+                                    className="bg-muted hover:bg-muted text-foreground/80 px-4 py-2 rounded-lg transition-colors duration-200"
                                     onClick={cancelEdit}
                                     disabled={isSubmitting}
                                   >
@@ -2582,7 +2582,7 @@ export default function AdminMenuPage() {
                           // 일반 보기 모드 - 카드 스타일
                           <div
                             key={item.id}
-                            className={`group relative flex flex-col rounded-2xl bg-white border border-border overflow-hidden hover:shadow-xl hover:shadow-primary/5 hover:border-primary/30 transition-all duration-300 ${
+                            className={`group relative flex flex-col rounded-2xl bg-card border border-border overflow-hidden hover:shadow-xl hover:shadow-primary/5 hover:border-primary/30 transition-all duration-300 ${
                               draggedItem === item.id
                                 ? "opacity-50 scale-95 shadow-lg"
                                 : draggedItem && draggedItem !== item.id
@@ -2595,7 +2595,7 @@ export default function AdminMenuPage() {
                             onDrop={(e) => handleDrop(e, item.id)}
                             onDragEnd={handleDragEnd}
                           >
-                            <div className="relative h-48 w-full overflow-hidden bg-gray-100">
+                            <div className="relative h-48 w-full overflow-hidden bg-muted">
                               {item.image ? (
                                 <div
                                   className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
@@ -2604,8 +2604,8 @@ export default function AdminMenuPage() {
                                   }}
                                 ></div>
                               ) : (
-                                <div className="absolute inset-0 bg-gray-200 flex items-center justify-center">
-                                  <span className="text-gray-400 text-4xl">
+                                <div className="absolute inset-0 bg-border flex items-center justify-center">
+                                  <span className="text-muted-foreground text-4xl">
                                     🍽️
                                   </span>
                                 </div>
@@ -2617,7 +2617,7 @@ export default function AdminMenuPage() {
                                   </span>
                                 </div>
                               )}
-                              <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm p-1.5 rounded-lg shadow-sm cursor-grab opacity-0 group-hover:opacity-100 transition-opacity">
+                              <div className="absolute top-3 right-3 bg-card/90 backdrop-blur-sm p-1.5 rounded-lg shadow-sm cursor-grab opacity-0 group-hover:opacity-100 transition-opacity">
                                 <span className="material-symbols-outlined text-foreground text-[20px]">
                                   drag_indicator
                                 </span>
@@ -2646,7 +2646,7 @@ export default function AdminMenuPage() {
                                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
                                       item.isActive
                                         ? "bg-primary"
-                                        : "bg-gray-300"
+                                        : "bg-muted"
                                     }`}
                                     onClick={() => {
                                       // Toggle active status
@@ -2683,7 +2683,7 @@ export default function AdminMenuPage() {
                                       판매 상태 변경
                                     </span>
                                     <span
-                                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                      className={`inline-block h-4 w-4 transform rounded-full bg-card transition-transform ${
                                         item.isActive
                                           ? "translate-x-6"
                                           : "translate-x-1"
@@ -2733,7 +2733,7 @@ export default function AdminMenuPage() {
                                     />
                                     <button
                                       type="submit"
-                                      className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                                      className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
                                       title="메뉴 삭제"
                                       disabled={isSubmitting}
                                       onClick={(e) => {

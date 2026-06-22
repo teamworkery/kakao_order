@@ -568,12 +568,12 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
   return (
     <div className="font-display bg-background-light overflow-hidden h-screen flex flex-col">
       {/* Top Navigation Bar */}
-      <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-border bg-white px-4 md:px-6 py-3 h-16 shrink-0 z-20">
+      <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-border bg-card px-4 md:px-6 py-3 h-16 shrink-0 z-20">
         <div className="flex items-center gap-4">
           {/* Mobile Menu Button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden flex items-center justify-center rounded-lg h-10 w-10 hover:bg-gray-100 transition-colors"
+            className="md:hidden flex items-center justify-center rounded-lg h-10 w-10 hover:bg-muted transition-colors"
           >
             <span className="material-symbols-outlined text-2xl">
               {mobileMenuOpen ? "close" : "menu"}
@@ -611,20 +611,20 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
           </button>
           {/* Store Status Toggle */}
           <div className="hidden sm:flex items-center gap-2 bg-[#f4f2f0] rounded-full p-1 pr-4">
-            <div className="h-8 px-3 flex items-center justify-center bg-white rounded-full shadow-sm text-green-600 text-xs font-bold uppercase tracking-wider">
+            <div className="h-8 px-3 flex items-center justify-center bg-card rounded-full shadow-sm text-success text-xs font-bold uppercase tracking-wider">
               영업중
             </div>
-            <span className="text-xs font-medium text-gray-500">
+            <span className="text-xs font-medium text-muted-foreground">
               22:00 자동 마감
             </span>
           </div>
           {/* Profile (Kakao Style) */}
-          <div className="flex items-center gap-3 pl-2 md:pl-4 border-l border-gray-100">
+          <div className="flex items-center gap-3 pl-2 md:pl-4 border-l border-border">
             <div className="hidden sm:flex flex-col items-end">
               <span className="text-sm font-bold text-foreground">
                 {data.userEmail || "관리자"}
               </span>
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-muted-foreground">
                 {data.storename || "가게"}
               </span>
             </div>
@@ -659,14 +659,14 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
         {/* Side Navigation - Desktop: always visible, Mobile: drawer */}
         <nav
           className={`
-          w-64 bg-white border-r border-border flex-col shrink-0
+          w-64 bg-card border-r border-border flex-col shrink-0
           md:flex md:relative
           ${mobileMenuOpen ? "flex fixed left-0 top-16 bottom-0 z-40" : "hidden"}
         `}
         >
           <div className="p-4 flex flex-col gap-2">
             <a
-              className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-foreground font-medium transition-colors"
+              className="flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground font-medium transition-colors"
               href="/admin"
               onClick={() => setMobileMenuOpen(false)}
             >
@@ -686,7 +686,7 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
               <span>전체 주문</span>
             </a>
             <a
-              className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-foreground font-medium transition-colors"
+              className="flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground font-medium transition-colors"
               href="#"
               onClick={() => setMobileMenuOpen(false)}
             >
@@ -701,7 +701,7 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
               <input type="hidden" name="actionType" value="logout" />
               <button
                 type="submit"
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-foreground font-medium transition-colors"
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground font-medium transition-colors"
               >
                 <span className="material-symbols-outlined text-[22px]">
                   logout
@@ -751,14 +751,14 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
                   <h1 className="text-xl md:text-2xl font-bold text-foreground">
                     새 주문
                   </h1>
-                  <p className="text-sm text-gray-500 mt-1">
+                  <p className="text-sm text-muted-foreground mt-1">
                     실시간으로 오늘의 주문을 관리하세요
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => window.location.reload()}
-                    className="flex items-center gap-2 px-4 py-2 bg-white border border-border rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition shadow-sm"
+                    className="flex items-center gap-2 px-4 py-2 bg-card border border-border rounded-lg text-sm font-medium text-foreground/80 hover:bg-muted transition shadow-sm"
                   >
                     <span className="material-symbols-outlined text-lg">
                       refresh
@@ -769,22 +769,22 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
               </div>
 
               {/* Filter Bar */}
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4 bg-white p-4 rounded-xl shadow-sm border border-border">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4 bg-card p-4 rounded-xl shadow-sm border border-border">
                 <div className="md:col-span-4 relative">
-                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
                     search
                   </span>
                   <input
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-sm transition-all bg-gray-50 focus:bg-white"
+                    className="w-full pl-10 pr-4 py-2 rounded-lg border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none text-sm transition-all bg-muted/50 focus:bg-card"
                     placeholder="전화번호로 검색..."
                     type="text"
                   />
                 </div>
                 <div className="md:col-span-3">
                   <div className="relative">
-                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
                       calendar_today
                     </span>
                     <input
@@ -793,13 +793,13 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
                       onChange={(e) =>
                         setDateFrom(new Date(e.target.value).toISOString())
                       }
-                      className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 bg-gray-50 text-sm cursor-pointer hover:bg-gray-100 transition-colors text-gray-700"
+                      className="w-full pl-10 pr-4 py-2 rounded-lg border border-border bg-muted/50 text-sm cursor-pointer hover:bg-muted transition-colors text-foreground/80"
                     />
                   </div>
                 </div>
                 <div className="md:col-span-3">
                   <div className="relative">
-                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
                       calendar_today
                     </span>
                     <input
@@ -808,20 +808,20 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
                       onChange={(e) =>
                         setDateTo(new Date(e.target.value).toISOString())
                       }
-                      className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 bg-gray-50 text-sm cursor-pointer hover:bg-gray-100 transition-colors text-gray-700"
+                      className="w-full pl-10 pr-4 py-2 rounded-lg border border-border bg-muted/50 text-sm cursor-pointer hover:bg-muted transition-colors text-foreground/80"
                     />
                   </div>
                 </div>
                 <div className="md:col-span-2 flex gap-2">
                   <button
                     onClick={applyFilters}
-                    className="flex-1 h-full flex items-center justify-center gap-2 bg-foreground text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition shadow-sm py-2"
+                    className="flex-1 h-full flex items-center justify-center gap-2 bg-foreground text-white rounded-lg text-sm font-medium hover:bg-foreground/90 transition shadow-sm py-2"
                   >
                     필터 적용
                   </button>
                   <button
                     onClick={clearFilters}
-                    className="px-3 h-full flex items-center justify-center bg-gray-100 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-200 transition py-2"
+                    className="px-3 h-full flex items-center justify-center bg-muted text-muted-foreground rounded-lg text-sm font-medium hover:bg-muted transition py-2"
                     title="초기화"
                   >
                     <span className="material-symbols-outlined text-lg">
@@ -833,9 +833,9 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
             </div>
 
             {/* Desktop Table / Mobile Card View */}
-            <div className="bg-white border border-border rounded-xl shadow-sm flex flex-col flex-1 overflow-hidden">
+            <div className="bg-card border border-border rounded-xl shadow-sm flex flex-col flex-1 overflow-hidden">
               {/* Desktop Table Header - Hidden on Mobile */}
-              <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-3 bg-gray-50 border-b border-border text-xs font-bold text-gray-500 uppercase tracking-wider shrink-0">
+              <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-3 bg-muted/50 border-b border-border text-xs font-bold text-muted-foreground uppercase tracking-wider shrink-0">
                 <div className="col-span-1">주문번호</div>
                 <div className="col-span-2">시간</div>
                 <div className="col-span-2">고객</div>
@@ -848,12 +848,12 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
               <div className="overflow-y-auto custom-scrollbar flex-1">
                 {orders.length === 0 ? (
                   <div className="p-12 text-center">
-                    <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                      <span className="material-symbols-outlined text-gray-400 text-2xl">
+                    <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+                      <span className="material-symbols-outlined text-muted-foreground text-2xl">
                         receipt_long
                       </span>
                     </div>
-                    <p className="text-gray-700 font-medium mb-1">
+                    <p className="text-foreground/80 font-medium mb-1">
                       주문 내역이 없습니다
                     </p>
                     <p className="text-muted-foreground text-sm">
@@ -871,7 +871,7 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
                           className={`hidden md:grid grid-cols-12 gap-4 px-6 py-4 border-b border-[#f4f2f0] items-center hover:bg-orange-50/30 transition-colors cursor-pointer group ${
                             o.status && isActiveStatus(o.status)
                               ? ""
-                              : "bg-gray-50/50"
+                              : "bg-muted/50"
                           } ${o.status === "PENDING" ? "bg-yellow-50/30" : ""}`}
                           onClick={() => setOpenId(o.id)}
                         >
@@ -895,7 +895,7 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
                               {o.phoneNumber ?? "-"}
                             </span>
                           </div>
-                          <div className="col-span-4 text-sm text-gray-600 truncate pr-4">
+                          <div className="col-span-4 text-sm text-muted-foreground truncate pr-4">
                             <span className="font-medium text-foreground">
                               {menuSummaryMap.get(o.id) || "-"}
                             </span>
@@ -919,7 +919,7 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
                           className={`md:hidden p-4 border-b border-[#f4f2f0] cursor-pointer active:bg-orange-50/50 transition-colors ${
                             o.status && isActiveStatus(o.status)
                               ? ""
-                              : "bg-gray-50/50"
+                              : "bg-muted/50"
                           } ${o.status === "PENDING" ? "bg-yellow-50/30" : ""}`}
                           onClick={() => setOpenId(o.id)}
                         >
@@ -940,7 +940,7 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
                               {o.totalAmount?.toLocaleString() ?? "-"}원
                             </span>
                           </div>
-                          <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground mb-2">
                             <span className="flex items-center gap-1">
                               <span className="material-symbols-outlined text-base">
                                 schedule
@@ -956,7 +956,7 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
                               {o.phoneNumber ?? "-"}
                             </span>
                           </div>
-                          <div className="text-sm text-gray-700 truncate">
+                          <div className="text-sm text-foreground/80 truncate">
                             {menuSummaryMap.get(o.id) || "-"}
                           </div>
                         </div>
@@ -967,7 +967,7 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
               </div>
 
               {/* Pagination Footer */}
-              <div className="bg-gray-50 border-t border-border px-4 md:px-6 py-3 flex items-center justify-between text-xs text-gray-500 shrink-0">
+              <div className="bg-muted/50 border-t border-border px-4 md:px-6 py-3 flex items-center justify-between text-xs text-muted-foreground shrink-0">
                 <span className="hidden sm:inline">
                   {totalCount > 0
                     ? `${(page - 1) * pageSize + 1}-${Math.min(page * pageSize, totalCount)} / 총 ${totalCount}건`
@@ -980,19 +980,19 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
                   <button
                     disabled={curPage <= 1}
                     onClick={() => goPage(curPage - 1)}
-                    className="size-8 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-400 hover:text-primary disabled:opacity-50"
+                    className="size-8 flex items-center justify-center rounded-lg border border-border bg-card text-muted-foreground hover:text-primary disabled:opacity-50"
                   >
                     <span className="material-symbols-outlined text-sm">
                       chevron_left
                     </span>
                   </button>
-                  <span className="font-medium text-gray-700">
+                  <span className="font-medium text-foreground/80">
                     {curPage} / {totalPages}
                   </span>
                   <button
                     disabled={curPage >= totalPages}
                     onClick={() => goPage(curPage + 1)}
-                    className="size-8 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 hover:text-primary hover:border-primary transition-colors"
+                    className="size-8 flex items-center justify-center rounded-lg border border-border bg-card text-foreground/80 hover:text-primary hover:border-primary transition-colors"
                   >
                     <span className="material-symbols-outlined text-sm">
                       chevron_right
@@ -1012,16 +1012,16 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
           onClick={() => setOpenId(null)}
         >
           <div
-            className="bg-white md:rounded-2xl rounded-t-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh] md:max-h-[90vh]"
+            className="bg-card md:rounded-2xl rounded-t-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh] md:max-h-[90vh]"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="px-4 md:px-6 py-4 border-b border-border flex items-center justify-between bg-white sticky top-0">
+            <div className="px-4 md:px-6 py-4 border-b border-border flex items-center justify-between bg-card sticky top-0">
               <div className="flex flex-col">
                 <h3 className="text-lg md:text-xl font-bold text-foreground">
                   주문 #{short(openId)}
                 </h3>
-                <span className="text-sm text-gray-500">
+                <span className="text-sm text-muted-foreground">
                   {orders.find((o) => o.id === openId)?.createdat
                     ? fmtKST(orders.find((o) => o.id === openId)!.createdat!)
                     : "오늘 주문됨"}
@@ -1036,7 +1036,7 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
             </div>
 
             {/* 주문 상태 표시 */}
-            <div className="px-4 md:px-6 py-2 border-b border-border bg-white">
+            <div className="px-4 md:px-6 py-2 border-b border-border bg-card">
               {(() => {
                 const currentStatus = orders.find(
                   (o) => o.id === openId
@@ -1067,7 +1067,7 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
                   currentStatus !== "COMPLETED";
 
                 return (
-                  <div className="bg-white p-4 rounded-xl border border-border mb-4 shadow-sm">
+                  <div className="bg-card p-4 rounded-xl border border-border mb-4 shadow-sm">
                     <div className="flex items-start gap-3 mb-3">
                       <div className="p-2 bg-orange-50 rounded-lg text-orange-600">
                         <span className="material-symbols-outlined">
@@ -1089,7 +1089,7 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
                             })}
                           </p>
                         ) : (
-                          <p className="text-sm text-gray-500">
+                          <p className="text-sm text-muted-foreground">
                             아직 설정되지 않음
                           </p>
                         )}
@@ -1108,7 +1108,7 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
                           value={openId ?? ""}
                         />
                         <div className="flex-1">
-                          <label className="text-xs text-gray-500 block mb-1">
+                          <label className="text-xs text-muted-foreground block mb-1">
                             조리 소요 시간 (분)
                           </label>
                           <input
@@ -1117,7 +1117,7 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
                             min="1"
                             max="180"
                             defaultValue={15}
-                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                            className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none"
                             placeholder="예: 15"
                           />
                         </div>
@@ -1134,7 +1134,7 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
               })()}
 
               {/* Customer Info Card */}
-              <div className="bg-white p-4 rounded-xl border border-border mb-4 shadow-sm">
+              <div className="bg-card p-4 rounded-xl border border-border mb-4 shadow-sm">
                 <div className="flex items-start gap-3">
                   <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
                     <span className="material-symbols-outlined">person</span>
@@ -1143,7 +1143,7 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
                     <p className="font-bold text-foreground">
                       {orders.find((o) => o.id === openId)?.phoneNumber || "-"}
                     </p>
-                    <p className="text-sm text-gray-500">고객 연락처</p>
+                    <p className="text-sm text-muted-foreground">고객 연락처</p>
                   </div>
                 </div>
               </div>
@@ -1158,7 +1158,7 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
                 </div>
               ) : items.length === 0 ? (
                 <div className="p-6 text-center">
-                  <span className="material-symbols-outlined text-gray-400 text-3xl mb-2">
+                  <span className="material-symbols-outlined text-muted-foreground text-3xl mb-2">
                     inventory_2
                   </span>
                   <p className="text-muted-foreground text-sm">
@@ -1166,14 +1166,14 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
                   </p>
                 </div>
               ) : (
-                <div className="bg-white rounded-xl border border-border shadow-sm overflow-hidden">
-                  <div className="px-4 py-2 bg-gray-50 border-b border-border text-xs font-bold text-gray-500 uppercase">
+                <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+                  <div className="px-4 py-2 bg-muted/50 border-b border-border text-xs font-bold text-muted-foreground uppercase">
                     주문 메뉴
                   </div>
-                  <div className="divide-y divide-gray-100">
+                  <div className="divide-y divide-border">
                     {items.map((it) => (
                       <div key={it.id} className="p-4 flex gap-4">
-                        <div className="size-14 md:size-16 bg-gray-100 rounded-lg bg-cover bg-center shrink-0"></div>
+                        <div className="size-14 md:size-16 bg-muted rounded-lg bg-cover bg-center shrink-0"></div>
                         <div className="flex-1">
                           <div className="flex justify-between items-start">
                             <h4 className="font-bold text-foreground text-sm md:text-base">
@@ -1195,8 +1195,8 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
                       </div>
                     ))}
                   </div>
-                  <div className="bg-gray-50 p-4 border-t border-border flex justify-between items-center">
-                    <span className="font-bold text-gray-600">합계</span>
+                  <div className="bg-muted/50 p-4 border-t border-border flex justify-between items-center">
+                    <span className="font-bold text-muted-foreground">합계</span>
                     <span className="text-xl font-bold text-primary">
                       {items
                         .reduce((sum, it) => sum + it.price * it.quantity, 0)
@@ -1209,7 +1209,7 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
             </div>
 
             {/* Modal Footer (Actions) */}
-            <div className="p-4 border-t border-border bg-white sticky bottom-0">
+            <div className="p-4 border-t border-border bg-card sticky bottom-0">
               {(() => {
                 const currentStatus = orders.find(
                   (o) => o.id === openId
@@ -1250,7 +1250,7 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
                                 type="submit"
                                 className={`w-full py-3 px-4 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${
                                   isCancel
-                                    ? "bg-red-100 text-red-600 hover:bg-red-200 border border-red-200"
+                                    ? "bg-destructive/10 text-destructive hover:bg-destructive/20 border border-destructive/20"
                                     : "bg-primary text-white hover:bg-primary/90 shadow-lg shadow-primary/30"
                                 }`}
                               >
@@ -1264,14 +1264,14 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
                         })}
                       </div>
                     ) : (
-                      <div className="text-center text-gray-500 py-2">
+                      <div className="text-center text-muted-foreground py-2">
                         이 주문은 최종 상태입니다
                       </div>
                     )}
                     {/* 닫기 버튼 */}
                     <button
                       onClick={() => setOpenId(null)}
-                      className="w-full py-3 px-4 rounded-xl border border-gray-300 text-gray-700 font-bold hover:bg-gray-50 transition-colors"
+                      className="w-full py-3 px-4 rounded-xl border border-border text-foreground/80 font-bold hover:bg-muted transition-colors"
                     >
                       닫기
                     </button>

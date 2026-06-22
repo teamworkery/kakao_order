@@ -7,6 +7,7 @@ import { LoaderCircle } from "lucide-react";
 import { z } from "zod";
 import { redirect } from "react-router"; // loader에서만 사용
 import { makeSSRClient, browserClient } from "~/supa_clients";
+import { BrandMark } from "~/common/components/brand-logo";
 
 export const meta: Route.MetaFunction = () => {
   return [{ title: "로그인 | 관리자 페이지" }];
@@ -104,21 +105,20 @@ export default function LoginPage({ loaderData }: Route.ComponentProps) {
     <div className="bg-background-light font-display antialiased text-foreground min-h-screen flex flex-col">
       {/* Header / Nav */}
       <header className="w-full px-6 py-4 lg:px-12 flex items-center justify-between">
-        <div className="flex items-center gap-3 text-foreground">
-          <div className="text-primary size-8">
-            <svg fill="currentColor" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-              <path d="M24 4C25.7818 14.2173 33.7827 22.2182 44 24C33.7827 25.7818 25.7818 33.7827 24 44C22.2182 33.7827 14.2173 25.7818 4 24C14.2173 22.2182 22.2182 14.2173 24 4Z"></path>
-            </svg>
-          </div>
-          <h2 className="text-xl font-bold leading-tight tracking-tight">Partner Portal</h2>
-        </div>
+        <Link to="/" className="flex items-center gap-2.5">
+          <BrandMark className="size-8 text-primary" />
+          <h2 className="text-xl font-extrabold leading-tight tracking-tight">
+            pojang<span className="text-primary">.one</span>
+            <span className="ml-2 align-middle text-[12px] font-semibold text-muted-foreground">파트너</span>
+          </h2>
+        </Link>
         <a className="hidden sm:flex items-center justify-center text-sm font-bold text-muted-foreground hover:text-primary transition-colors" href="#">
           도움이 필요하신가요?
         </a>
       </header>
       {/* Main Content */}
       <main className="flex-1 flex items-center justify-center p-4 lg:p-8">
-        <div className="bg-white w-full max-w-5xl rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] overflow-hidden flex flex-col lg:flex-row min-h-[640px]">
+        <div className="bg-card w-full max-w-5xl rounded-xl shadow-card overflow-hidden flex flex-col lg:flex-row min-h-[640px]">
           {/* Left Side: Visual / Marketing */}
           <div className="hidden lg:flex lg:w-5/12 relative flex-col justify-end p-10 bg-cover bg-center" style={{ backgroundImage: 'linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.6) 100%), url(https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800)' }}>
             <div className="relative z-10 text-white space-y-4">
@@ -132,11 +132,11 @@ export default function LoginPage({ loaderData }: Route.ComponentProps) {
           {/* Right Side: Form */}
           <div className="w-full lg:w-7/12 flex flex-col">
             {/* Tabs */}
-            <div className="flex border-b border-gray-100">
+            <div className="flex border-b border-border">
               <button className="flex-1 py-5 text-center border-b-2 border-primary text-primary font-bold text-sm tracking-wide transition-colors">
                 로그인
               </button>
-              <Link to="/join" className="flex-1 py-5 text-center border-b-2 border-transparent text-gray-500 hover:text-gray-800 font-bold text-sm tracking-wide transition-colors">
+              <Link to="/join" className="flex-1 py-5 text-center border-b-2 border-transparent text-muted-foreground hover:text-foreground font-bold text-sm tracking-wide transition-colors">
                 회원가입
               </Link>
             </div>
@@ -144,10 +144,10 @@ export default function LoginPage({ loaderData }: Route.ComponentProps) {
             <div className="flex-1 p-8 sm:p-12 flex flex-col justify-center max-w-2xl mx-auto w-full">
               <div className="mb-8">
                 <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">다시 오신 것을 환영합니다</h2>
-                <p className="text-gray-500">계정 정보를 입력하여 대시보드에 접속하세요.</p>
+                <p className="text-muted-foreground">계정 정보를 입력하여 대시보드에 접속하세요.</p>
               </div>
               {resetSuccess && (
-                <div className="mb-5 flex items-center gap-2 text-green-600 text-sm bg-green-50 p-3 rounded-lg border border-green-100">
+                <div className="mb-5 flex items-center gap-2 text-success text-sm bg-success/10 p-3 rounded-lg border border-success/20">
                   <span className="material-symbols-outlined text-[18px]">check_circle</span>
                   <span>비밀번호가 변경되었습니다. 새 비밀번호로 로그인해주세요.</span>
                 </div>
@@ -157,7 +157,7 @@ export default function LoginPage({ loaderData }: Route.ComponentProps) {
                 <label className="block">
                   <span className="text-foreground text-sm font-semibold mb-2 block">이메일 주소</span>
                   <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
                       <span className="material-symbols-outlined text-[20px]">mail</span>
                     </span>
                     <input
@@ -165,7 +165,7 @@ export default function LoginPage({ loaderData }: Route.ComponentProps) {
                       id="email"
                       required
                       type="email"
-                      className="w-full h-12 pl-11 pr-4 rounded-lg bg-gray-50 border border-gray-200 text-foreground placeholder:text-gray-400 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary transition-all outline-none"
+                      className="w-full h-12 pl-11 pr-4 rounded-lg bg-muted/50 border border-border text-foreground placeholder:text-muted-foreground focus:bg-card focus:border-primary focus:ring-1 focus:ring-primary transition-all outline-none"
                       placeholder="owner@restaurant.com"
                     />
                   </div>
@@ -177,7 +177,7 @@ export default function LoginPage({ loaderData }: Route.ComponentProps) {
                     <Link className="text-sm text-primary font-bold hover:underline" to="/forgot-password">비밀번호를 잊으셨나요?</Link>
                   </div>
                   <div className="relative group">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors">
                       <span className="material-symbols-outlined text-[20px]">lock</span>
                     </span>
                     <input
@@ -185,17 +185,17 @@ export default function LoginPage({ loaderData }: Route.ComponentProps) {
                       id="password"
                       required
                       type="password"
-                      className="w-full h-12 pl-11 pr-12 rounded-lg bg-gray-50 border border-gray-200 text-foreground placeholder:text-gray-400 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary transition-all outline-none"
+                      className="w-full h-12 pl-11 pr-12 rounded-lg bg-muted/50 border border-border text-foreground placeholder:text-muted-foreground focus:bg-card focus:border-primary focus:ring-1 focus:ring-primary transition-all outline-none"
                       placeholder="비밀번호를 입력하세요"
                     />
-                    <button className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer" type="button">
+                    <button className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-muted-foreground cursor-pointer" type="button">
                       <span className="material-symbols-outlined text-[20px]">visibility</span>
                     </button>
                   </div>
                 </label>
                 {/* Error Message */}
                 {error && (
-                  <div className="flex items-center gap-2 text-red-500 text-sm bg-red-50 p-3 rounded-lg border border-red-100">
+                  <div className="flex items-center gap-2 text-destructive text-sm bg-destructive/10 p-3 rounded-lg border border-destructive/20">
                     <span className="material-symbols-outlined text-[18px]">error</span>
                     <span>{error}</span>
                   </div>
@@ -204,7 +204,7 @@ export default function LoginPage({ loaderData }: Route.ComponentProps) {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full h-12 bg-primary hover:bg-[#d66a1f] text-white font-bold rounded-lg transition-all shadow-[0_4px_14px_0_rgba(238,124,43,0.39)] hover:shadow-[0_6px_20px_rgba(238,124,43,0.23)] hover:-translate-y-0.5 active:translate-y-0 text-base disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-bold rounded-lg transition-all shadow-glow hover:-translate-y-0.5 active:translate-y-0 text-base disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {isSubmitting ? (
                     <LoaderCircle className="animate-spin" />
@@ -215,9 +215,9 @@ export default function LoginPage({ loaderData }: Route.ComponentProps) {
               </form>
               {/* Divider */}
               <div className="relative py-6 flex items-center">
-                <div className="flex-grow border-t border-gray-200"></div>
-                <span className="flex-shrink-0 mx-4 text-gray-400 text-sm font-medium">또는</span>
-                <div className="flex-grow border-t border-gray-200"></div>
+                <div className="flex-grow border-t border-border"></div>
+                <span className="flex-shrink-0 mx-4 text-muted-foreground text-sm font-medium">또는</span>
+                <div className="flex-grow border-t border-border"></div>
               </div>
               {/* Social Login (Kakao) */}
               <button
@@ -230,16 +230,16 @@ export default function LoginPage({ loaderData }: Route.ComponentProps) {
                 </svg>
                 <span>카카오로 로그인</span>
               </button>
-              <p className="mt-8 text-center text-xs text-gray-400 leading-relaxed">
-                계속 진행하면 <Link className="underline hover:text-gray-600" to="/terms">이용약관</Link> 및 <Link className="underline hover:text-gray-600" to="/privacy">개인정보처리방침</Link>에 동의하는 것으로 간주됩니다.
+              <p className="mt-8 text-center text-xs text-muted-foreground leading-relaxed">
+                계속 진행하면 <Link className="underline hover:text-muted-foreground" to="/terms">이용약관</Link> 및 <Link className="underline hover:text-muted-foreground" to="/privacy">개인정보처리방침</Link>에 동의하는 것으로 간주됩니다.
               </p>
             </div>
           </div>
         </div>
       </main>
       {/* Simple Footer */}
-      <footer className="w-full py-6 text-center text-sm text-gray-400">
-        © 2024 Partner Portal. All rights reserved.
+      <footer className="w-full py-6 text-center text-sm text-muted-foreground">
+        © 2026 워커리(Workery) · pojang.one
       </footer>
     </div>
   );

@@ -168,13 +168,13 @@ export default function CustomerOrdersPage({ loaderData }: { loaderData: LoaderR
   // 전화번호가 없는 경우
   if (!hasPhone) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="w-full max-w-md bg-white rounded-2xl shadow-sm p-8 text-center">
+      <div className="min-h-screen bg-muted/50 flex items-center justify-center p-4">
+        <div className="w-full max-w-md bg-card rounded-2xl shadow-sm p-8 text-center">
           <div className="mx-auto w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-6">
             <span className="material-symbols-outlined text-primary text-4xl">shopping_bag</span>
           </div>
-          <h1 className="text-xl font-bold text-gray-900 mb-3">아직 주문 내역이 없어요</h1>
-          <p className="text-gray-600 mb-6 leading-relaxed">
+          <h1 className="text-xl font-bold text-foreground mb-3">아직 주문 내역이 없어요</h1>
+          <p className="text-muted-foreground mb-6 leading-relaxed">
             첫 주문을 해보세요!
             <br />
             주문하시면 연락처가 자동 등록되어
@@ -195,13 +195,13 @@ export default function CustomerOrdersPage({ loaderData }: { loaderData: LoaderR
   // 주문이 없는 경우
   if (orders.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="w-full max-w-md bg-white rounded-2xl shadow-sm p-8 text-center">
-          <div className="mx-auto w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-6">
-            <span className="material-symbols-outlined text-gray-400 text-4xl">receipt_long</span>
+      <div className="min-h-screen bg-muted/50 flex items-center justify-center p-4">
+        <div className="w-full max-w-md bg-card rounded-2xl shadow-sm p-8 text-center">
+          <div className="mx-auto w-20 h-20 bg-muted rounded-full flex items-center justify-center mb-6">
+            <span className="material-symbols-outlined text-muted-foreground text-4xl">receipt_long</span>
           </div>
-          <h1 className="text-xl font-bold text-gray-900 mb-3">주문 내역이 없어요</h1>
-          <p className="text-gray-600 mb-6 leading-relaxed">
+          <h1 className="text-xl font-bold text-foreground mb-3">주문 내역이 없어요</h1>
+          <p className="text-muted-foreground mb-6 leading-relaxed">
             아직 주문하신 내역이 없습니다.
             <br />
             맛있는 음식을 주문해보세요!
@@ -254,13 +254,13 @@ export default function CustomerOrdersPage({ loaderData }: { loaderData: LoaderR
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-muted/50">
       {/* 헤더 */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
+      <header className="bg-card border-b border-border sticky top-0 z-10">
         <div className="max-w-lg mx-auto px-4 py-4 flex items-center justify-between">
           <button
             onClick={() => window.history.back()}
-            className="p-2.5 -ml-2 hover:bg-gray-100 active:bg-gray-200 rounded-xl transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+            className="p-2.5 -ml-2 hover:bg-muted active:bg-border rounded-xl transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
             aria-label="뒤로 가기"
           >
             <span className="material-symbols-outlined">arrow_back</span>
@@ -268,8 +268,8 @@ export default function CustomerOrdersPage({ loaderData }: { loaderData: LoaderR
           <div className="text-center">
             <h1 className="font-bold text-lg">내 주문 내역</h1>
             {activeOrders.length > 0 && (
-              <p className="text-xs text-green-600 flex items-center justify-center gap-1">
-                <span className="inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+              <p className="text-xs text-success flex items-center justify-center gap-1">
+                <span className="inline-block w-2 h-2 bg-success rounded-full animate-pulse"></span>
                 실시간 업데이트 중
               </p>
             )}
@@ -282,7 +282,7 @@ export default function CustomerOrdersPage({ loaderData }: { loaderData: LoaderR
         {/* 진행 중인 주문 */}
         {activeOrders.length > 0 && (
           <section>
-            <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">
+            <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3">
               진행 중인 주문
             </h2>
             <div className="space-y-3">
@@ -292,15 +292,15 @@ export default function CustomerOrdersPage({ loaderData }: { loaderData: LoaderR
                 const pickupTime = formatPickupTime(order.estimated_pickup_time);
 
                 return (
-                  <div key={order.order_id} className="bg-white rounded-xl shadow-sm overflow-hidden">
+                  <div key={order.order_id} className="bg-card rounded-xl shadow-sm overflow-hidden">
                     {/* 상태 배너 */}
-                    <div className={`px-4 py-2 ${statusColors?.bg || "bg-gray-100"}`}>
+                    <div className={`px-4 py-2 ${statusColors?.bg || "bg-muted"}`}>
                       <div className="flex items-center justify-between">
-                        <span className={`font-bold text-sm ${statusColors?.text || "text-gray-700"}`}>
+                        <span className={`font-bold text-sm ${statusColors?.text || "text-foreground/80"}`}>
                           {statusLabel}
                         </span>
                         {pickupTime && (
-                          <span className="text-xs text-gray-600">
+                          <span className="text-xs text-muted-foreground">
                             픽업 예정: {pickupTime}
                           </span>
                         )}
@@ -311,10 +311,10 @@ export default function CustomerOrdersPage({ loaderData }: { loaderData: LoaderR
                     <div className="p-4">
                       <div className="flex items-start justify-between mb-3">
                         <div>
-                          <p className="font-bold text-gray-900">
+                          <p className="font-bold text-foreground">
                             {order.profile?.storename || "가게"}
                           </p>
-                          <p className="text-xs text-gray-500">{formatDate(order.createdat)}</p>
+                          <p className="text-xs text-muted-foreground">{formatDate(order.createdat)}</p>
                         </div>
                         <p className="font-bold text-primary">
                           ₩{order.totalAmount?.toLocaleString() || 0}
@@ -322,7 +322,7 @@ export default function CustomerOrdersPage({ loaderData }: { loaderData: LoaderR
                       </div>
 
                       {/* 메뉴 요약 */}
-                      <p className="text-sm text-gray-600 mb-3">
+                      <p className="text-sm text-muted-foreground mb-3">
                         {order.items.slice(0, 2).map((item: OrderItem) => item.menuItem?.name).join(", ")}
                         {order.items.length > 2 && ` 외 ${order.items.length - 2}개`}
                       </p>
@@ -348,7 +348,7 @@ export default function CustomerOrdersPage({ loaderData }: { loaderData: LoaderR
         {/* 완료된 주문 */}
         {completedOrders.length > 0 && (
           <section>
-            <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">
+            <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3">
               지난 주문
             </h2>
             <div className="space-y-3">
@@ -357,16 +357,16 @@ export default function CustomerOrdersPage({ loaderData }: { loaderData: LoaderR
                 const statusLabel = order.status ? STATUS_LABELS[order.status] : "";
 
                 return (
-                  <div key={order.order_id} className="bg-white rounded-xl shadow-sm p-4">
+                  <div key={order.order_id} className="bg-card rounded-xl shadow-sm p-4">
                     <div className="flex items-start justify-between mb-2">
                       <div>
-                        <p className="font-bold text-gray-900">
+                        <p className="font-bold text-foreground">
                           {order.profile?.storename || "가게"}
                         </p>
-                        <p className="text-xs text-gray-500">{formatDate(order.createdat)}</p>
+                        <p className="text-xs text-muted-foreground">{formatDate(order.createdat)}</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-bold text-gray-700">
+                        <p className="font-bold text-foreground/80">
                           ₩{order.totalAmount?.toLocaleString() || 0}
                         </p>
                         <span className={`text-xs px-2 py-0.5 rounded-full ${statusColors?.bg || ""} ${statusColors?.text || ""}`}>
@@ -376,7 +376,7 @@ export default function CustomerOrdersPage({ loaderData }: { loaderData: LoaderR
                     </div>
 
                     {/* 메뉴 요약 */}
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-muted-foreground">
                       {order.items.slice(0, 2).map((item: OrderItem) => item.menuItem?.name).join(", ")}
                       {order.items.length > 2 && ` 외 ${order.items.length - 2}개`}
                     </p>

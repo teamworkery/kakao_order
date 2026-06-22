@@ -9,10 +9,12 @@
     ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
     "Segoe UI Symbol", "Noto Color Emoji";
 
-  /* 포장마차 웜 그림자 — 검정 대신 주황빛이 도는 따뜻한 그림자 */
-  --shadow-warm: 0 6px 24px -8px rgba(193, 96, 28, 0.18);
-  --shadow-warm-lg: 0 18px 48px -16px rgba(193, 96, 28, 0.28);
-  --shadow-glow: 0 10px 40px -10px rgba(238, 124, 43, 0.45);
+  /* 셰도우 토큰 — 깔끔한 카드 + 주황 버튼 글로우 (join 톤 기준) */
+  --shadow-card: 0 8px 30px rgba(0, 0, 0, 0.06);
+  --shadow-card-lg: 0 18px 48px -16px rgba(28, 22, 17, 0.12);
+  --shadow-warm: 0 6px 24px -8px rgba(193, 96, 28, 0.14);
+  --shadow-warm-lg: 0 18px 48px -16px rgba(193, 96, 28, 0.2);
+  --shadow-glow: 0 4px 14px 0 rgba(238, 124, 43, 0.32);
 }
 
 @theme inline {
@@ -86,37 +88,37 @@
 }
 
 :root {
-  /* Base — 친근한 느낌으로 모서리 살짝 키움 */
-  --radius: 0.875rem;
+  /* Base — 깔끔한 라이트 톤(join 기준). 살짝만 둥글게. */
+  --radius: 0.75rem;
 
-  /* Core colors — 포장마차 크림 베이스(더 따뜻하게) */
-  --background: #fbf6ef;
-  --background-light: #fffdfa;
+  /* Core colors — 거의 흰색의 웜-뉴트럴 베이스 + 흰 카드 */
+  --background: #fbfaf8;
+  --background-light: #fbfaf8;
   --foreground: #1c1611;
 
   /* Card */
   --card: #ffffff;
-  --card-foreground: #181411;
+  --card-foreground: #1c1611;
 
   /* Popover */
   --popover: #ffffff;
-  --popover-foreground: #181411;
+  --popover-foreground: #1c1611;
 
-  /* Primary (Orange brand) — 포장마차 등불 주황 */
+  /* Primary (Orange brand) — 등불 주황 (브랜드 포인트 유지) */
   --primary: #ee7c2b;
   --primary-foreground: #ffffff;
   --primary-light: #fdeedd;
 
-  /* Secondary — warm beige */
-  --secondary: #f3ebe0;
+  /* Secondary — 깔끔한 라이트 뉴트럴(살짝 웜) */
+  --secondary: #f5f2ee;
   --secondary-foreground: #1c1611;
 
-  /* Muted — 따뜻한 베이지 */
-  --muted: #f3ebe0;
-  --muted-foreground: #8a7461;
+  /* Muted — 본문 보조 텍스트 가독성 위해 뉴트럴-웜 그레이 */
+  --muted: #f5f2ee;
+  --muted-foreground: #6f6862;
 
   /* Accent */
-  --accent: #f3ebe0;
+  --accent: #f5f2ee;
   --accent-foreground: #1c1611;
 
   /* Semantic: Destructive */
@@ -135,9 +137,9 @@
   --info: #3b82f6;
   --info-foreground: #ffffff;
 
-  /* Form elements — 따뜻한 베이지 보더 */
-  --border: #ece1d3;
-  --input: #ece1d3;
+  /* Form elements — 부드러운 뉴트럴-웜 보더 */
+  --border: #eae5df;
+  --input: #eae5df;
   --ring: #ee7c2b;
 
   /* Chart colors */

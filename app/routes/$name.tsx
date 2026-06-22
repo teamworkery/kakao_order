@@ -813,22 +813,22 @@ export default function OrderPage({
 
   if (!menuItems || menuItems.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-muted/50 flex items-center justify-center p-4">
         <div className="text-center max-w-sm">
-          <div className="mx-auto w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-6">
-            <span className="material-symbols-outlined text-4xl text-gray-400">restaurant_menu</span>
+          <div className="mx-auto w-20 h-20 bg-muted rounded-full flex items-center justify-center mb-6">
+            <span className="material-symbols-outlined text-4xl text-muted-foreground">restaurant_menu</span>
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-3">
+          <h2 className="text-xl font-bold text-foreground mb-3">
             아직 메뉴가 준비되지 않았어요
           </h2>
-          <p className="text-gray-600 mb-6 leading-relaxed">
+          <p className="text-muted-foreground mb-6 leading-relaxed">
             가게에서 메뉴를 준비 중입니다.
             <br />
             잠시 후 다시 방문해주세요.
           </p>
           <button
             onClick={() => window.history.back()}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition-colors"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-muted hover:bg-muted text-foreground/80 font-medium rounded-xl transition-colors"
           >
             <span className="material-symbols-outlined text-lg">arrow_back</span>
             이전 페이지로
@@ -937,13 +937,13 @@ export default function OrderPage({
       {/* 전화번호 입력 모달 */}
       {showPhoneModal && (
         <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md">
+          <div className="bg-card rounded-2xl shadow-xl p-6 w-full max-w-md">
             <div className="text-center mb-6">
               <div className="mx-auto w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mb-4">
                 <span className="material-symbols-outlined text-2xl text-primary">phone</span>
               </div>
-              <h2 className="text-xl font-bold text-gray-900 mb-2">연락처를 알려주세요</h2>
-              <p className="text-gray-600 text-sm leading-relaxed">
+              <h2 className="text-xl font-bold text-foreground mb-2">연락처를 알려주세요</h2>
+              <p className="text-muted-foreground text-sm leading-relaxed">
                 주문 확인과 픽업 안내를 위해 필요합니다.
                 <br />
                 <span className="text-primary font-medium">한 번만 입력하면 다음부터 자동 저장됩니다.</span>
@@ -966,7 +966,7 @@ export default function OrderPage({
               {actionData &&
                 "error" in actionData &&
                 typeof actionData.error === "string" && (
-                  <div className="text-red-700 text-sm bg-red-50 border border-red-200 p-3 rounded-xl flex items-center gap-2">
+                  <div className="text-destructive text-sm bg-destructive/10 border border-destructive/20 p-3 rounded-xl flex items-center gap-2">
                     <span className="material-symbols-outlined text-base">error</span>
                     {actionData.error}
                   </div>
@@ -987,13 +987,13 @@ export default function OrderPage({
       {/* 주문 확인 모달 */}
       {showOrderConfirmModal && (
         <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col">
+          <div className="bg-card rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col">
             {/* 헤더 */}
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-gray-900">주문 확인</h2>
+            <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+              <h2 className="text-xl font-bold text-foreground">주문 확인</h2>
               <button
                 onClick={() => setShowOrderConfirmModal(false)}
-                className="text-gray-400 hover:text-gray-600 p-1"
+                className="text-muted-foreground hover:text-muted-foreground p-1"
                 disabled={isSubmitting}
               >
                 <span className="material-symbols-outlined">close</span>
@@ -1003,50 +1003,50 @@ export default function OrderPage({
             {/* 주문 내역 */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {/* 가게 정보 */}
-              <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
+              <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-xl">
                 <div className="p-2 bg-primary/10 rounded-lg">
                   <span className="material-symbols-outlined text-primary">store</span>
                 </div>
                 <div>
-                  <p className="font-bold text-gray-900">{storename}</p>
-                  <p className="text-sm text-gray-500">포장 주문</p>
+                  <p className="font-bold text-foreground">{storename}</p>
+                  <p className="text-sm text-muted-foreground">포장 주문</p>
                 </div>
               </div>
 
               {/* 연락처 */}
-              <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
+              <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-xl">
                 <div className="p-2 bg-blue-50 rounded-lg">
                   <span className="material-symbols-outlined text-blue-500">phone</span>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">연락처</p>
-                  <p className="font-medium text-gray-900">{effectivePhoneNumber}</p>
+                  <p className="text-sm text-muted-foreground">연락처</p>
+                  <p className="font-medium text-foreground">{effectivePhoneNumber}</p>
                 </div>
               </div>
 
               {/* 주문 아이템 */}
-              <div className="border border-gray-200 rounded-xl overflow-hidden">
-                <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-                  <h3 className="font-bold text-gray-700">주문 내역</h3>
+              <div className="border border-border rounded-xl overflow-hidden">
+                <div className="px-4 py-3 bg-muted/50 border-b border-border">
+                  <h3 className="font-bold text-foreground/80">주문 내역</h3>
                 </div>
-                <div className="divide-y divide-gray-100">
+                <div className="divide-y divide-border">
                   {orderItems.map((item) => (
                     <div key={item.id} className="p-4 flex justify-between items-start gap-3">
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900">{item.name}</p>
+                        <p className="font-medium text-foreground">{item.name}</p>
                         {item.options && item.options.length > 0 && (
-                          <p className="text-xs text-gray-400 mt-0.5">
+                          <p className="text-xs text-muted-foreground mt-0.5">
                             {item.options.map((o) => o.optionName).join(", ")}
                           </p>
                         )}
-                        <p className="text-sm text-gray-500 mt-0.5">
+                        <p className="text-sm text-muted-foreground mt-0.5">
                           {formatPrice(item.price)}원
                         </p>
-                        <div className="inline-flex items-center bg-gray-100 rounded-lg h-8 mt-2 p-0.5">
+                        <div className="inline-flex items-center bg-muted rounded-lg h-8 mt-2 p-0.5">
                           <button
                             type="button"
                             onClick={() => adjustLine(item.id, -1)}
-                            className="size-7 flex items-center justify-center rounded-md hover:bg-white"
+                            className="size-7 flex items-center justify-center rounded-md hover:bg-card"
                             aria-label="수량 감소"
                           >
                             <span className="material-symbols-outlined text-[16px]">remove</span>
@@ -1057,21 +1057,21 @@ export default function OrderPage({
                           <button
                             type="button"
                             onClick={() => adjustLine(item.id, 1)}
-                            className="size-7 flex items-center justify-center rounded-md hover:bg-white"
+                            className="size-7 flex items-center justify-center rounded-md hover:bg-card"
                             aria-label="수량 증가"
                           >
                             <span className="material-symbols-outlined text-[16px]">add</span>
                           </button>
                         </div>
                       </div>
-                      <p className="font-bold text-gray-900 tabular-nums whitespace-nowrap">
+                      <p className="font-bold text-foreground tabular-nums whitespace-nowrap">
                         {formatPrice(item.price * item.quantity)}원
                       </p>
                     </div>
                   ))}
                 </div>
-                <div className="px-4 py-4 bg-gray-50 border-t border-gray-200 flex justify-between items-center">
-                  <span className="font-bold text-gray-700">총 결제금액</span>
+                <div className="px-4 py-4 bg-muted/50 border-t border-border flex justify-between items-center">
+                  <span className="font-bold text-foreground/80">총 결제금액</span>
                   <span className="text-xl font-bold text-primary">
                     {formatPrice(totalAmount)}원
                   </span>
@@ -1087,9 +1087,9 @@ export default function OrderPage({
                     <p>결제는 가게에서 음식 수령 시 진행됩니다.</p>
                   </div>
                 </div>
-                <div className="flex gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
-                  <span className="material-symbols-outlined text-red-600 shrink-0">warning</span>
-                  <div className="text-sm text-red-800">
+                <div className="flex gap-3 p-4 bg-destructive/10 border border-destructive/20 rounded-xl">
+                  <span className="material-symbols-outlined text-destructive shrink-0">warning</span>
+                  <div className="text-sm text-destructive">
                     <p className="font-bold">주문 확정 전 확인해주세요</p>
                     <p>주문 접수 후에는 취소가 어렵습니다. 메뉴와 수량을 다시 한번 확인해주세요.</p>
                   </div>
@@ -1098,7 +1098,7 @@ export default function OrderPage({
             </div>
 
             {/* 버튼 */}
-            <div className="p-4 border-t border-gray-100 space-y-3">
+            <div className="p-4 border-t border-border space-y-3">
               <button
                 onClick={submitOrder}
                 disabled={isSubmitting}
@@ -1120,7 +1120,7 @@ export default function OrderPage({
               <button
                 onClick={() => setShowOrderConfirmModal(false)}
                 disabled={isSubmitting}
-                className="w-full py-3 text-gray-600 font-medium hover:bg-gray-100 active:bg-gray-200 rounded-xl transition-colors disabled:opacity-50 min-h-[48px]"
+                className="w-full py-3 text-muted-foreground font-medium hover:bg-muted active:bg-muted rounded-xl transition-colors disabled:opacity-50 min-h-[48px]"
                 aria-label="주문 취소하고 돌아가기"
               >
                 다시 확인할게요
@@ -1138,14 +1138,14 @@ export default function OrderPage({
           const unit = item.price + optionDelta;
           return (
             <div className="fixed inset-0 bg-black/50 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
-              <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-xl max-h-[85vh] flex flex-col">
-                <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                  <h2 className="text-lg font-bold text-gray-900 truncate pr-2">
+              <div className="bg-card w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-xl max-h-[85vh] flex flex-col">
+                <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+                  <h2 className="text-lg font-bold text-foreground truncate pr-2">
                     {item.name}
                   </h2>
                   <button
                     onClick={() => setOptionModalItem(null)}
-                    className="text-gray-400 hover:text-gray-600 p-1 shrink-0"
+                    className="text-muted-foreground hover:text-muted-foreground p-1 shrink-0"
                     aria-label="닫기"
                   >
                     <span className="material-symbols-outlined">close</span>
@@ -1155,7 +1155,7 @@ export default function OrderPage({
                   {groups.map((g) => (
                     <div key={g.id}>
                       <div className="flex items-center gap-2 mb-2">
-                        <h3 className="font-bold text-gray-800 text-[15px]">
+                        <h3 className="font-bold text-foreground text-[15px]">
                           {g.name}
                         </h3>
                         {g.min_select >= 1 ? (
@@ -1163,10 +1163,10 @@ export default function OrderPage({
                             필수
                           </span>
                         ) : (
-                          <span className="text-[11px] text-gray-400">선택</span>
+                          <span className="text-[11px] text-muted-foreground">선택</span>
                         )}
                         {g.max_select > 1 && (
-                          <span className="text-[11px] text-gray-400">
+                          <span className="text-[11px] text-muted-foreground">
                             최대 {g.max_select}개
                           </span>
                         )}
@@ -1184,7 +1184,7 @@ export default function OrderPage({
                                 className={`flex items-center justify-between gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
                                   checked
                                     ? "border-primary bg-primary/5"
-                                    : "border-gray-200 hover:border-gray-300"
+                                    : "border-border hover:border-border"
                                 }`}
                               >
                                 <div className="flex items-center gap-2.5">
@@ -1195,12 +1195,12 @@ export default function OrderPage({
                                     onChange={() => toggleOption(g, o.id)}
                                     className="size-4 text-primary focus:ring-primary"
                                   />
-                                  <span className="text-[14px] text-gray-800">
+                                  <span className="text-[14px] text-foreground">
                                     {o.name}
                                   </span>
                                 </div>
                                 {Number(o.price_delta) !== 0 && (
-                                  <span className="text-[13px] font-medium text-gray-500 tabular-nums">
+                                  <span className="text-[13px] font-medium text-muted-foreground tabular-nums">
                                     {Number(o.price_delta) > 0 ? "+" : ""}
                                     {formatPrice(Number(o.price_delta))}원
                                   </span>
@@ -1213,7 +1213,7 @@ export default function OrderPage({
                   ))}
                   {/* 수량 */}
                   <div className="flex items-center justify-between pt-1">
-                    <span className="font-bold text-gray-800 text-[15px]">수량</span>
+                    <span className="font-bold text-foreground text-[15px]">수량</span>
                     <div className="inline-flex items-center bg-muted rounded-lg h-10 p-1">
                       <button
                         type="button"
@@ -1241,7 +1241,7 @@ export default function OrderPage({
                     </div>
                   </div>
                 </div>
-                <div className="p-4 border-t border-gray-100">
+                <div className="p-4 border-t border-border">
                   <button
                     onClick={addOptionLineToCart}
                     className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-bold rounded-xl flex items-center justify-center gap-2"
@@ -1258,7 +1258,7 @@ export default function OrderPage({
         })()}
 
       {/* Top Navigation Bar */}
-      <header className="flex items-center justify-between px-4 h-14 bg-white/80 backdrop-blur-xl sticky top-0 z-40 border-b border-border">
+      <header className="flex items-center justify-between px-4 h-14 bg-card/80 backdrop-blur-xl sticky top-0 z-40 border-b border-border">
         <button
           onClick={() => window.history.back()}
           className="size-10 flex items-center justify-center rounded-md hover:bg-muted text-foreground transition-colors"
@@ -1301,8 +1301,8 @@ export default function OrderPage({
           <div
             className={`border px-4 py-3 rounded-xl mb-4 ${
               "success" in actionData && actionData.success
-                ? "bg-green-100 border-green-400 text-green-700"
-                : "bg-red-100 border-red-400 text-red-700"
+                ? "bg-success/10 border-success/20 text-success"
+                : "bg-destructive/10 border-destructive/20 text-destructive"
             }`}
           >
             {actionData.message}
