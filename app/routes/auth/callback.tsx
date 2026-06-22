@@ -16,15 +16,55 @@ export async function loader({ request }: Route.LoaderArgs) {
       throw redirect(`${next}?error=auth_failed`, { headers });
     }
 
+    // [KAKAO DEBUG] 카카오에서 실제로 어떤 필드가 넘어오는지 확인 (확인 후 제거)
+    if (sessionData?.user) {
+      console.log(
+        "[KAKAO DEBUG] user_metadata:",
+        JSON.stringify(sessionData.user.user_metadata, null, 2)
+      );
+      console.log(
+        "[KAKAO DEBUG] identities:",
+        JSON.stringify(sessionData.user.identities, null, 2)
+      );
+      console.log(
+        "[KAKAO DEBUG] app_metadata:",
+        JSON.stringify(sessionData.user.app_metadata, null, 2)
+      );
+      console.log(
+        "[KAKAO DEBUG] email:",
+        sessionData.user.email,
+        "| phone:",
+        sessionData.user.phone
+      );
+    }
+
     // 프로필 자동 생성 (customer로 기본 설정)
     if (sessionData?.user) {
       const userId = sessionData.user.id;
       const userEmail = sessionData.user.email;
 
+      // 카카오 등 OAuth 제공자가 넘긴 표시 이름(닉네임) 추출.
+      // 공급자/Supabase 버전에 따라 키가 달라 여러 후보를 순서대로 확인한다.
+      const meta = (sessionData.user.user_metadata ?? {}) as Record<string, unknown>;
+      const pick = (...keys: string[]) => {
+        for (const k of keys) {
+          const v = meta[k];
+          if (typeof v === "string" && v.trim()) return v.trim();
+        }
+        return null;
+      };
+      const nickname = pick(
+        "nickname",
+        "name",
+        "full_name",
+        "user_name",
+        "preferred_username"
+      );
+
       // 기존 프로필 확인
       const { data: existingProfile } = await client
         .from("profiles")
-        .select("profile_id, role, customernumber")
+        .select("profile_id, role, customernumber, nickname")
         .eq("profile_id", userId)
         .maybeSingle();
 
@@ -38,6 +78,7 @@ export async function loader({ request }: Route.LoaderArgs) {
               email: userEmail,
               role: "customer",
               customernumber: null,
+              nickname,
             },
           ]);
 
@@ -46,6 +87,15 @@ export async function loader({ request }: Route.LoaderArgs) {
           // 프로필 생성 실패해도 로그인은 진행 (나중에 전화번호 입력 시 생성 가능)
         }
         // 전화번호가 없어도 원래 페이지로 리다이렉트 (전화번호 입력은 $name 페이지에서 처리)
+      } else if (nickname && !existingProfile.nickname) {
+        // 기존 프로필인데 닉네임이 비어 있으면 백필 (기존 가입자 대응)
+        const { error: backfillError } = await client
+          .from("profiles")
+          .update({ nickname })
+          .eq("profile_id", userId);
+        if (backfillError) {
+          console.error("닉네임 백필 오류:", backfillError);
+        }
       }
       // 전화번호가 없어도 원래 페이지로 리다이렉트 (전화번호 입력은 $name 페이지에서 처리)
     }

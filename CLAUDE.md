@@ -3,10 +3,11 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## ⏭️ 다음 작업
+- 🧭 **전략 점검(2026-06-07) — 시장·경쟁 게이트 = 조건부 GO, 재포지셔닝 권고**: 현 포지셔닝("수수료 없는 카카오 포장주문")은 카카오·네이버·무료QR 레드오션. **진짜 공백 = 현장현금+영업신고증 무관**(시장상인·노점; 카카오 픽업은 선결제 필수라 못 옴). 3대 재정렬 = ① 타겟 **시장 단골 미리주문 업종**(반찬·떡·정육·족발·김밥; 노점 일반 제외) ② 수익 **스마트상점 SaaS 바우처**(자부담 0~3천) ③ 카피 **현금OK·가입간편**(탈세 소구 금지+가드레일). **다음=빌드 그만, 검증부터** — 거점 시장 1곳 + 상인 5~7곳 인터뷰. 상세: `시장노점_현금미리주문_웨지/`(README→06_종합판단). ⚠️ 아래 dev 백로그는 *현 배포 유지보수*용이며, 재포지셔닝 검증 통과 전엔 신규 dev 투자 보류 권장.
 - **현재 상태**: `refactor` 브랜치. **홈페이지 "따뜻한 포장마차" 리디자인 → prod 배포 완료(2026-06-03)** — 차가운 미니멀 SaaS 톤을 웜 브랜드 톤으로 전환. `app.css` 토큰을 크림 베이스(`#fbf6ef`)·웜 베이지 보더·radius 0.875로, 웜 그림자 토큰(`shadow-warm/-lg/glow`) 추가, **Pretendard 한글폰트**(`root.tsx`)로 한/영 톤 통일. `index.tsx` 전면 재작성(등불 글로우 히어로·둥근 카드·한밤 포장마차 출시기념 섹션, 데모 링크를 실가게 `/goodmorning-china`로). 토큰만 바꿔도 손님화면·로그인 자동 일관화, **대시보드는 Shadcn 유지**. `0001a19`까지 `master` ff·push로 prod 라이브 확인. **앞선 배포(같은 날)**: `refactor` 누적분(가게등록·옵션·RLS2·주문SMS)을 최초 배포 + env 3개(`SUPABASE_SERVICE_ROLE_KEY`·`N8N_WEBHOOK_URL`·`N8N_WEBHOOK_URL_STORE`) Vercel production 주입. prod·로컬 동일 Supabase(`wkhgugajknrvpcobwlrv`), `VITE_APP_URL`=`https://www.pojang.one`.
 - **다음 작업 (전부 사용자 확인/외부 계정 필요 — 진행 전 문의)**:
   1. **카카오 OAuth prod 수동검증** — `www.pojang.one`에서 카카오 로그인 1회 실행해 redirect(`/auth/callback`) 정상 확인(도메인 불변이라 기존 등록 유효 추정).
-  2. **카카오 알림톡 전환** — 비즈채널·발신프로필·템플릿 승인 후 n8n HTTP 노드를 알림톡 엔드포인트로 교체(SMS는 폴백 유지). 현재는 SMS 실발송 가동 중.
+  2. **카카오 알림톡 전환** — 비즈채널·발신프로필·템플릿 승인 후 n8n HTTP 노드를 알림톡 엔드포인트로 교체(SMS는 폴백 유지). 현재는 SMS 실발송 가동 중. **(2026-06-21 준비분)** 템플릿 4종 초안 작성됨(주문접수/픽업완료/접수불가/사장님알림 — progress.md 참조), `#{고객명}`용 **닉네임 저장 코드 구현 완료**(`migrations/003_profile_nickname.sql`·`auth/callback.tsx`·`database.types.ts`), **migration 003 운영 DB 적용 완료**(사용자가 Dashboard SQL 실행, service role REST 200으로 컬럼 검증). 남은 펜딩: 카카오 로그인 1회로 `[KAKAO DEBUG]` 실수신필드 확인 → 콜백의 `[KAKAO DEBUG]` 로그 4줄 **제거** → 템플릿 4종 등록.
   3. **커스텀 SMTP 연결** — 가입 이메일 인증·비번 재설정 메일 실발송 (Supabase 기본 SMTP는 시간당 수통 제한·스팸함行 → 운영 부적합). 제공자 미정. `SUPABASE_ACCESS_TOKEN`이 있으면 Management API로 주입 가능하나, **현재 `.env`의 PAT은 만료/손상(JWT decode 실패)** → 재발급 필요.
   4. `N8N_WEBHOOK_STORE_SECRET` 생성 → `.env` + n8n 동기화 (`$name.tsx:343`)
   5. `.env` 정리 — `DATABASE_URL` host 가 타 프로젝트(`szmdt…`), 운영 ref(`wkhgugajknrvpcobwlrv`)로 교체 + `SUPABASE_ACCESS_TOKEN` 재발급

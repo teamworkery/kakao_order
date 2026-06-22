@@ -385,6 +385,7 @@ export type Database = {
           default_prep_time_minutes: number | null
           email: string | null
           name: string | null
+          nickname: string | null
           profile_id: string
           role: Database["public"]["Enums"]["user_role"]
           store_description: string | null
@@ -398,6 +399,7 @@ export type Database = {
           default_prep_time_minutes?: number | null
           email?: string | null
           name?: string | null
+          nickname?: string | null
           profile_id: string
           role?: Database["public"]["Enums"]["user_role"]
           store_description?: string | null
@@ -411,6 +413,7 @@ export type Database = {
           default_prep_time_minutes?: number | null
           email?: string | null
           name?: string | null
+          nickname?: string | null
           profile_id?: string
           role?: Database["public"]["Enums"]["user_role"]
           store_description?: string | null

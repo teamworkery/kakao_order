@@ -531,9 +531,20 @@ export default function Index() {
               </Link>
             </div>
           </div>
-          <div className="border-t border-border mt-8 pt-6">
-            <p className="text-[12px] text-muted-foreground tabular-nums">
-              © 2025 pojang.one. All rights reserved.
+          <div className="border-t border-border mt-8 pt-6 space-y-1.5">
+            <p className="text-[12px] text-muted-foreground leading-relaxed">
+              pojang.one은 <span className="font-semibold text-foreground">워커리(Workery)</span>가
+              운영하는 포장·예약주문 알림 서비스입니다.
+            </p>
+            <p className="text-[12px] text-muted-foreground leading-relaxed tabular-nums">
+              상호: 워커리(Workery) · 대표: 심우민 · 사업자등록번호: 227-08-52996
+              <br />
+              주소: 경기도 부천시 원미구 송내대로265번길 85 6층 696호 (상동, 뱅뱅프라자)
+              <br />
+              문의: 010-7990-3237 · woomin@workery.org
+            </p>
+            <p className="text-[12px] text-muted-foreground tabular-nums pt-1">
+              © 2026 워커리(Workery) · pojang.one. All rights reserved.
             </p>
           </div>
         </div>
