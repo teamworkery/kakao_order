@@ -16,28 +16,6 @@ export async function loader({ request }: Route.LoaderArgs) {
       throw redirect(`${next}?error=auth_failed`, { headers });
     }
 
-    // [KAKAO DEBUG] 카카오에서 실제로 어떤 필드가 넘어오는지 확인 (확인 후 제거)
-    if (sessionData?.user) {
-      console.log(
-        "[KAKAO DEBUG] user_metadata:",
-        JSON.stringify(sessionData.user.user_metadata, null, 2)
-      );
-      console.log(
-        "[KAKAO DEBUG] identities:",
-        JSON.stringify(sessionData.user.identities, null, 2)
-      );
-      console.log(
-        "[KAKAO DEBUG] app_metadata:",
-        JSON.stringify(sessionData.user.app_metadata, null, 2)
-      );
-      console.log(
-        "[KAKAO DEBUG] email:",
-        sessionData.user.email,
-        "| phone:",
-        sessionData.user.phone
-      );
-    }
-
     // 프로필 자동 생성 (customer로 기본 설정)
     if (sessionData?.user) {
       const userId = sessionData.user.id;
