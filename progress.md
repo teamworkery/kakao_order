@@ -1,5 +1,33 @@
 # progress
 
+## 2026-06-24 — login/join 톤 통일 + orange 토큰 스윕 + 알림톡 앱 측 준비(픽업시간 통합)
+
+세션 흐름: ① 셀러 셀프가입 구조 검토 ② 디자인 일관성 수정 ③ 알림톡 실발송 스코핑.
+
+- **셀러 가입 검토**: `/join`은 누구나 가입→가게 등록 폼 제출 시 `role:owner` 자동 승격(승인·검증 없음). 결론 = 셀프서비스 SaaS 표준이라 **보안 구멍 아님**, 검증 단계엔 게이트 추가 보류. 잠재 리스크는 URL 스쿼팅·사업자 미검증 2건뿐. **A안만 적용**: `/join` 카피를 "사장님(점주) 회원가입"으로 + 손님용 안내박스("손님은 가입 없이 가게 주소에서 바로 주문")로 명확화. (B=이메일 인증 완료자만 가게 생성 가드는 SMTP 선결이라 펜딩 기록.)
+- **디자인 톤 통일**: 사용자 직감대로 login/join 좌측 패널의 **다크 Unsplash 스톡사진+검정 60% 오버레이**가 앱 유일 다크 영역이라 라이트 브랜드와 충돌 → **라이트 브랜드 패널**(웜 글로우 `radial-gradient rgba(238,124,43,0.10)` + `p.` 마크 + primary-tint 아이콘칩)로 교체. material-symbols·forgot/reset은 일관 확인. 부차로 `admin.tsx`·`owner.orders.tsx`·`$name.tsx`의 Tailwind `orange-*`/하드코딩 hex(`#f4f2f0`)를 토큰(`primary`/`primary-light`/`border`/`shadow-glow`)으로 스윕(카카오 `#FEE500`은 보존). 잔존 0·typecheck·build·전페이지 200 검증.
+- **알림톡 실발송 스코핑 + 앱 측 구현**: provider=**Aligo**, 고객 워크플로 `kakao_order_customer_sms`(n8n `3OdyLnA9plF1gBRv`, ACCEPT 시 호출). **확인된 갭**: 승인 템플릿 `주문접수안내`는 #{픽업시간}을 쓰는데 ACCEPT 버튼이 픽업시간 입력과 분리돼 수락 시점에 비어있고 payload에도 없었음. **해결(사용자 선택 A=수락+조리시간 통합)**: `owner.orders.tsx` updateStatus 액션이 `pickupMinutes` 받아 `estimated_pickup_time` 계산·저장, ACCEPT 버튼에 조리시간 입력 결합, payload.order에 `estimatedPickupTime` 추가 → 템플릿 변수 6개 전부 payload 충족. **남은 일=n8n 1패스**(Build 변수 포맷 + Send를 Aligo 알림톡 `kakaoapi.aligo.in/akv10/alimtalk/send/`로 교체, SMS failover 유지), **외부값 3개 대기**: senderkey·tpl_code·알림톡 apikey → CRM 등록.
+- 커밋·배포: 위 변경분 `master` 커밋 후 push로 Vercel prod 자동 배포.
+
+## 2026-06-23 — 디자인 재통일 커밋 prod 배포
+
+`/next`로 미배포 항목 확인 후 사용자 요청("배포 전 사항들 배포")으로 디자인 재통일 커밋 `14ef62d`(2026-06-22 작업분, 그동안 `refactor`에만 있고 prod 미반영)을 운영 배포. 절차: `typecheck` ✓·`build` ✓ → `master`로 fast-forward 머지(master에만 있는 커밋 없어 충돌 0) → `git push origin master`로 Vercel git 연동 prod 자동 배포. 검증: `www.pojang.one` 홈·실가게 `/goodmorning-china`·신규 `favicon.svg`·`apple-touch-icon.png` 전부 HTTP 200(배포 전엔 favicon.svg 404였음). CLAUDE.md §다음 작업의 "prod 미배포" → "2026-06-23 prod 배포 완료"로 갱신. **나머지 펜딩(카카오 OAuth 수동검증·알림톡 템플릿 심사 대기·커스텀 SMTP)은 외부 계정/사용자 확인 필요라 미진행.**
+
+## 2026-06-22 — pojang.one 브랜드 마크 도입 + 전 페이지 디자인 토큰 통일 (커밋 `14ef62d`)
+
+사용자 불만 2건에서 출발: ① 메인 🏮 이모지 싫음(SVG+파비콘 교체 요청) ② 메인페이지 vs `/join` 톤 불일치(사용자는 **join 쪽이 더 마음에 듦**, 이 기준으로 통일 원함). **핵심 진단**: "join 스타일(Partner Portal·흰 카드·깔끔 폼·주황 포인트)"은 login·forgot/reset·privacy·terms·admin·owner·customer/*·`$name`까지 **앱 거의 전 페이지가 이미 쓰는 톤**이고, 최근 "따뜻한 포장마차"로 단독 리디자인된 **메인(index.tsx) 하나만 튀는** 상태였음 → "join 기준 통일" = 메인을 나머지에 맞추는 작업. 사용자 결정(AskUserQuestion): **로고=소문자 `p.` 마크 / 톤=join처럼 깔끔 / 범위=전 페이지 토큰 정리**. (로고는 10종 옵션을 self-contained HTML 갤러리로 만들어 사용자가 6번 선택; 갤러리는 선택 후 삭제.)
+
+- **새 마크**: `app/common/components/brand-logo.tsx`(`BrandMark`/`BrandLogo`, currentColor) 단일 소스 → 헤더·푸터·login·join·admin 공용. 🏮 앱 전체 0개.
+- **파비콘 재생성**: 의존성 없는 순수 Node 래스터라이저 `scripts/gen-favicons.mjs`(마크 지오메트리 슈퍼샘플링 → PNG/ICO 직접 인코딩, 시스템에 magick/rsvg/sharp 전무라 자작). 산출 `favicon.svg`(우선)+`favicon.ico`+`favicon-32/16.png`+`apple-touch-icon.png`(iOS 흰 라운드 bg). `root.tsx` 링크 3종 연결.
+- **토큰(app.css `:root`)**: 크림 `#fbf6ef`→웜뉴트럴 `#fbfaf8`, 베이지 보더→부드러운 뉴트럴, muted-fg 가독성↑, radius 0.875→0.75, 중립 `shadow-card/-lg` 토큰 추가(버튼 글로우는 join 톤). 토큰만으로 Shadcn 대시보드까지 자동 일관화.
+- **메인 재스킨**: 로고 교체, 주황 글로우 완화(0.20→0.08), 다크 "한밤 포장마차" 섹션→라이트 primary-tint, 카드 셰도우 중립화.
+- **전 페이지 스윕(13파일·하드코딩 400+곳)**: `gray-*`/`red-*`/`green-*`/`bg-white` → 시맨틱 토큰(`muted-foreground`/`border`/`card`/`destructive`/`success`). 5개 병렬 서브에이전트에 정확한 매핑표로 분배(파일 비중첩). login/join/admin 스파클 "Partner Portal" 로고 → `pojang.one 파트너` 마크, 옛 `© 2024 Partner Portal` 푸터 갱신. **의도적 보존**: 카카오색(#FEE500), 히어로 사진 위 글래스 오버레이(`bg-white/15`), 상태 accent(영업중 emerald·현장결제 yellow·정보 blue).
+- **검증**: typecheck ✓ · build ✓ · 전 페이지 HTTP 200 ✓ · 🏮 0 ✓. **미커밋**: progress.md/CLAUDE.md(이 기록). **다음**: 사용자 시각 리뷰 후 prod 배포(master ff·push)는 기존 절차대로 별도 진행.
+
+## 2026-06-22 — 알림톡 템플릿 1순위 테스트 등록(첫 제출)
+
+사용자가 카카오 채널에 `주문접수안내` 템플릿을 테스트 등록(첫 심사 제출). 등록 시 초안에서 **`#{고객명}` 변수 제거 → "고객님" 고정**, 안내 2줄(준비완료/취소불가) 삭제로 단순화. → **의미: 이 템플릿은 닉네임 의존이 사라져 닉네임 없이 바로 발송 가능**(닉네임 컬럼·코드는 향후 친구톡/개인화용으로 유지, 손해 없음). 발송 변수 6개(`가게명·주문번호·주문내역·결제금액·픽업시간·가게전화`) 전부 기존 웹훅 payload에 존재 → n8n 매핑에 추가 조회 불필요. `알림톡_템플릿/주문접수안내.md`를 실제 등록본과 일치하도록 갱신(미커밋). **다음: 심사 결과 대기 → 승인 시 템플릿코드로 n8n SMS→알림톡 교체.**
+
 ## 2026-06-21 — 카카오 로그인 수집정보 점검 + 알림톡 준비(닉네임 컬럼·템플릿)
 
 알림톡 전환 사전작업. 사용자 질문("카카오 로그인 시 뭘 수집하나/회원가입하면 알림톡 보낼 수 있나")에서 출발해 OAuth 수집범위와 메시지 채널 구조를 코드로 확인하고, 알림톡 첫 단계(템플릿 등록)에 필요한 코드를 준비.
@@ -9,7 +37,9 @@
 - **닉네임 저장 구현**: `profiles.name`은 가게 도메인 슬러그라 재사용 불가 → 전용 컬럼 신설. `migrations/003_profile_nickname.sql`(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS nickname TEXT`), 콜백에서 메타데이터 닉네임 추출(`nickname→name→full_name→user_name→preferred_username` 폴백) + 신규 insert·기존 null이면 백필, `database.types.ts` 3블록 반영. typecheck 통과.
 - **알림톡 템플릿 4종 초안 제공**(등록 대기): 주문접수안내·픽업준비완료·주문접수불가·사장님신규주문알림. `#{변수}` 형식·정보성·고정문 우위(반려방지). `#{주문내역}`은 변수 1개에 여러 메뉴 합쳐 발송 가능 확인.
 - **migration 003 운영 적용 완료**: CLI 직접실행은 막힘(`.env` `SUPABASE_ACCESS_TOKEN` 레거시·무효 `LegacyInvalidAccessTokenError`, `DATABASE_URL`은 타 프로젝트 `szmdt…`라 사용금지, 운영 DB비번 부재) → **사용자가 Dashboard SQL Editor에서 `ALTER TABLE` 직접 실행**. service role 키로 `profiles?select=nickname` REST 조회 HTTP 200 확인(컬럼 존재 검증). 이제 코드·타입·DB 3자 일치, 닉네임 저장 실동작 가능.
-- **남은 펜딩**: ① 카카오 로그인 1회로 `[KAKAO DEBUG]` 실수신 필드명 확인(로컬 `VITE_APP_URL=localhost:5173`라 로그는 dev 터미널에 출력) ② 확인 후 **디버그 로그 4줄 제거** ③ 알림톡 템플릿 4종 등록·심사. (토큰 재발급은 여전히 필요 — CLAUDE.md 다음작업 참조)
+- **알림톡 발신프로필 검수용 사업자정보 표기 + 배포**: 카카오 채널명(예약알림)↔사업자명(워커리) 연관성 요구 대응. 홈 푸터(`index.tsx`)에 운영사 워커리 사업자정보 추가 — 상호 워커리(Workery)/대표 심우민/사업자등록번호 227-08-52996/주소(부천 상동 뱅뱅프라자 696호)/연락처(010-7990-3237·woomin@workery.org), "pojang.one은 워커리가 운영하는 포장·예약주문 알림 서비스" 문구로 채널↔서비스↔사업자 연결 노출. 통신판매업은 미신고라 제외. 커밋 `cc36183`→`master` ff·push, prod(`www.pojang.one`) 푸터 라이브 검증(`227-08-52996` 노출). **검수 제출 사이트 URL = `https://www.pojang.one`**.
+- **디버그 로그 제거 + 닉네임코드 prod 반영**: `[KAKAO DEBUG]` 4줄 제거(개인정보 prod 런타임로그 잔존 방지), 닉네임 추출 코드는 그대로 prod 배포(applied migration 003과 일치). 커밋 `9f8338c`→`master` ff·push, prod 재검증. (실수신 필드명은 미확인이나 폴백 체인으로 기능 동작)
+- **남은 펜딩**: 알림톡 템플릿 등록·심사(`알림톡_템플릿/주문접수안내.md` 1순위 작성됨) → 승인 시 템플릿코드로 n8n HTTP 노드를 SMS→알림톡 교체. (토큰 재발급은 여전히 필요 — CLAUDE.md 다음작업 참조)
 
 ## 2026-06-07 — 시장·경쟁 게이트 점검 (포장주문 → 현금/노점 웨지 재포지셔닝)
 

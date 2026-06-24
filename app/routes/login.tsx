@@ -119,14 +119,19 @@ export default function LoginPage({ loaderData }: Route.ComponentProps) {
       {/* Main Content */}
       <main className="flex-1 flex items-center justify-center p-4 lg:p-8">
         <div className="bg-card w-full max-w-5xl rounded-xl shadow-card overflow-hidden flex flex-col lg:flex-row min-h-[640px]">
-          {/* Left Side: Visual / Marketing */}
-          <div className="hidden lg:flex lg:w-5/12 relative flex-col justify-end p-10 bg-cover bg-center" style={{ backgroundImage: 'linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.6) 100%), url(https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800)' }}>
-            <div className="relative z-10 text-white space-y-4">
-              <div className="size-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 border border-white/30">
-                <span className="material-symbols-outlined text-white">restaurant</span>
+          {/* Left Side: Visual / Marketing — 라이트 브랜드 톤(메인 히어로와 통일) */}
+          <div className="hidden lg:flex lg:w-5/12 relative flex-col justify-between p-10 bg-muted/40 border-r border-border overflow-hidden">
+            {/* 웜 글로우 — index 히어로와 동일한 시각 언어 */}
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_50%_at_30%_0%,rgba(238,124,43,0.10),transparent_70%)]" />
+            <div className="relative z-10">
+              <BrandMark className="size-10 text-primary" />
+            </div>
+            <div className="relative z-10 space-y-4">
+              <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center mb-4 border border-primary/15">
+                <span className="material-symbols-outlined text-primary">restaurant</span>
               </div>
-              <h1 className="text-3xl font-bold leading-tight">매장을 효율적으로 관리하세요.</h1>
-              <p className="text-white/90 font-medium text-lg leading-relaxed">주문 확인, 메뉴 업데이트, 매출 분석을 한 곳에서 관리할 수 있습니다.</p>
+              <h1 className="text-3xl font-bold leading-tight text-foreground">매장을 효율적으로<br />관리하세요.</h1>
+              <p className="text-muted-foreground font-medium text-lg leading-relaxed">주문 확인, 메뉴 업데이트, 매출 분석을 한 곳에서.</p>
             </div>
           </div>
           {/* Right Side: Form */}

@@ -788,22 +788,22 @@ function ImageUploadInput({
             disabled={disabled || uploading}
             className="sr-only"
           />
-          <div className="flex items-center gap-2 px-4 py-2 bg-orange-50 text-orange-700 rounded-lg border border-orange-200 hover:bg-orange-100 transition-colors disabled:opacity-50">
+          <div className="flex items-center gap-2 px-4 py-2 bg-primary-light text-primary rounded-lg border border-primary/20 hover:bg-primary-light/70 transition-colors disabled:opacity-50">
             <span className="text-sm font-medium">
               {uploading ? "업로드 중..." : "이미지 선택"}
             </span>
           </div>
         </label>
         {required && (
-          <span className="text-orange-500 text-sm font-medium">*</span>
+          <span className="text-primary text-sm font-medium">*</span>
         )}
       </div>
 
       {/* 업로드 상태 */}
       {uploading && (
-        <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-lg">
-          <div className="animate-spin rounded-full h-5 w-5 border-2 border-orange-200 border-t-orange-500"></div>
-          <p className="text-sm text-orange-700 font-medium">
+        <div className="flex items-center gap-3 p-3 bg-primary-light rounded-lg">
+          <div className="animate-spin rounded-full h-5 w-5 border-2 border-primary/20 border-t-primary"></div>
+          <p className="text-sm text-primary font-medium">
             이미지 업로드 중...
           </p>
         </div>
@@ -1817,7 +1817,7 @@ export default function AdminMenuPage() {
                         placeholder="메뉴에 대한 간단한 설명을 입력하세요"
                         value={addForm.description}
                         onChange={handleAddChange}
-                        className="w-full border border-border px-4 py-3 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-base"
+                        className="w-full border border-border px-4 py-3 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent text-base"
                         disabled={isSubmitting}
                       />
                     </div>
@@ -2404,7 +2404,7 @@ export default function AdminMenuPage() {
                           // 편집 모드
                           <div
                             key={item.id}
-                            className="bg-orange-50 border-l-4 border-orange-500 p-6"
+                            className="bg-primary-light border-l-4 border-primary p-6"
                           >
                             <Form method="post" id={`edit-form-${item.id}`}>
                               <input
@@ -2524,7 +2524,7 @@ export default function AdminMenuPage() {
                                   onChange={handleEditChange}
                                   name="editPrice"
                                   type="number"
-                                  className="w-full border border-border px-3 py-2 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                  className="w-full border border-border px-3 py-2 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                                   disabled={isSubmitting}
                                   min="0"
                                 />
@@ -2538,7 +2538,7 @@ export default function AdminMenuPage() {
                                   value={editForm.isActive ? "true" : "false"}
                                   onChange={handleEditChange}
                                   name="editIsActive"
-                                  className="w-full border border-border px-3 py-2 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                  className="w-full border border-border px-3 py-2 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                                   disabled={isSubmitting}
                                 >
                                   <option value="true">활성</option>

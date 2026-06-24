@@ -974,7 +974,7 @@ export default function OrderPage({
               <button
                 type="submit"
                 disabled={!validatePhoneNumber(phoneInput).isValid}
-                className="w-full bg-primary hover:bg-orange-600 text-white font-bold py-4 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[56px] flex items-center justify-center gap-2"
+                className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-4 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[56px] flex items-center justify-center gap-2"
               >
                 <span className="material-symbols-outlined">check</span>
                 저장하고 계속하기
@@ -1102,7 +1102,7 @@ export default function OrderPage({
               <button
                 onClick={submitOrder}
                 disabled={isSubmitting}
-                className="w-full bg-primary hover:bg-orange-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-orange-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-h-[56px]"
+                className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-4 rounded-xl shadow-glow transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-h-[56px]"
                 aria-label={isSubmitting ? "주문 처리 중입니다" : "주문 확정하기"}
               >
                 {isSubmitting ? (

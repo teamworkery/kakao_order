@@ -101,10 +101,24 @@ export async function action({ request }: Route.ActionArgs) {
       return { error: `${STATUS_LABELS[currentStatus]}에서 ${STATUS_LABELS[newStatus]}(으)로 변경할 수 없습니다` };
     }
 
+    // 수락 시 조리 소요시간(분)을 함께 받아 픽업 예정시간 계산
+    // (알림톡 '주문접수안내'의 #{픽업시간} 변수 — 수락 시점에 반드시 채워지도록 통합)
+    const pickupMinutes = Number(form.get("pickupMinutes") ?? 0);
+    let estimatedPickupIso: string | null = null;
+    const updateData: { status: OrderStatus; estimated_pickup_time?: string } = {
+      status: newStatus,
+    };
+    if (newStatus === "ACCEPT" && pickupMinutes > 0) {
+      estimatedPickupIso = new Date(
+        Date.now() + pickupMinutes * 60 * 1000
+      ).toISOString();
+      updateData.estimated_pickup_time = estimatedPickupIso;
+    }
+
     // 내 가게 주문만 상태 변경
     const { error: upErr } = await client
       .from("order")
-      .update({ status: newStatus })
+      .update(updateData)
       .eq("order_id", orderId)
       .eq("profile_id", user.id);
     if (upErr) throw upErr;
@@ -120,7 +134,9 @@ export async function action({ request }: Route.ActionArgs) {
     // 페이로드용 데이터 조회
     const { data: order } = await client
       .from("order")
-      .select("order_id, phoneNumber, totalAmount, createdat, profile_id")
+      .select(
+        "order_id, phoneNumber, totalAmount, createdat, profile_id, estimated_pickup_time"
+      )
       .eq("order_id", orderId)
       .maybeSingle();
 
@@ -149,6 +165,9 @@ export async function action({ request }: Route.ActionArgs) {
         phoneNumber: order?.phoneNumber ?? null,
         totalAmount: order?.totalAmount ?? null,
         createdAt: order?.createdat ?? null,
+        // 알림톡 #{픽업시간} — 방금 계산값 우선, 없으면 DB 기존값
+        estimatedPickupTime:
+          estimatedPickupIso ?? order?.estimated_pickup_time ?? null,
       },
       items: (itemRows ?? []).map((it) => ({
         id: it.id,
@@ -596,7 +615,7 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
             className={`flex cursor-pointer items-center justify-center rounded-full h-10 w-10 transition-colors ${
               soundOn
                 ? "bg-primary/10 text-primary"
-                : "bg-[#f4f2f0] text-foreground hover:bg-primary/10 hover:text-primary"
+                : "bg-muted text-foreground hover:bg-primary/10 hover:text-primary"
             }`}
             title="소리 알림 활성화"
           >
@@ -610,7 +629,7 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
             </span>
           </button>
           {/* Store Status Toggle */}
-          <div className="hidden sm:flex items-center gap-2 bg-[#f4f2f0] rounded-full p-1 pr-4">
+          <div className="hidden sm:flex items-center gap-2 bg-muted rounded-full p-1 pr-4">
             <div className="h-8 px-3 flex items-center justify-center bg-card rounded-full shadow-sm text-success text-xs font-bold uppercase tracking-wider">
               영업중
             </div>
@@ -868,7 +887,7 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
                       <div key={o.id}>
                         {/* Desktop Row */}
                         <div
-                          className={`hidden md:grid grid-cols-12 gap-4 px-6 py-4 border-b border-[#f4f2f0] items-center hover:bg-orange-50/30 transition-colors cursor-pointer group ${
+                          className={`hidden md:grid grid-cols-12 gap-4 px-6 py-4 border-b border-border items-center hover:bg-primary-light/30 transition-colors cursor-pointer group ${
                             o.status && isActiveStatus(o.status)
                               ? ""
                               : "bg-muted/50"
@@ -916,7 +935,7 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
 
                         {/* Mobile Card */}
                         <div
-                          className={`md:hidden p-4 border-b border-[#f4f2f0] cursor-pointer active:bg-orange-50/50 transition-colors ${
+                          className={`md:hidden p-4 border-b border-border cursor-pointer active:bg-primary-light/50 transition-colors ${
                             o.status && isActiveStatus(o.status)
                               ? ""
                               : "bg-muted/50"
@@ -1069,7 +1088,7 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
                 return (
                   <div className="bg-card p-4 rounded-xl border border-border mb-4 shadow-sm">
                     <div className="flex items-start gap-3 mb-3">
-                      <div className="p-2 bg-orange-50 rounded-lg text-orange-600">
+                      <div className="p-2 bg-primary-light rounded-lg text-primary">
                         <span className="material-symbols-outlined">
                           schedule
                         </span>
@@ -1123,7 +1142,7 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
                         </div>
                         <button
                           type="submit"
-                          className="px-4 py-2 bg-orange-500 text-white rounded-lg font-medium hover:bg-orange-600 transition-colors text-sm"
+                          className="px-4 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors text-sm"
                         >
                           설정
                         </button>
@@ -1221,15 +1240,16 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
                   <div className="flex flex-col gap-3">
                     {/* 다음 상태 버튼들 */}
                     {nextStatuses.length > 0 ? (
-                      <div className="flex gap-2">
+                      <div className="flex flex-col gap-2">
                         {nextStatuses.map((nextStatus) => {
                           const isCancel = nextStatus === "CANCEL";
+                          const isAccept = nextStatus === "ACCEPT";
                           return (
                             <Form
                               key={nextStatus}
                               method="post"
                               replace
-                              className="flex-1"
+                              className="w-full"
                             >
                               <input
                                 type="hidden"
@@ -1246,6 +1266,23 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
                                 name="newStatus"
                                 value={nextStatus}
                               />
+                              {isAccept && (
+                                <div className="mb-2">
+                                  <label className="text-xs text-muted-foreground block mb-1">
+                                    조리 소요시간 (분) — 손님 알림톡에 픽업 예정시간으로 안내됩니다
+                                  </label>
+                                  <input
+                                    type="number"
+                                    name="pickupMinutes"
+                                    min="1"
+                                    max="180"
+                                    defaultValue={15}
+                                    required
+                                    className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                                    placeholder="예: 15"
+                                  />
+                                </div>
+                              )}
                               <button
                                 type="submit"
                                 className={`w-full py-3 px-4 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${
