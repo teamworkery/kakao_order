@@ -480,6 +480,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
         const storename = formData.get("storename") as string;
         const storenumber = formData.get("storenumber") as string;
+        const owner_phone = formData.get("owner_phone") as string;
         const store_image = formData.get("store_image") as string;
         const store_description = formData.get("store_description") as string;
 
@@ -487,6 +488,7 @@ export async function action({ request }: ActionFunctionArgs) {
           name: slug,
           storename: storename.trim(),
           storenumber: storenumber?.trim() || null,
+          owner_phone: owner_phone?.trim() || null,
           store_image: store_image?.trim() || null,
           store_description:
             store_description?.trim() && store_description.trim().length > 0
@@ -1330,6 +1332,21 @@ export default function AdminMenuPage() {
                 />
               </div>
 
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-2">
+                  점주 휴대폰 번호 <span className="text-primary">*주문 알림 수신</span>
+                </label>
+                <input
+                  name="owner_phone"
+                  placeholder="예: 010-1234-5678"
+                  defaultValue={userProfile?.owner_phone || ""}
+                  className="w-full h-12 px-4 rounded-lg bg-muted/50 border border-border focus:bg-card focus:border-primary focus:ring-1 focus:ring-primary transition-all outline-none"
+                />
+                <p className="text-xs text-muted-foreground mt-2">
+                  새 주문이 들어오면 이 번호로 카카오 알림톡(문자)이 갑니다. 카카오톡을 쓰는 <b>휴대폰</b> 번호를 입력하세요.
+                </p>
+              </div>
+
               {actionData?.error && (
                 <div className="flex items-center gap-2 text-destructive text-sm bg-destructive/10 p-3 rounded-lg border border-destructive/20">
                   <span className="material-symbols-outlined text-[18px]">error</span>
@@ -2053,6 +2070,23 @@ export default function AdminMenuPage() {
                         className="w-full border border-border px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
                         disabled={isSubmitting || isUpdatingProfile}
                       />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-foreground/80 mb-2">
+                        점주 휴대폰 번호{" "}
+                        <span className="text-primary font-semibold">*주문 알림 수신</span>
+                      </label>
+                      <input
+                        name="owner_phone"
+                        placeholder="예: 010-1234-5678"
+                        defaultValue={userProfile?.owner_phone || ""}
+                        className="w-full border border-border px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
+                        disabled={isSubmitting || isUpdatingProfile}
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        새 주문 시 이 번호로 알림톡(문자)이 발송됩니다. 카카오톡 쓰는 휴대폰 번호로 입력하세요.
+                      </p>
                     </div>
 
                     <div>

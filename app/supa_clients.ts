@@ -4,6 +4,7 @@ import {
   parseCookieHeader,
   serializeCookieHeader,
 } from "@supabase/ssr";
+import { createClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
 export const browserClient = createBrowserClient<Database>(
@@ -41,3 +42,12 @@ export const makeSSRClient = (request: Request) => {
 
   return { client: serverSideClient, headers: headers };
 };
+
+// 서비스롤 클라이언트 — RLS 우회 권한 작업 전용(서버에서만 사용).
+// 예: 손님 주문 시 점주 휴대폰(owner_phone)을 공개 뷰에 노출하지 않고 조회.
+export const makeAdminClient = () =>
+  createClient<Database>(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false, autoRefreshToken: false } }
+  );

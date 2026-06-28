@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { Form, useLocation, redirect, useFetcher } from "react-router";
-import { makeSSRClient, browserClient } from "../supa_clients";
+import { makeSSRClient, makeAdminClient, browserClient } from "../supa_clients";
 import type { Database } from "database.types";
 import type { Route } from "./+types/$name";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -334,6 +334,20 @@ export const action = async ({ request, params }: Route.ActionArgs) => {
       profile_id
     );
 
+    // 점주 알림 수신번호 = owner_phone(휴대폰). 공개 뷰엔 없으므로 서비스롤로 조회,
+    // 미설정 시 가게 전화(storenumber)로 폴백.
+    let notifyPhone = profile.storenumber ?? null;
+    try {
+      const { data: ownerProfile } = await makeAdminClient()
+        .from("profiles")
+        .select("owner_phone")
+        .eq("profile_id", profile_id)
+        .maybeSingle();
+      notifyPhone = ownerProfile?.owner_phone?.trim() || notifyPhone;
+    } catch (e) {
+      console.error("owner_phone 조회 실패(폴백 storenumber 사용):", e);
+    }
+
     const payload = {
       event: "order.created",
       site: {
@@ -351,7 +365,7 @@ export const action = async ({ request, params }: Route.ActionArgs) => {
       },
       notify: {
         to: "store",
-        phone: profile.storenumber ?? null, // n8n에서 문자 발송에 사용
+        phone: notifyPhone, // 점주 휴대폰(owner_phone) 우선, 없으면 가게 전화 폴백
       },
     };
 

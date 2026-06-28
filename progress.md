@@ -1,5 +1,19 @@
 # progress
 
+## 2026-06-28 — 카카오 알림톡 실발송 n8n 전환 완료 (SMS→알림톡 라이브)
+
+실제 테스트 고객 확보 → "지금 카톡 발송 가능?" 점검에서 출발. **결론: 알림톡 실발송 라이브 전환 완료.**
+
+- **받은 외부값(사용자 제공)**: tpl_code `UI_8730`(템플릿명 `주문접수_고객`) · senderkey `e4aab44c…d0d0` · apikey `7mqso1…r1m`(SMS키와 동일) · userid `woomin914` · sender `01096643237`.
+- **알리고 = 서버 IP 화이트리스트 필수**(미등록 시 전 엔드포인트 `code:-99`). 사용자가 작업환경 IP 추가 후 로컬 직접 검증 가능해짐.
+- **로컬 3단계 검증**: `template/list`→UI_8730 **카카오 승인(APR)**·강조형 아님(`templateEmType:NONE`, emtitle 불필요)·버튼 없음·변수 6개 일치 / `alimtalk/send`→`code:0`+`mid` / `history/detail`(mid)→**`rslt:'0'` 성공**(실 카톡 도달). 강조형/버튼 없는 최단순 케이스라 본문 6변수 치환만 필요.
+- **n8n `3OdyLnA9plF1gBRv` 재구성(3노드 SMS→9노드)**: Webhook(`kakao_customer`)→**Build Message**(6변수 치환·옵션표기·콤마금액·픽업ISO→KST "오후 N시 M분" 변환)→**Send Alimtalk**(Code+`this.helpers.httpRequest`로 `alimtalk/send`, `info.mid` 추출)→**IF code=0**→**Wait 60s**→**Verify History**(`history/detail`로 `rslt`)→**IF rslt=0**→Mark Delivered / **양쪽 실패→Send SMS Fallback**(LMS `apis.aligo.in/send/`). 자격증명은 기존 SMS노드처럼 Code 내 하드코딩(이 인스턴스 Code `$env` 차단 가능성 회피, n8n_lessons §34), form은 문자열 직조립(Buffer 금지 §A). **`update_workflow`만으론 활성 안 됨 → `publish_workflow`로 active 버전 전환**(activeVersionId 옛 SMS→신규 fc38ff5a).
+- **n8n 경로 실검증(웹훅 호출=앱과 동일 경로)**: 운영 webhook에 합성 주문 POST→n8n 서버 실행→알리고 `history/list`에 **AT 전송완료**(mid 1381167870). 변환 정확: UTC 09:30→**KST 오후 6시 30분**, **21,000원**, 옵션 **짜장면(곱빼기) 2** 정상.
+- **앱 payload 일치 확인**: `owner.orders.tsx:159` ACCEPT payload 키(`orderId`·`order.{phoneNumber,totalAmount,estimatedPickupTime}`·`items[].{menuName,options,quantity}`·`store.{storename,storenumber}`) ↔ Build 노드 매핑 100% 일치 → **실손님 주문도 동일 작동**(합성 테스트 아님).
+- **일반 lesson 분리**(사용자 요청, 추후 비-n8n 코드 대비): `~/project/lessons/ref-aligo-alimtalk.md` 신규(조회→발송→mid검증 3단계·엔드포인트·IP화이트리스트·`#{변수}`수동치환·강조형emtitle·버튼키변환·의사코드) + `lessons/README.md` 인덱스 + `n8n_lessons.md §132` backlink.
+- **점주 알림도 알림톡 전환 착수(사용자 요청)**: 손님 주문 시 점주 알림이 현재 SMS(`kakao_order_store_sms` `vgbsEofC9kLMJQ7i`, path `kakao_store`). ① 템플릿 초안 `알림톡_템플릿/사장님주문알림.md`(변수 5+웹링크버튼) ② **선결조건=점주 휴대폰 분리 구현 완료**: 알림톡은 카톡 휴대폰만 도달하는데 수신번호가 가게 전화(유선 가능)였음 → 비공개 컬럼 `owner_phone` 신설(migration `004`), 가게설정 폼 2곳 입력, `$name.tsx`가 **서비스롤(`makeAdminClient` 신규)로 owner_phone 조회**(공개 뷰 미노출)→웹훅 `notify.phone`(폴백 storenumber). typecheck 통과. **migration 004 운영 DB 적용 완료**(Management API `database/query`, `owner_phone text` 생성·`public_stores` 뷰 미노출 확인 — `.env` `SUPABASE_ACCESS_TOKEN` 값 끝에 ` PAT` 라벨이 붙어 있어 공백앞 토큰만 추출해야 동작, len 44). **코드는 미배포·미커밋** → 컬럼이 먼저 있으니 이제 배포만 하면 안전(현 prod 코드는 owner_phone 미참조라 영향 없음). 다음=콘솔 템플릿 승인→tpl_code→n8n 전환.
+- **남은 일**: 실손님 1건으로 운영 회귀(점주가 실제 수락→손님 카톡 도착) 1회 관찰. 그 외 펜딩(커스텀 SMTP·OAuth prod 수동검증·N8N_WEBHOOK_STORE_SECRET·.env 정리) 불변. ⚠️ 알리고 자격증명이 n8n Code 3노드에 평문 하드코딩(기존 SMS노드도 동일) — 시크릿 관리 강화는 추후 과제.
+
 ## 2026-06-24 — login/join 톤 통일 + orange 토큰 스윕 + 알림톡 앱 측 준비(픽업시간 통합)
 
 세션 흐름: ① 셀러 셀프가입 구조 검토 ② 디자인 일관성 수정 ③ 알림톡 실발송 스코핑.
