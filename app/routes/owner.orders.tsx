@@ -81,7 +81,7 @@ export async function action({ request }: Route.ActionArgs) {
     // 인증 확인
     const { data: userRes } = await client.auth.getUser();
     const user = userRes?.user;
-    if (!user) throw redirect("/login");
+    if (!user) throw redirect("/login?next=/owner/orders");
 
     // 현재 주문 상태 확인
     const { data: currentOrder } = await client
@@ -223,7 +223,7 @@ export async function action({ request }: Route.ActionArgs) {
 
     const { data: userRes } = await client.auth.getUser();
     const user = userRes?.user;
-    if (!user) throw redirect("/login");
+    if (!user) throw redirect("/login?next=/owner/orders");
 
     // 현재 시간 + 픽업 시간(분)으로 예상 픽업 시간 계산
     const estimatedPickupTime = new Date(Date.now() + pickupMinutes * 60 * 1000);
@@ -247,7 +247,8 @@ export async function loader({ request }: Route.LoaderArgs) {
   const { client } = makeSSRClient(request);
   const { data: userRes } = await client.auth.getUser();
   const user = userRes?.user;
-  if (!user) throw redirect("/login");
+  // 미인증 시 로그인 후 이 페이지로 복귀시킨다 (알림톡 버튼 → 카톡 인앱/외부 브라우저 진입 대응).
+  if (!user) throw redirect("/login?next=/owner/orders");
 
   // --- 프로필 조회 (profiles.profile_id 기준) ---
   const { data: profile } = await client

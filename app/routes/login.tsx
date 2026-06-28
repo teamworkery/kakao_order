@@ -20,14 +20,22 @@ const formSchema = z.object({
   }),
 });
 
+// 오픈 리다이렉트 방지: 내부 경로(`/...`)만 허용하고, 프로토콜 상대(`//`)는 차단.
+// 알림톡 버튼 등 외부에서 `?next=/owner/orders` 로 들어오면 로그인 후 그 페이지로 복귀한다.
+function safeNext(raw: string | null): string {
+  if (raw && raw.startsWith("/") && !raw.startsWith("//")) return raw;
+  return "/admin";
+}
+
 // SSR 인증 상태 체크 (서버에서 실행)
-// 이 페이지는 점주(Partner Portal) 전용이므로, 로그인된 사용자는 /admin 으로 보낸다.
+// 이 페이지는 점주(Partner Portal) 전용이므로, 로그인된 사용자는 next(기본 /admin) 로 보낸다.
 // (가게가 아직 없으면 /admin 이 온보딩 화면을 띄운다.)
 export async function loader({ request }: Route.LoaderArgs) {
   const serverclient = makeSSRClient(request);
   const userResponse = await serverclient.client.auth.getUser();
   if (userResponse.data?.user) {
-    throw redirect("/admin", { headers: serverclient.headers });
+    const next = safeNext(new URL(request.url).searchParams.get("next"));
+    throw redirect(next, { headers: serverclient.headers });
   }
 
   return null;
@@ -39,15 +47,19 @@ export default function LoginPage({ loaderData }: Route.ComponentProps) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const resetSuccess = searchParams.get("reset") === "success";
+  // 로그인 후 복귀할 경로 (알림톡 버튼: /owner/orders). 내부 경로만 허용.
+  const next = safeNext(searchParams.get("next"));
 
-  // 카카오 로그인 (점주 포털 → 성공 시 /admin 으로)
+  // 카카오 로그인 (점주 포털 → 성공 시 next(기본 /admin) 으로)
   const handleKakaoLogin = async () => {
     const baseUrl =
       (import.meta.env.VITE_APP_URL as string | undefined) ||
       window.location.origin;
     const { error: oauthError } = await browserClient.auth.signInWithOAuth({
       provider: "kakao",
-      options: { redirectTo: `${baseUrl}/auth/callback?next=/admin` },
+      options: {
+        redirectTo: `${baseUrl}/auth/callback?next=${encodeURIComponent(next)}`,
+      },
     });
     if (oauthError) {
       setError("카카오 로그인 중 오류가 발생했습니다. 다시 시도해주세요.");
@@ -97,7 +109,7 @@ export default function LoginPage({ loaderData }: Route.ComponentProps) {
     }
 
     if (loginData.session) {
-      navigate("/admin");
+      navigate(next);
     }
   };
 
