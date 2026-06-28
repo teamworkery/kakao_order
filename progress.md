@@ -1,6 +1,26 @@
 # progress
 
-## 2026-06-28 — 카카오 알림톡 실발송 n8n 전환 완료 (SMS→알림톡 라이브)
+## 2026-06-28 (밤) — 픽업 예약 모델(B) 전체 구현 (손님 픽업시간 선택 + 점주 확정/시간변경/거절)
+
+프로세스 재검토 결론 → **모델 B(손님이 결제화면에서 픽업시간 직접 선택)** 채택·구현. 사용자 확정 3옵션: 슬롯 10분 / 점주 못 맞추면 시간변경+통보 / 당일만.
+
+- **DB (migration 005, 운영 DB 적용·검증 완료)**: `order.requested_pickup_time`(손님 희망)·`order.cancel_reason`(거절사유) 추가. Management API로 prod 적용 확인, `database.types.ts` 반영.
+- **슬롯 계산 유틸 신규** `app/lib/pickup-slots.ts`: `computePickupSlots`(지금+기본조리시간 ~ 영업종료, 10분, 휴무/마감 reason) + `formatKoreanTime`. KST 오프셋이 10/15/30분 슬롯 경계와 정합이라 epoch 올림 안전.
+- **손님 `$name.tsx`**: 결제화면 픽업시간 select(필수, mount 후 클라전용 렌더로 하이드레이션/TZ 불일치 회피, 1분마다 갱신·만료슬롯 해제), `canOrder`에 픽업선택 필수 추가, 확정모달에 픽업시간 표시, `saveOrder`+action에 `requested_pickup_time` 저장·미래시각 서버검증, 웹훅 payload에 `requestedPickupTime`.
+- **점주 `owner.orders.tsx`**: 목록(데스크톱 행·모바일 카드)·상세에 요청/확정 픽업시간 표시. 수락 UI 개편 — 기존 "조리분(分)" → **요청시간 기본채운 time input**(그대로/바꿔서 확정, `buildKstIsoFromTime`로 HH:mm+요청일자 KST 조립). **거절 시 사유 select(4종)** → `cancel_reason` 저장. payload에 `notificationType`(confirmed/changed/rejected)·`cancelReason`·`requestedPickupTime` 추가. 픽업카드는 요청+확정 표시로, 분(分) 조정폼은 "지금부터 N분 후" 보조수단으로 유지.
+- **알림톡 템플릿 문서** `알림톡_템플릿/고객_주문상태_3종.md`: 확정/시간변경/거절 3종 문안+변수+payload 매핑+n8n `notificationType` Switch 가이드.
+- **⚠️ 배포 안전장치**: 현 n8n은 notificationType 무시·무조건 '확정' 발송 → **거절 알림 켜면 오발송**. 그래서 거절 고객통지는 `ENABLE_CUSTOMER_REJECT_NOTIFY=true`(Vercel env, **기본 OFF**)일 때만. 수락/시간변경은 즉시 정상(기존 템플릿이 픽업시간 안내). 거절 자체·사유저장·payload는 동작, 손님 통지만 보류.
+- typecheck·build·dev SSR 스모크(store 200, 하이드레이션 경고 0) 통과. 커밋·prod 배포.
+- **남은 일(외부)**: ① 카카오 콘솔 거절·시간변경 템플릿 등록·승인 ② n8n 손님 워크플로 `notificationType` 3분기 추가 ③ 완료 후 env 플래그 ON.
+
+## 2026-06-28 (저녁) — 점주 로그인 복귀 + 알림톡 버튼 openExternalBrowser (배포) / 픽업·거절 프로세스 재검토 착수
+
+세션 흐름: 사장님 알림톡 버튼 인증 질문 → 재로그인 마찰 해소(배포) → 기본 픽업시간·거절 기능 스코핑 중 **프로세스 근본 재검토로 전환**.
+
+- **카톡 인앱브라우저 재로그인 마찰 해소 (커밋 `2ac4332`, prod 배포·검증 완료)**: 알림톡 버튼(`/owner/orders`)을 카톡 인앱브라우저로 열면 폰 기본 브라우저와 쿠키 분리라 매번 재로그인. 2갈래 해결 — ① **`?openExternalBrowser=1`**(카카오 공식 파라미터, 버튼을 폰 기본 브라우저로 강제 → 세션 유지) 템플릿 문서 반영 ② **로그인 후 주문목록 복귀**: `owner.orders.tsx` 미인증 redirect를 `/login?next=/owner/orders`로(loader+action 2곳, 로그아웃 plain 유지), `login.tsx`가 `next` 존중(`safeNext`로 내부경로만 허용=오픈리다이렉트 방지, 카카오OAuth `redirectTo`·비번로그인·이미로그인 loader 전부). 검증: prod redirect가 `…/login?next=/owner/orders`로 정상, 홈·실가게·login 200. ⚠️ iOS Safari ITP는 7일+ 완전 미사용 시에만 재로그인(데일리 사용엔 무영향) — 보강 안 하기로 결정.
+- **기본 픽업시간 — 이미 절반 구현 발견**: `profiles.default_prep_time_minutes` 컬럼 + 가게설정 "기본 조리 시간" UI(`admin.tsx` `updatePrepTime`, 2251~)가 **이미 존재**하나 `owner.orders.tsx` 수락 입력칸이 이를 안 쓰고 `defaultValue={15}` 하드코딩 → **연결만 하면 됨**(loader가 컬럼 조회→입력 기본값). 미착수.
+- **거절 — 전환은 있으나 고객 통지 없음**: `order-status.ts`에 `PENDING→CANCEL`(ACCEPT/PREPARING→CANCEL도) 이미 존재해 거절 자체는 가능. 단 ① 거절 **사유 미수집** ② 고객 웹훅이 **ACCEPT 때만** 발송(`owner.orders.tsx:191` `if newStatus==="ACCEPT"`)이라 거절 시 손님에게 아무 통지 안 감. 거절 사유별 알림톡 = 신규 작업.
+- **🔀 방향 전환(미해결, 다음 세션 핵심)**: 사용자 지적 — "손님은 15~20분 기대했는데 수락 시 1시간이라 하면 주문 자체를 안 했을 것". 현 플로우(손님이 **먼저 확정 주문** → 점주가 사후에 픽업시간 통보)는 손님이 대기시간을 모르고 커밋하는 구조적 결함. **픽업시간·수락·거절을 따로 패치하지 말고 주문 프로세스 전체를 재설계하기로** 함. 코드 미착수, 설계 논의부터.
 
 실제 테스트 고객 확보 → "지금 카톡 발송 가능?" 점검에서 출발. **결론: 알림톡 실발송 라이브 전환 완료.**
 

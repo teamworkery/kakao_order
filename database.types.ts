@@ -233,36 +233,42 @@ export type Database = {
       order: {
         Row: {
           actual_pickup_time: string | null
+          cancel_reason: string | null
           createdat: string | null
           estimated_pickup_time: string | null
           notes: string | null
           order_id: string
           phoneNumber: string | null
           profile_id: string | null
+          requested_pickup_time: string | null
           status: Database["public"]["Enums"]["kakao_order"] | null
           totalAmount: number | null
           updated_at: string | null
         }
         Insert: {
           actual_pickup_time?: string | null
+          cancel_reason?: string | null
           createdat?: string | null
           estimated_pickup_time?: string | null
           notes?: string | null
           order_id?: string
           phoneNumber?: string | null
           profile_id?: string | null
+          requested_pickup_time?: string | null
           status?: Database["public"]["Enums"]["kakao_order"] | null
           totalAmount?: number | null
           updated_at?: string | null
         }
         Update: {
           actual_pickup_time?: string | null
+          cancel_reason?: string | null
           createdat?: string | null
           estimated_pickup_time?: string | null
           notes?: string | null
           order_id?: string
           phoneNumber?: string | null
           profile_id?: string | null
+          requested_pickup_time?: string | null
           status?: Database["public"]["Enums"]["kakao_order"] | null
           totalAmount?: number | null
           updated_at?: string | null

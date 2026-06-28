@@ -5,6 +5,7 @@ import type { Database } from "database.types";
 import type { Route } from "./+types/$name";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import PhoneInput, { getRawPhoneNumber, validatePhoneNumber } from "~/common/components/phone-input";
+import { computePickupSlots, formatKoreanTime } from "~/lib/pickup-slots";
 
 type MenuItem = Database["public"]["Tables"]["menuItem"]["Row"];
 type Category = Database["public"]["Tables"]["categories"]["Row"];
@@ -169,7 +170,8 @@ export const saveOrder = async (
   orderItems: OrderItem[],
   phoneNumber: string,
   totalAmount: number,
-  profile_id: string
+  profile_id: string,
+  requestedPickupTime: string | null
 ) => {
   // 1) 주문(order) 저장
   const { data: order, error: orderError } = await client
@@ -180,6 +182,7 @@ export const saveOrder = async (
         totalAmount,
         status: "PENDING",
         profile_id,
+        requested_pickup_time: requestedPickupTime,
       },
     ])
     .select()
@@ -301,6 +304,24 @@ export const action = async ({ request, params }: Route.ActionArgs) => {
     const totalAmount = parseInt(formData.get("totalAmount") as string);
     const autoOrder = formData.get("autoOrder") === "true"; // 자동 주문 플래그
 
+    // 손님이 선택한 희망 픽업 시각 (예약 모델). 필수 + 미래 시각만 허용.
+    const requestedPickupRaw = (formData.get("requestedPickupTime") as string) || "";
+    const requestedPickupDate = requestedPickupRaw ? new Date(requestedPickupRaw) : null;
+    if (
+      !requestedPickupDate ||
+      Number.isNaN(requestedPickupDate.getTime()) ||
+      requestedPickupDate.getTime() < Date.now() - 60 * 1000 // 1분 유예
+    ) {
+      return Response.json(
+        {
+          success: false,
+          message: "픽업 시간을 다시 선택해주세요. (이미 지난 시간이거나 선택되지 않았습니다)",
+        },
+        { status: 400 }
+      );
+    }
+    const requestedPickupTime = requestedPickupDate.toISOString();
+
     // 전화번호가 없으면 프로필에서 가져오기
     if (!phoneNumber || phoneNumber.trim() === "") {
       const { data: userProfile } = await client
@@ -331,7 +352,8 @@ export const action = async ({ request, params }: Route.ActionArgs) => {
       orderItems,
       phoneNumber,
       totalAmount,
-      profile_id
+      profile_id,
+      requestedPickupTime
     );
 
     // 점주 알림 수신번호 = owner_phone(휴대폰). 공개 뷰엔 없으므로 서비스롤로 조회,
@@ -361,6 +383,7 @@ export const action = async ({ request, params }: Route.ActionArgs) => {
         customerPhone: phoneNumber,
         items: orderItems, // [{id,name,price,quantity}, ...]
         createdAt: new Date().toISOString(),
+        requestedPickupTime, // 손님이 선택한 희망 픽업 시각 (ISO)
         status: "PENDING", // 참고용
       },
       notify: {
@@ -443,6 +466,7 @@ export default function OrderPage({
   } = loaderData;
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [pickupTime, setPickupTime] = useState<string>(""); // 손님이 고른 희망 픽업 시각 (ISO)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [user, setUser] = useState(initialUser);
   const [showPhoneModal, setShowPhoneModal] = useState(needsPhoneNumber);
@@ -638,6 +662,7 @@ export default function OrderPage({
         totalAmount,
         storeName: name,
         phoneNumber: effectivePhoneNumber.trim() || null,
+        pickupTime: pickupTime || null,
       };
       sessionStorage.setItem("pendingOrder", JSON.stringify(orderData));
     }
@@ -740,6 +765,36 @@ export default function OrderPage({
     [orderItems]
   );
 
+  // 슬롯은 클라이언트 로컬시간(KST) 기준으로 계산 → SSR/하이드레이션 불일치 방지 위해 mount 후에만 렌더
+  const [mounted, setMounted] = useState(false);
+  // 1분마다 갱신 — 지난 픽업 슬롯이 목록에서 빠지도록
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    setMounted(true);
+    const id = setInterval(() => setNowMs(Date.now()), 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  // 픽업 가능 슬롯 (지금+기본조리시간 ~ 영업종료, 10분 단위)
+  const pickupSlots = useMemo(
+    () =>
+      computePickupSlots({
+        todayHours,
+        prepMinutes: prepTime,
+        now: new Date(nowMs),
+      }),
+    [todayHours, prepTime, nowMs]
+  );
+
+  // 선택한 픽업 시각이 더 이상 유효 슬롯이 아니면 해제
+  useEffect(() => {
+    if (!pickupTime) return;
+    const stillValid = pickupSlots.slots.some(
+      (s) => s.toISOString() === pickupTime
+    );
+    if (!stillValid) setPickupTime("");
+  }, [pickupSlots, pickupTime]);
+
   // 영업 상태 확인 - useMemo로 메모이제이션
   const isStoreOpen = useMemo(() => {
     // 영업시간 정보가 없으면 영업 중으로 간주
@@ -773,7 +828,8 @@ export default function OrderPage({
     orderItems.length > 0 &&
     isPhoneValid &&
     isAuthenticated &&
-    isStoreOpen;
+    isStoreOpen &&
+    !!pickupTime; // 픽업 시간 선택 필수
 
   // 주문 불가 상태 메시지
   const [orderError, setOrderError] = useState<string | null>(null);
@@ -790,6 +846,9 @@ export default function OrderPage({
       } else if (!userPhoneNumber && !isPhoneValid) {
         setOrderError("전화번호를 올바르게 입력해주세요. (예: 010-1234-5678)");
         setTimeout(() => setOrderError(null), 3000);
+      } else if (!pickupTime) {
+        setOrderError("픽업 시간을 선택해주세요.");
+        setTimeout(() => setOrderError(null), 3000);
       }
       return;
     }
@@ -805,6 +864,7 @@ export default function OrderPage({
     formData.append("orderItems", JSON.stringify(orderItems));
     formData.append("totalAmount", String(totalAmount));
     formData.append("phoneNumber", effectivePhoneNumber);
+    formData.append("requestedPickupTime", pickupTime);
 
     fetcher.submit(formData, { method: "POST" });
   };
@@ -1035,6 +1095,19 @@ export default function OrderPage({
                 <div>
                   <p className="text-sm text-muted-foreground">연락처</p>
                   <p className="font-medium text-foreground">{effectivePhoneNumber}</p>
+                </div>
+              </div>
+
+              {/* 픽업 시간 */}
+              <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-xl">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <span className="material-symbols-outlined text-primary">schedule</span>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">픽업 희망 시간</p>
+                  <p className="font-medium text-foreground">
+                    {pickupTime ? formatKoreanTime(pickupTime) : "-"}
+                  </p>
                 </div>
               </div>
 
@@ -1630,6 +1703,42 @@ export default function OrderPage({
                   />
                 </div>
               )}
+
+              {/* 픽업 시간 선택 (예약 모델 — 지금+기본조리시간 이후, 영업시간 내 10분 단위) */}
+              <div className="bg-muted rounded-lg p-3">
+                <label
+                  htmlFor="pickupTime"
+                  className="block text-[12px] font-medium text-foreground mb-1"
+                >
+                  픽업 시간
+                </label>
+                <p className="text-[11px] text-muted-foreground mb-2">
+                  {!mounted
+                    ? "픽업 가능 시간을 불러오는 중..."
+                    : pickupSlots.slots.length > 0
+                    ? `약 ${prepTime}분 후부터 선택할 수 있어요`
+                    : pickupSlots.reason ?? "지금은 주문을 받을 수 없습니다."}
+                </p>
+                {mounted && pickupSlots.slots.length > 0 && (
+                  <select
+                    id="pickupTime"
+                    value={pickupTime}
+                    onChange={(e) => setPickupTime(e.target.value)}
+                    required
+                    className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background text-foreground focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                  >
+                    <option value="">시간 선택</option>
+                    {pickupSlots.slots.map((s) => {
+                      const iso = s.toISOString();
+                      return (
+                        <option key={iso} value={iso}>
+                          {formatKoreanTime(s)}
+                        </option>
+                      );
+                    })}
+                  </select>
+                )}
+              </div>
 
               {/* 주문 에러 메시지 */}
               {orderError && (

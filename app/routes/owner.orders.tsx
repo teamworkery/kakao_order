@@ -24,6 +24,8 @@ type OrderRow = {
   profile_id: string | null;
   status: OrderStatus | null;
   estimated_pickup_time: string | null;
+  requested_pickup_time: string | null;
+  cancel_reason: string | null;
 };
 
 type SelectedOption = { groupName: string; optionName: string; priceDelta: number };
@@ -44,6 +46,23 @@ type MenuSummary = {
 };
 
 const PAGE_SIZE = 20;
+
+// 점주가 "HH:mm"로 바꾼 픽업시간을, 기준일(손님 요청시각의 KST 달력 날짜)과 합쳐
+// 정확한 타임스탬프(ISO)로 만든다. KST(+09:00) 고정 조립으로 서버 TZ 영향 제거.
+function buildKstIsoFromTime(
+  baseIso: string | null,
+  hhmm: string
+): string | null {
+  if (!/^\d{2}:\d{2}$/.test(hhmm)) return null;
+  const base = baseIso ? new Date(baseIso) : new Date();
+  if (Number.isNaN(base.getTime())) return null;
+  const datePart = base.toLocaleDateString("en-CA", {
+    timeZone: "Asia/Seoul",
+  }); // YYYY-MM-DD
+  const d = new Date(`${datePart}T${hhmm}:00+09:00`);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
 
 /** ---- LoaderData (타입 고정) ---- */
 type LoaderData = {
@@ -83,10 +102,10 @@ export async function action({ request }: Route.ActionArgs) {
     const user = userRes?.user;
     if (!user) throw redirect("/login?next=/owner/orders");
 
-    // 현재 주문 상태 확인
+    // 현재 주문 상태 + 손님 요청 픽업시간 확인
     const { data: currentOrder } = await client
       .from("order")
-      .select("status")
+      .select("status, requested_pickup_time")
       .eq("order_id", orderId)
       .eq("profile_id", user.id)
       .maybeSingle();
@@ -101,18 +120,34 @@ export async function action({ request }: Route.ActionArgs) {
       return { error: `${STATUS_LABELS[currentStatus]}에서 ${STATUS_LABELS[newStatus]}(으)로 변경할 수 없습니다` };
     }
 
-    // 수락 시 조리 소요시간(분)을 함께 받아 픽업 예정시간 계산
-    // (알림톡 '주문접수안내'의 #{픽업시간} 변수 — 수락 시점에 반드시 채워지도록 통합)
-    const pickupMinutes = Number(form.get("pickupMinutes") ?? 0);
+    const requestedPickupIso = currentOrder.requested_pickup_time ?? null;
+
+    // 예약 모델: 손님이 고른 픽업시간을 기준으로 확정/변경.
+    //  - 수락(ACCEPT): confirmedTime(HH:mm)을 점주가 바꿨으면 그 시각으로, 아니면 요청시각 그대로 확정.
+    //  - 거절(CANCEL): cancelReason 사유를 저장(손님 거절 알림톡 변수).
     let estimatedPickupIso: string | null = null;
-    const updateData: { status: OrderStatus; estimated_pickup_time?: string } = {
-      status: newStatus,
-    };
-    if (newStatus === "ACCEPT" && pickupMinutes > 0) {
-      estimatedPickupIso = new Date(
-        Date.now() + pickupMinutes * 60 * 1000
-      ).toISOString();
+    let cancelReason: string | null = null;
+    let notificationType: "confirmed" | "changed" | "rejected" | null = null;
+    const updateData: {
+      status: OrderStatus;
+      estimated_pickup_time?: string | null;
+      cancel_reason?: string | null;
+    } = { status: newStatus };
+
+    if (newStatus === "ACCEPT") {
+      const confirmedHHmm = String(form.get("confirmedTime") ?? "").trim();
+      const changedIso = confirmedHHmm
+        ? buildKstIsoFromTime(requestedPickupIso, confirmedHHmm)
+        : null;
+      // 점주가 시간을 바꿨고 요청시각과 다르면 "변경", 아니면 "확정"
+      const isChanged = !!changedIso && changedIso !== requestedPickupIso;
+      estimatedPickupIso = changedIso ?? requestedPickupIso;
       updateData.estimated_pickup_time = estimatedPickupIso;
+      notificationType = isChanged ? "changed" : "confirmed";
+    } else if (newStatus === "CANCEL") {
+      cancelReason = String(form.get("cancelReason") ?? "").trim() || "사장님 사정으로 주문이 취소되었습니다";
+      updateData.cancel_reason = cancelReason;
+      notificationType = "rejected";
     }
 
     // 내 가게 주문만 상태 변경
@@ -161,11 +196,16 @@ export async function action({ request }: Route.ActionArgs) {
       orderId,
       status: newStatus,
       previousStatus: currentStatus,
+      // 손님 알림톡 분기용: confirmed(확정) / changed(시간변경) / rejected(거절)
+      notificationType,
+      cancelReason,
       order: {
         phoneNumber: order?.phoneNumber ?? null,
         totalAmount: order?.totalAmount ?? null,
         createdAt: order?.createdat ?? null,
-        // 알림톡 #{픽업시간} — 방금 계산값 우선, 없으면 DB 기존값
+        // 손님이 요청했던 픽업시간 (변경 알림톡에서 "기존→변경" 비교용)
+        requestedPickupTime: requestedPickupIso,
+        // 알림톡 #{픽업시간} — 점주 확정시간 우선, 없으면 DB 기존값
         estimatedPickupTime:
           estimatedPickupIso ?? order?.estimated_pickup_time ?? null,
       },
@@ -190,8 +230,15 @@ export async function action({ request }: Route.ActionArgs) {
       timestamp: new Date().toISOString(),
     };
 
-    // 고객에게 알림 (ACCEPT 상태일 때만)
-    if (newStatus === "ACCEPT") {
+    // 고객에게 알림 — 확정/시간변경(ACCEPT)은 항상 발송.
+    // 거절(CANCEL) 알림은 전용 알림톡 템플릿(③ 거절) + n8n notificationType 분기가
+    // 준비되기 전엔 보내면 안 된다(현 n8n은 무조건 '확정' 템플릿을 보내 거절에 오발송).
+    // → 카카오 템플릿 승인 + n8n Switch 완료 후 Vercel env `ENABLE_CUSTOMER_REJECT_NOTIFY=true`로 켠다.
+    const notifyCustomer =
+      newStatus === "ACCEPT" ||
+      (newStatus === "CANCEL" &&
+        process.env.ENABLE_CUSTOMER_REJECT_NOTIFY === "true");
+    if (notifyCustomer) {
       const hookUrl = process.env.N8N_WEBHOOK_URL;
       if (hookUrl) {
         try {
@@ -293,7 +340,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const dataQuery = client
     .from("order")
     .select(
-      "id:order_id, phoneNumber, totalAmount, createdat, profile_id, status, estimated_pickup_time"
+      "id:order_id, phoneNumber, totalAmount, createdat, profile_id, status, estimated_pickup_time, requested_pickup_time, cancel_reason"
     )
     .eq("profile_id", user.id)
     .gte("createdat", dateFrom)
@@ -919,6 +966,21 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
                             <span className="font-medium text-foreground">
                               {menuSummaryMap.get(o.id) || "-"}
                             </span>
+                            {(o.estimated_pickup_time ||
+                              o.requested_pickup_time) && (
+                              <span className="flex items-center gap-1 text-xs font-medium text-primary mt-0.5">
+                                <span className="material-symbols-outlined text-sm">
+                                  event_available
+                                </span>
+                                {o.estimated_pickup_time
+                                  ? "픽업 확정 "
+                                  : "픽업 요청 "}
+                                {fmtKST(
+                                  (o.estimated_pickup_time ||
+                                    o.requested_pickup_time)!
+                                ).split(" ")[1]}
+                              </span>
+                            )}
                           </div>
                           <div className="col-span-1 text-right font-bold text-primary text-sm">
                             {o.totalAmount?.toLocaleString() ?? "-"}원
@@ -976,6 +1038,18 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
                               {o.phoneNumber ?? "-"}
                             </span>
                           </div>
+                          {(o.estimated_pickup_time || o.requested_pickup_time) && (
+                            <div className="flex items-center gap-1 text-sm font-medium text-primary mb-2">
+                              <span className="material-symbols-outlined text-base">
+                                event_available
+                              </span>
+                              {o.estimated_pickup_time ? "픽업 확정 " : "픽업 요청 "}
+                              {fmtKST(
+                                (o.estimated_pickup_time ||
+                                  o.requested_pickup_time)!
+                              ).split(" ")[1]}
+                            </div>
+                          )}
                           <div className="text-sm text-foreground/80 truncate">
                             {menuSummaryMap.get(o.id) || "-"}
                           </div>
@@ -1095,11 +1169,26 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
                         </span>
                       </div>
                       <div className="flex-1">
-                        <p className="font-bold text-foreground">
-                          예상 픽업 시간
+                        <p className="font-bold text-foreground">픽업 시간</p>
+                        <p className="text-sm text-muted-foreground mt-0.5">
+                          손님 요청:{" "}
+                          <span className="font-medium text-foreground">
+                            {order?.requested_pickup_time
+                              ? new Date(
+                                  order.requested_pickup_time
+                                ).toLocaleString("ko-KR", {
+                                  month: "short",
+                                  day: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                  hour12: true,
+                                })
+                              : "-"}
+                          </span>
                         </p>
-                        {pickupTime ? (
-                          <p className="text-sm text-primary font-medium">
+                        {pickupTime && (
+                          <p className="text-sm text-primary font-medium mt-0.5">
+                            확정:{" "}
                             {new Date(pickupTime).toLocaleString("ko-KR", {
                               month: "short",
                               day: "numeric",
@@ -1107,10 +1196,6 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
                               minute: "2-digit",
                               hour12: true,
                             })}
-                          </p>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">
-                            아직 설정되지 않음
                           </p>
                         )}
                       </div>
@@ -1129,7 +1214,7 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
                         />
                         <div className="flex-1">
                           <label className="text-xs text-muted-foreground block mb-1">
-                            조리 소요 시간 (분)
+                            픽업 시간 조정 — 지금부터 N분 후로 변경
                           </label>
                           <input
                             type="number"
@@ -1145,7 +1230,7 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
                           type="submit"
                           className="px-4 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors text-sm"
                         >
-                          설정
+                          조정
                         </button>
                       </Form>
                     )}
@@ -1231,11 +1316,29 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
             {/* Modal Footer (Actions) */}
             <div className="p-4 border-t border-border bg-card sticky bottom-0">
               {(() => {
-                const currentStatus = orders.find(
-                  (o) => o.id === openId
-                )?.status;
+                const order = orders.find((o) => o.id === openId);
+                const currentStatus = order?.status;
                 if (!currentStatus) return null;
                 const nextStatuses = getNextStatuses(currentStatus);
+
+                // 손님 요청 픽업시간 → 시간입력 기본값(HH:mm). 점주가 바꾸면 그 시각으로 확정.
+                const reqIso = order?.requested_pickup_time ?? null;
+                const reqHHmm = reqIso
+                  ? (() => {
+                      const d = new Date(reqIso);
+                      return `${String(d.getHours()).padStart(2, "0")}:${String(
+                        d.getMinutes()
+                      ).padStart(2, "0")}`;
+                    })()
+                  : "";
+                // 거절 사유 (손님 거절 알림톡 #{거절사유}로 발송)
+                const CANCEL_REASONS = [
+                  "재료 소진으로 주문이 어렵습니다",
+                  "주문이 많아 시간 내 준비가 어렵습니다",
+                  "영업 종료(마감)로 주문이 어렵습니다",
+                  "요청하신 픽업 시간에 맞추기 어렵습니다",
+                ];
+                const isRejecting = currentStatus === "PENDING";
 
                 return (
                   <div className="flex flex-col gap-3">
@@ -1270,18 +1373,33 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
                               {isAccept && (
                                 <div className="mb-2">
                                   <label className="text-xs text-muted-foreground block mb-1">
-                                    조리 소요시간 (분) — 손님 알림톡에 픽업 예정시간으로 안내됩니다
+                                    픽업 시간 — 손님 요청 시간 그대로 확정하거나 바꿔서 확정하세요
                                   </label>
                                   <input
-                                    type="number"
-                                    name="pickupMinutes"
-                                    min="1"
-                                    max="180"
-                                    defaultValue={15}
+                                    type="time"
+                                    name="confirmedTime"
+                                    defaultValue={reqHHmm}
                                     required
                                     className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none"
-                                    placeholder="예: 15"
                                   />
+                                </div>
+                              )}
+                              {isCancel && (
+                                <div className="mb-2">
+                                  <label className="text-xs text-muted-foreground block mb-1">
+                                    {isRejecting ? "거절" : "취소"} 사유 — 손님에게 알림톡으로 안내됩니다
+                                  </label>
+                                  <select
+                                    name="cancelReason"
+                                    defaultValue={CANCEL_REASONS[0]}
+                                    className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-background"
+                                  >
+                                    {CANCEL_REASONS.map((r) => (
+                                      <option key={r} value={r}>
+                                        {r}
+                                      </option>
+                                    ))}
+                                  </select>
                                 </div>
                               )}
                               <button
@@ -1295,7 +1413,9 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
                                 <span className="material-symbols-outlined text-lg">
                                   {isCancel ? "cancel" : "check_circle"}
                                 </span>
-                                {STATUS_ACTION_LABELS[nextStatus]}
+                                {isCancel && isRejecting
+                                  ? "주문 거절"
+                                  : STATUS_ACTION_LABELS[nextStatus]}
                               </button>
                             </Form>
                           );
