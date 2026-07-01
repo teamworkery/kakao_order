@@ -440,8 +440,16 @@ export async function action({ request }: ActionFunctionArgs) {
           );
         }
 
+        // 가게 주소(URL)는 최초 설정 후 변경 불가 — 기존 값이 있으면 강제로 유지
+        const { data: existingSlugRow } = await client
+          .from("profiles")
+          .select("name")
+          .eq("profile_id", profile_id)
+          .maybeSingle();
+        const lockedSlug = existingSlugRow?.name?.trim() || null;
+
         // 가게 주소(slug) 정규화 및 형식 검증
-        const slug = name.trim().toLowerCase();
+        const slug = lockedSlug ?? name.trim().toLowerCase();
         const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]{1,30}[a-z0-9])$/;
         const RESERVED = new Set([
           "admin", "login", "join", "owner", "customer", "auth", "api",
@@ -884,6 +892,8 @@ export default function AdminMenuPage() {
   const actionData = useActionData<ActionData>();
   const navigation = useNavigation();
   const optionFetcher = useFetcher();
+  // 순서변경·판매토글용 백그라운드 fetcher (페이지 새로고침·스크롤 이동 없음)
+  const menuFetcher = useFetcher();
 
   // 옵션 관리 모달 대상 메뉴 id
   const [optionMgrItemId, setOptionMgrItemId] = useState<string | null>(null);
@@ -958,8 +968,6 @@ export default function AdminMenuPage() {
   const isEditing = navigation.formData?.get("actionType") === "edit";
   const isUpdatingProfile =
     navigation.formData?.get("actionType") === "updateProfile";
-  const isReorderingMenu =
-    isReordering || navigation.formData?.get("actionType") === "reorder";
 
   // menuItems가 변경될 때 localMenuItems 동기화
   useEffect(() => {
@@ -1110,7 +1118,7 @@ export default function AdminMenuPage() {
     e.dataTransfer.dropEffect = "move";
   }, []);
 
-  const handleDrop = async (e: React.DragEvent, targetItemId: string) => {
+  const handleDrop = (e: React.DragEvent, targetItemId: string) => {
     e.preventDefault();
 
     if (!draggedItem || draggedItem === targetItemId) {
@@ -1118,81 +1126,44 @@ export default function AdminMenuPage() {
       return;
     }
 
-    setIsReordering(true);
+    // 드래그된 아이템과 타겟 아이템의 위치를 찾기
+    const draggedIndex = localMenuItems.findIndex(
+      (item) => item.id === draggedItem
+    );
+    const targetIndex = localMenuItems.findIndex(
+      (item) => item.id === targetItemId
+    );
 
-    try {
-      // 현재 메뉴 순서를 가져와서 순서 변경
-      const currentOrder = localMenuItems.map((item, index) => ({
-        id: item.id,
-        displayOrder: index + 1,
-      }));
-
-      // 드래그된 아이템과 타겟 아이템의 위치를 찾기
-      const draggedIndex = currentOrder.findIndex(
-        (item) => item.id === draggedItem
-      );
-      const targetIndex = currentOrder.findIndex(
-        (item) => item.id === targetItemId
-      );
-
-      if (draggedIndex === -1 || targetIndex === -1) return;
-
-      // 순서 재배열
-      const reorderedItems = [...currentOrder];
-      const [draggedItemOrder] = reorderedItems.splice(draggedIndex, 1);
-
-      if (draggedIndex < targetIndex) {
-        // 아래로 드래그한 경우
-        reorderedItems.splice(targetIndex, 0, draggedItemOrder);
-      } else {
-        // 위로 드래그한 경우
-        reorderedItems.splice(targetIndex, 0, draggedItemOrder);
-      }
-
-      // 새로운 순서로 displayOrder 업데이트
-      const updatedOrder = reorderedItems.map((item, index) => ({
-        ...item,
-        displayOrder: index + 1,
-      }));
-
-      // 로컬 상태를 즉시 업데이트하여 UI 반영
-      const reorderedMenuItems = [...localMenuItems];
-      const [draggedMenuItem] = reorderedMenuItems.splice(draggedIndex, 1);
-      reorderedMenuItems.splice(targetIndex, 0, draggedMenuItem);
-
-      // displayOrder 업데이트
-      const updatedMenuItems = reorderedMenuItems.map((item, index) => ({
-        ...item,
-        displayOrder: index + 1,
-      }));
-
-      setLocalMenuItems(updatedMenuItems);
-
-      // FormData를 사용하여 순서 업데이트 요청
-      const formData = new FormData();
-      formData.append("actionType", "reorder");
-      formData.append("menuOrder", JSON.stringify(updatedOrder));
-
-      const response = await fetch(window.location.href, {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error("순서 변경에 실패했습니다.");
-      }
-    } catch (error) {
-      console.error("순서 변경 오류:", error);
-      setShowToast({
-        message: "메뉴 순서 변경에 실패했습니다.",
-        type: "error",
-      });
-      // 실패 시 원래 순서로 복원
-      setLocalMenuItems(menuItems);
-    } finally {
-      setIsReordering(false);
+    if (draggedIndex === -1 || targetIndex === -1) {
       setDraggedItem(null);
+      return;
     }
+
+    // 로컬 상태를 즉시 업데이트하여 UI 반영 (낙관적 업데이트)
+    const reorderedMenuItems = [...localMenuItems];
+    const [draggedMenuItem] = reorderedMenuItems.splice(draggedIndex, 1);
+    reorderedMenuItems.splice(targetIndex, 0, draggedMenuItem);
+
+    const updatedMenuItems = reorderedMenuItems.map((item, index) => ({
+      ...item,
+      displayOrder: index + 1,
+    }));
+
+    setLocalMenuItems(updatedMenuItems);
+    setDraggedItem(null);
+
+    // 새 순서를 백그라운드로 저장 (내비게이션·오버레이 없음)
+    const updatedOrder = updatedMenuItems.map((item, index) => ({
+      id: item.id,
+      displayOrder: index + 1,
+    }));
+    menuFetcher.submit(
+      {
+        actionType: "reorder",
+        menuOrder: JSON.stringify(updatedOrder),
+      },
+      { method: "post" }
+    );
   };
 
   const handleDragEnd = useCallback(() => {
@@ -1202,15 +1173,24 @@ export default function AdminMenuPage() {
   // 선택된 카테고리 상태 (사이드바에서 사용 - category_id)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
-  // 선택된 카테고리의 메뉴만 필터링 - useMemo로 메모이제이션
+  // 판매 상태 필터 (전체 / 판매중 / 품절)
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "soldout">("all");
+
+  // 선택된 카테고리·판매상태의 메뉴만 필터링 - useMemo로 메모이제이션
   const filteredMenuItems = useMemo(
     () =>
-      selectedCategory
-        ? localMenuItems.filter(
-            (item) => item.category_id === selectedCategory
-          )
-        : localMenuItems,
-    [selectedCategory, localMenuItems]
+      localMenuItems
+        .filter((item) =>
+          selectedCategory ? item.category_id === selectedCategory : true
+        )
+        .filter((item) =>
+          statusFilter === "active"
+            ? item.isActive
+            : statusFilter === "soldout"
+            ? !item.isActive
+            : true
+        ),
+    [selectedCategory, statusFilter, localMenuItems]
   );
 
   // 오늘 영업 상태 (사이드바 배지용) — 실제 영업시간 데이터로 계산
@@ -1688,7 +1668,15 @@ export default function AdminMenuPage() {
                 </span>
                 <span>{todayStoreStatus.range || "영업시간을 설정해주세요"}</span>
               </div>
-              <button className="w-full h-8 flex items-center justify-center rounded-lg bg-card border border-border text-foreground text-xs font-medium hover:bg-muted transition-colors">
+              <button
+                type="button"
+                onClick={() =>
+                  document
+                    .getElementById("store-info-section")
+                    ?.scrollIntoView({ behavior: "smooth", block: "start" })
+                }
+                className="w-full h-8 flex items-center justify-center rounded-lg bg-card border border-border text-foreground text-xs font-medium hover:bg-muted transition-colors"
+              >
                 가게 정보 수정
               </button>
             </div>
@@ -1786,7 +1774,7 @@ export default function AdminMenuPage() {
                   </h2>
                 </div>
                 <div className="p-6">
-                  <Form method="post" className="space-y-4">
+                  <Form method="post" className="space-y-4" id="add-menu-form">
                     <input name="actionType" type="hidden" value="add" />
 
                     {/* 기본 정보 그룹 */}
@@ -1798,7 +1786,7 @@ export default function AdminMenuPage() {
                         <input
                           name="name"
                           required
-                          placeholder="예: 족발(앞다리)"
+                          placeholder="예: 햄버거"
                           value={addForm.name}
                           onChange={handleAddChange}
                           className="w-full border border-border px-4 py-3 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent text-base"
@@ -2011,7 +1999,7 @@ export default function AdminMenuPage() {
               </div>
 
               {/* 가게 정보 관리 */}
-              <div className="bg-card rounded-2xl shadow-sm overflow-hidden">
+              <div id="store-info-section" className="bg-card rounded-2xl shadow-sm overflow-hidden scroll-mt-6">
                 <div className="bg-blue-50 px-6 py-4 border-b border-blue-100">
                   <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
                     가게 정보 관리
@@ -2036,11 +2024,18 @@ export default function AdminMenuPage() {
                           placeholder="goodmorning-china"
                           pattern="[A-Za-z0-9][A-Za-z0-9\-]{1,30}[A-Za-z0-9]"
                           defaultValue={userProfile?.name || ""}
-                          className="w-full border border-border px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
+                          readOnly={!!userProfile?.name}
+                          className={`w-full border border-border px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base ${
+                            userProfile?.name
+                              ? "bg-muted/60 text-muted-foreground cursor-not-allowed"
+                              : ""
+                          }`}
                           disabled={isSubmitting || isUpdatingProfile}
                         />
                         <p className="text-xs text-muted-foreground mt-1">
-                          손님 주문 페이지 주소 · 영문 소문자·숫자·하이픈(-), 3~32자
+                          {userProfile?.name
+                            ? "가게 주소는 최초 설정 후 변경할 수 없습니다."
+                            : "손님 주문 페이지 주소 · 영문 소문자·숫자·하이픈(-), 3~32자 (설정 후 변경 불가)"}
                         </p>
                       </div>
 
@@ -2061,7 +2056,8 @@ export default function AdminMenuPage() {
 
                     <div>
                       <label className="block text-sm font-medium text-foreground/80 mb-2">
-                        가게 전화번호
+                        가게 전화번호{" "}
+                        <span className="text-primary font-semibold">*고객에게 보이는 번호</span>
                       </label>
                       <input
                         name="storenumber"
@@ -2159,23 +2155,23 @@ export default function AdminMenuPage() {
                       value={JSON.stringify(localStoreHours)}
                     />
 
-                    <div className="space-y-3">
+                    <div className="space-y-1.5">
                       {localStoreHours.map((hour, index) => (
                         <div
                           key={hour.day_of_week}
-                          className={`flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-lg border ${
+                          className={`flex flex-row items-center gap-3 px-3 py-2 rounded-lg border ${
                             hour.is_closed
                               ? "bg-muted/50 border-border"
                               : "bg-card border-border"
                           }`}
                         >
                           {/* 요일 */}
-                          <div className="w-20 font-medium text-foreground">
+                          <div className="w-14 shrink-0 text-sm font-medium text-foreground">
                             {DAY_NAMES[hour.day_of_week]}
                           </div>
 
                           {/* 휴무일 토글 */}
-                          <label className="flex items-center gap-2 cursor-pointer">
+                          <label className="flex items-center gap-1.5 cursor-pointer shrink-0">
                             <input
                               type="checkbox"
                               checked={hour.is_closed}
@@ -2206,7 +2202,7 @@ export default function AdminMenuPage() {
                                   };
                                   setLocalStoreHours(newHours);
                                 }}
-                                className="px-3 py-2 border border-border rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                className="px-2 py-1 border border-border rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                               />
                               <span className="text-muted-foreground">~</span>
                               <input
@@ -2220,7 +2216,7 @@ export default function AdminMenuPage() {
                                   };
                                   setLocalStoreHours(newHours);
                                 }}
-                                className="px-3 py-2 border border-border rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                className="px-2 py-1 border border-border rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                               />
                             </div>
                           )}
@@ -2270,8 +2266,9 @@ export default function AdminMenuPage() {
                         <input
                           type="number"
                           name="prepTime"
-                          min="1"
+                          min="5"
                           max="180"
+                          step="5"
                           value={defaultPrepTime}
                           onChange={(e) => setDefaultPrepTime(Number(e.target.value))}
                           className="w-32 px-4 py-3 border border-border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-base"
@@ -2323,28 +2320,34 @@ export default function AdminMenuPage() {
                           : "전체"}
                       </h1>
                       <p className="text-muted-foreground text-sm max-w-2xl">
-                        메뉴 아이템을 관리하세요. 가격은 부가세 포함입니다.
+                        메뉴 아이템을 관리하세요.
                       </p>
                     </div>
                     <div className="flex gap-3">
-                      <button className="hidden sm:flex items-center justify-center gap-2 h-10 px-4 rounded-xl border border-border bg-card text-foreground text-sm font-bold hover:bg-muted transition-colors">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          document
+                            .getElementById("menu-list-section")
+                            ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                          setShowToast({
+                            message: "메뉴 카드를 드래그해서 순서를 바꿀 수 있어요.",
+                            type: "success",
+                          });
+                        }}
+                        className="hidden sm:flex items-center justify-center gap-2 h-10 px-4 rounded-xl border border-border bg-card text-foreground text-sm font-bold hover:bg-muted transition-colors"
+                      >
                         <span className="material-symbols-outlined text-[20px]">
                           swap_vert
                         </span>
                         순서 변경
                       </button>
                       <button
+                        type="button"
                         onClick={() => {
-                          const form = document.querySelector(
-                            'form[method="post"]'
-                          ) as HTMLFormElement;
-                          if (form) {
-                            const input = form.querySelector(
-                              'input[name="actionType"]'
-                            ) as HTMLInputElement;
-                            if (input) input.value = "add";
-                            form.scrollIntoView({ behavior: "smooth" });
-                          }
+                          document
+                            .getElementById("add-menu-form")
+                            ?.scrollIntoView({ behavior: "smooth", block: "center" });
                         }}
                         className="flex items-center justify-center gap-2 h-10 px-5 rounded-xl bg-primary text-white text-sm font-bold shadow-lg shadow-primary/30 hover:bg-primary/90 hover:-translate-y-0.5 transition-all"
                       >
@@ -2368,19 +2371,43 @@ export default function AdminMenuPage() {
                       />
                     </div>
                     <div className="flex items-center gap-2 px-2 overflow-x-auto pb-2 md:pb-0">
-                      <button className="flex shrink-0 items-center gap-2 px-3 py-1.5 rounded-lg bg-foreground text-white text-xs font-medium">
+                      <button
+                        type="button"
+                        onClick={() => setStatusFilter("all")}
+                        className={`flex shrink-0 items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                          statusFilter === "all"
+                            ? "bg-foreground text-white"
+                            : "bg-background-light text-muted-foreground hover:bg-muted"
+                        }`}
+                      >
                         <span className="material-symbols-outlined text-[16px]">
                           apps
                         </span>{" "}
                         전체
                       </button>
-                      <button className="flex shrink-0 items-center gap-2 px-3 py-1.5 rounded-lg bg-background-light text-muted-foreground hover:bg-muted transition-colors text-xs font-medium">
+                      <button
+                        type="button"
+                        onClick={() => setStatusFilter("active")}
+                        className={`flex shrink-0 items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                          statusFilter === "active"
+                            ? "bg-foreground text-white"
+                            : "bg-background-light text-muted-foreground hover:bg-muted"
+                        }`}
+                      >
                         <span className="material-symbols-outlined text-[16px]">
                           check_circle
                         </span>{" "}
                         판매중
                       </button>
-                      <button className="flex shrink-0 items-center gap-2 px-3 py-1.5 rounded-lg bg-background-light text-muted-foreground hover:bg-muted transition-colors text-xs font-medium">
+                      <button
+                        type="button"
+                        onClick={() => setStatusFilter("soldout")}
+                        className={`flex shrink-0 items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                          statusFilter === "soldout"
+                            ? "bg-foreground text-white"
+                            : "bg-background-light text-muted-foreground hover:bg-muted"
+                        }`}
+                      >
                         <span className="material-symbols-outlined text-[16px]">
                           cancel
                         </span>{" "}
@@ -2391,7 +2418,7 @@ export default function AdminMenuPage() {
                 </div>
               </div>
               {/* Scrollable Grid Content */}
-              <div className="flex-1 overflow-y-auto px-4 pb-20 md:px-6">
+              <div id="menu-list-section" className="flex-1 overflow-y-auto px-4 pb-20 md:px-6 scroll-mt-6">
                 <div className="max-w-2xl mx-auto">
                   {filteredMenuItems.length === 0 ? (
                     <div className="col-span-full p-12 text-center bg-card rounded-2xl border border-dashed border-border">
@@ -2420,25 +2447,13 @@ export default function AdminMenuPage() {
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* 순서 변경 중 로딩 표시 */}
-                      {isReorderingMenu && (
-                        <div className="p-6 text-center bg-blue-50 border-l-4 border-blue-500">
-                          <div className="flex items-center justify-center gap-3">
-                            <div className="animate-spin rounded-full h-6 w-6 border-2 border-blue-200 border-t-blue-500"></div>
-                            <p className="text-blue-700 font-medium">
-                              메뉴 순서를 변경하는 중...
-                            </p>
-                          </div>
-                        </div>
-                      )}
-
                       {/* Menu Item Cards */}
                       {filteredMenuItems.map((item: MenuItem) =>
                         editingId === item.id ? (
                           // 편집 모드
                           <div
                             key={item.id}
-                            className="bg-primary-light border-l-4 border-primary p-6"
+                            className="md:col-span-2 bg-primary-light border-l-4 border-primary rounded-xl p-6"
                           >
                             <Form method="post" id={`edit-form-${item.id}`}>
                               <input
@@ -2488,8 +2503,8 @@ export default function AdminMenuPage() {
                               </h3>
                             </div>
 
-                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-                              <div className="lg:col-span-2">
+                            <div className="flex flex-col gap-4">
+                              <div>
                                 <label className="block text-sm font-medium text-foreground/80 mb-2">
                                   이미지
                                 </label>
@@ -2500,115 +2515,110 @@ export default function AdminMenuPage() {
                                 />
                               </div>
 
-                              <div className="lg:col-span-4 space-y-3">
+                              <div>
+                                <label className="block text-sm font-medium text-foreground/80 mb-1">
+                                  메뉴명
+                                </label>
+                                <input
+                                  value={editForm.name || ""}
+                                  onChange={handleEditChange}
+                                  name="editName"
+                                  placeholder="메뉴명"
+                                  className="w-full border border-border px-3 py-2 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                                  disabled={isSubmitting}
+                                  required
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-sm font-medium text-foreground/80 mb-1">
+                                  설명
+                                </label>
+                                <input
+                                  value={editForm.description || ""}
+                                  onChange={handleEditChange}
+                                  name="editDescription"
+                                  placeholder="설명"
+                                  className="w-full border border-border px-3 py-2 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                                  disabled={isSubmitting}
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-sm font-medium text-foreground/80 mb-1">
+                                  카테고리
+                                </label>
+                                <select
+                                  value={editForm.category_id || ""}
+                                  onChange={handleEditChange}
+                                  name="editCategoryId"
+                                  className="w-full border border-border px-3 py-2 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                                  disabled={isSubmitting}
+                                >
+                                  <option value="">카테고리 선택</option>
+                                  {localCategories.map((cat) => (
+                                    <option key={cat.id} value={cat.id}>
+                                      {cat.name}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-4">
                                 <div>
                                   <label className="block text-sm font-medium text-foreground/80 mb-1">
-                                    메뉴명
+                                    가격 (원)
                                   </label>
                                   <input
-                                    value={editForm.name || ""}
+                                    value={editForm.price || 0}
                                     onChange={handleEditChange}
-                                    name="editName"
-                                    placeholder="메뉴명"
+                                    name="editPrice"
+                                    type="number"
                                     className="w-full border border-border px-3 py-2 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                                     disabled={isSubmitting}
-                                    required
+                                    min="0"
                                   />
                                 </div>
+
                                 <div>
                                   <label className="block text-sm font-medium text-foreground/80 mb-1">
-                                    설명
-                                  </label>
-                                  <input
-                                    value={editForm.description || ""}
-                                    onChange={handleEditChange}
-                                    name="editDescription"
-                                    placeholder="설명"
-                                    className="w-full border border-border px-3 py-2 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                                    disabled={isSubmitting}
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-sm font-medium text-foreground/80 mb-1">
-                                    카테고리
+                                    상태
                                   </label>
                                   <select
-                                    value={editForm.category_id || ""}
+                                    value={editForm.isActive ? "true" : "false"}
                                     onChange={handleEditChange}
-                                    name="editCategoryId"
+                                    name="editIsActive"
                                     className="w-full border border-border px-3 py-2 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                                     disabled={isSubmitting}
                                   >
-                                    <option value="">카테고리 선택</option>
-                                    {localCategories.map((cat) => (
-                                      <option key={cat.id} value={cat.id}>
-                                        {cat.name}
-                                      </option>
-                                    ))}
+                                    <option value="true">판매중</option>
+                                    <option value="false">품절</option>
                                   </select>
                                 </div>
                               </div>
 
-                              <div className="lg:col-span-2">
-                                <label className="block text-sm font-medium text-foreground/80 mb-1">
-                                  가격 (원)
-                                </label>
-                                <input
-                                  value={editForm.price || 0}
-                                  onChange={handleEditChange}
-                                  name="editPrice"
-                                  type="number"
-                                  className="w-full border border-border px-3 py-2 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                                  disabled={isSubmitting}
-                                  min="0"
-                                />
-                              </div>
-
-                              <div className="lg:col-span-1">
-                                <label className="block text-sm font-medium text-foreground/80 mb-1">
-                                  상태
-                                </label>
-                                <select
-                                  value={editForm.isActive ? "true" : "false"}
-                                  onChange={handleEditChange}
-                                  name="editIsActive"
-                                  className="w-full border border-border px-3 py-2 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                              <div className="flex gap-2 pt-2">
+                                <button
+                                  type="submit"
+                                  form={`edit-form-${item.id}`}
+                                  className="flex-1 justify-center bg-primary hover:bg-primary/90 text-white px-4 py-2.5 rounded-lg transition-colors duration-200 disabled:opacity-50 flex items-center gap-2 font-semibold"
+                                  disabled={
+                                    isSubmitting || isEditing || !editForm.name
+                                  }
+                                >
+                                  {isEditing && (
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                  )}
+                                  저장
+                                </button>
+                                <button
+                                  type="button"
+                                  className="flex-1 justify-center bg-muted hover:bg-muted/80 text-foreground/80 px-4 py-2.5 rounded-lg transition-colors duration-200 flex items-center font-medium"
+                                  onClick={cancelEdit}
                                   disabled={isSubmitting}
                                 >
-                                  <option value="true">활성</option>
-                                  <option value="false">비활성</option>
-                                </select>
-                              </div>
-
-                              <div className="lg:col-span-3">
-                                <label className="block text-sm font-medium text-foreground/80 mb-1">
-                                  작업
-                                </label>
-                                <div className="flex gap-2">
-                                  <button
-                                    type="submit"
-                                    form={`edit-form-${item.id}`}
-                                    className="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg transition-colors duration-200 disabled:opacity-50 flex items-center gap-2"
-                                    disabled={
-                                      isSubmitting ||
-                                      isEditing ||
-                                      !editForm.name
-                                    }
-                                  >
-                                    {isEditing && (
-                                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                    )}
-                                    저장
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="bg-muted hover:bg-muted text-foreground/80 px-4 py-2 rounded-lg transition-colors duration-200"
-                                    onClick={cancelEdit}
-                                    disabled={isSubmitting}
-                                  >
-                                    취소
-                                  </button>
-                                </div>
+                                  취소
+                                </button>
                               </div>
                             </div>
                           </div>
@@ -2677,40 +2687,35 @@ export default function AdminMenuPage() {
                               <div className="mt-auto pt-4 flex items-center justify-between border-t border-dashed border-border">
                                 <div className="flex items-center gap-2">
                                   <button
+                                    type="button"
                                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
                                       item.isActive
                                         ? "bg-primary"
                                         : "bg-muted"
                                     }`}
                                     onClick={() => {
-                                      // Toggle active status
-                                      const form =
-                                        document.createElement("form");
-                                      form.method = "post";
-                                      form.innerHTML = `
-                                <input type="hidden" name="actionType" value="edit" />
-                                <input type="hidden" name="id" value="${
-                                  item.id
-                                }" />
-                                <input type="hidden" name="name" value="${
-                                  item.name
-                                }" />
-                                <input type="hidden" name="description" value="${
-                                  item.description || ""
-                                }" />
-                                <input type="hidden" name="price" value="${
-                                  item.price
-                                }" />
-                                <input type="hidden" name="image" value="${
-                                  item.image || ""
-                                }" />
-                                <input type="hidden" name="isActive" value="${!item.isActive}" />
-                                <input type="hidden" name="category_id" value="${
-                                  item.category_id || ""
-                                }" />
-                              `;
-                                      document.body.appendChild(form);
-                                      form.submit();
+                                      const nextActive = !item.isActive;
+                                      // 낙관적 업데이트 — 화면은 즉시 반영, DB는 백그라운드
+                                      setLocalMenuItems((prev) =>
+                                        prev.map((m) =>
+                                          m.id === item.id
+                                            ? { ...m, isActive: nextActive }
+                                            : m
+                                        )
+                                      );
+                                      menuFetcher.submit(
+                                        {
+                                          actionType: "edit",
+                                          id: item.id,
+                                          name: item.name,
+                                          description: item.description || "",
+                                          price: String(item.price),
+                                          image: item.image || "",
+                                          isActive: String(nextActive),
+                                          category_id: item.category_id || "",
+                                        },
+                                        { method: "post" }
+                                      );
                                     }}
                                   >
                                     <span className="sr-only">

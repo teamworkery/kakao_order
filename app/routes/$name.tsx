@@ -1502,7 +1502,7 @@ export default function OrderPage({
           </div>
         </div>
         {(store_description || true) && (
-          <p className="text-muted-foreground text-[13px] leading-relaxed mt-4 px-0.5">
+          <p className="text-muted-foreground text-[13px] leading-relaxed mt-4 px-0.5 whitespace-pre-line">
             {store_description || "맛있는 음식을 빠르고 편리하게 주문하세요."}
           </p>
         )}
