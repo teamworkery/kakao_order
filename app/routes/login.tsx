@@ -230,23 +230,28 @@ export default function LoginPage({ loaderData }: Route.ComponentProps) {
                   )}
                 </button>
               </form>
-              {/* Divider */}
-              <div className="relative py-6 flex items-center">
-                <div className="flex-grow border-t border-border"></div>
-                <span className="flex-shrink-0 mx-4 text-muted-foreground text-sm font-medium">또는</span>
-                <div className="flex-grow border-t border-border"></div>
-              </div>
-              {/* Social Login (Kakao) */}
-              <button
-                type="button"
-                onClick={handleKakaoLogin}
-                className="w-full h-12 bg-[#FEE500] hover:bg-[#fadd00] text-[#3c1e1e] font-bold rounded-lg transition-colors flex items-center justify-center gap-2 relative overflow-hidden"
-              >
-                <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 3C6.48 3 2 6.48 2 10.76C2 13.62 3.86 16.12 6.64 17.41L5.64 21.05C5.57 21.32 5.86 21.56 6.11 21.38L10.39 18.53C10.91 18.59 11.45 18.62 12 18.62C17.52 18.62 22 15.14 22 10.86C22 6.58 17.52 3 12 3Z"></path>
-                </svg>
-                <span>카카오로 로그인</span>
-              </button>
+              {/* 카카오 로그인 숨김 (2026-06-29): 수동 인계 단계 footgun(빈 계정 생성) 방지. 코드 보존 — 재노출 시 false→true */}
+              {false && (
+                <>
+                  {/* Divider */}
+                  <div className="relative py-6 flex items-center">
+                    <div className="flex-grow border-t border-border"></div>
+                    <span className="flex-shrink-0 mx-4 text-muted-foreground text-sm font-medium">또는</span>
+                    <div className="flex-grow border-t border-border"></div>
+                  </div>
+                  {/* Social Login (Kakao) */}
+                  <button
+                    type="button"
+                    onClick={handleKakaoLogin}
+                    className="w-full h-12 bg-[#FEE500] hover:bg-[#fadd00] text-[#3c1e1e] font-bold rounded-lg transition-colors flex items-center justify-center gap-2 relative overflow-hidden"
+                  >
+                    <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12 3C6.48 3 2 6.48 2 10.76C2 13.62 3.86 16.12 6.64 17.41L5.64 21.05C5.57 21.32 5.86 21.56 6.11 21.38L10.39 18.53C10.91 18.59 11.45 18.62 12 18.62C17.52 18.62 22 15.14 22 10.86C22 6.58 17.52 3 12 3Z"></path>
+                    </svg>
+                    <span>카카오로 로그인</span>
+                  </button>
+                </>
+              )}
               <p className="mt-8 text-center text-xs text-muted-foreground leading-relaxed">
                 계속 진행하면 <Link className="underline hover:text-muted-foreground" to="/terms">이용약관</Link> 및 <Link className="underline hover:text-muted-foreground" to="/privacy">개인정보처리방침</Link>에 동의하는 것으로 간주됩니다.
               </p>
