@@ -1,5 +1,61 @@
 # progress
 
+## 2026-07-01 — admin 가게관리 UI 12건 수정 + 대기분(카카오숨김·디자인톤·거절템플릿) 일괄 배포
+
+세션 흐름: 사용자가 admin(`/admin`) 가게관리 화면 문제 12건 지목 → 코드 파악 → 일괄 수정 → typecheck/build → Playwright(umaidon 실계정 로그인)로 실화면 검증 → 대기 중이던 미커밋분과 함께 커밋·prod 배포.
+
+- **admin.tsx / $name.tsx 수정 12건**:
+  1. 사이드바 '가게 정보 수정' 버튼 무반응 → `#store-info-section` id + `scrollIntoView` 핸들러.
+  2. 메뉴명 placeholder `족발(앞다리)`→`햄버거`.
+  3. **가게 주소(URL) 최초 설정 후 변경 불가** — 프론트 `readOnly`(기존 name 있을 때)+회색 잠금·안내문구, **서버 가드**(updateProfile에서 기존 profiles.name 조회→`lockedSlug`로 강제, 제출값 무시=우회 조작 차단).
+  4. 가게 전화번호 라벨에 `*고객에게 보이는 번호`(점주 휴대폰 `*주문 알림 수신`과 동일 레이아웃) 추가.
+  5. 손님화면 가게설명 줄바꿈 안 됨 → `$name.tsx` 설명 `<p>`에 `whitespace-pre-line`.
+  6. 영업시간 관리 요일 박스 컴팩트화(`space-y-3 p-4`→`space-y-1.5 px-3 py-2`, 시간input `py-2`→`py-1`).
+  7. 기본 조리시간 input `step=5`+min 5(화살표 5분 단위).
+  8a. "가격은 부가세 포함입니다." 문구 삭제.
+  8b. **버튼 무작동 수정**: '새 메뉴 추가'가 헤더 로그아웃 `form[method=post]`을 잘못 선택하던 버그 → add 폼에 `id="add-menu-form"` 부여·타겟팅 / 전체·판매중·품절 필터 = `statusFilter` state 신설·필터 반영·활성 스타일 / '순서 변경' = 목록 스크롤+안내 토스트.
+  9. 드래그 순서변경 = `menuFetcher`(useFetcher) 백그라운드 전환 + 낙관적 로컬 업데이트, "순서를 변경하는 중…" 차단 오버레이 제거.
+  10·11. 판매 토글 = `form.submit()`(전체 새로고침·스크롤 상단 이동) → `menuFetcher.submit` + 낙관적 즉시 반영. 내비게이션 제거로 스크롤 위치 유지.
+  12. 메뉴 수정 카드 레이아웃 난잡(`lg:grid-cols-12`가 좁은 반폭 카드에서 뒤죽박죽) → 세로 스택 재설계 + 편집 카드 전폭(`md:col-span-2`).
+- **검증**: `npm run typecheck`·`npm run build` 통과. Playwright(playwright-core+chromium, umaidon@test.com 실로그인)로 편집카드 1280/390px, 가게정보(URL잠금·전화라벨), 영업시간, 필터(active16/soldout0/all16), 손님 설명 줄바꿈, 토글 낙관반영(판매중→품절 즉시·리로드 없음, 원복), 사이드바 스크롤 버튼 전부 확인. umaidon 운영 데이터는 원상복구.
+- **함께 배포한 대기분**(이전 세션 미커밋): `login.tsx`·`join.tsx` 카카오 로그인/가입 버튼 숨김(`{false&&}`) + 라이트 브랜드 패널 디자인 톤 통일, `알림톡_템플릿/주문거절안내.md`·`사장님주문알림.md`(버튼 라벨) 템플릿, 전략문서(`시장노점_현금미리주문_웨지/`·시장경쟁 게이트), `_원본/우마이돈 메뉴판.jpg`.
+
+## 2026-06-30 — 알림톡 신규 2개(거절·점주) n8n 배선 완료 (REST surgical patch, 라이브)
+
+세션 흐름: /next 보고 → 사용자가 카카오 콘솔 승인 통보(`UJ_0652`=거절·고객 / `UJ_0642`=점주 신규주문) → 매핑 확정 → 양 워크플로 REST patch → Aligo testmode로 템플릿 매칭 검증.
+
+- **tpl_code 매핑(사용자 확인)**: **`UJ_0652` = 주문거절안내(고객)** / **`UJ_0642` = 사장님주문알림(점주)**. CLAUDE.md P1에 박음.
+- **고객 워크플로 `3OdyLnA9plF1gBRv` 패치(2노드만)**: Switch 노드 추가 대신 **최소 침습** — `Build Message` jsCode에 `body.notificationType==='rejected'` 분기(거절 본문+`tpl_code:'UJ_0652'`, 그 외 confirmed/changed는 기존 `UI_8730` 본문 유지) + `Send Alimtalk`의 `const TPL='UI_8730'`→`b.tpl_code||'UI_8730'`. **연결 재배선 0**, verify(60s+history/detail rslt)+SMS폴백 경로 그대로 → 거절도 실패 시 SMS 자동 폴백. 거절사유=`body.cancelReason`, 주문내역=기존 단가포맷 재사용.
+- **점주 워크플로 `vgbsEofC9kLMJQ7i` 3→9노드 전환**: 기존 SMS 단일경로(Webhook→Build→Send SMS)를 손님 9노드 패턴으로 확장 — Webhook(기존 노드 verbatim 유지=prod 등록 보존, path `kakao_store`)→Build Store Msg(5변수 치환·단가포맷·버튼JSON 생성)→Send Alimtalk(`UJ_0642`+`button_1` 웹링크)→Check Send OK→Wait60s→Verify History→Check Delivered→Mark Delivered / 실패 양쪽→Send SMS Fallback(LMS). 점주 payload(`order.items[].name/price/quantity`, `order.id`, `order.customerPhone`, `site.storeName`, `notify.phone`) 그대로 사용. 버튼 `주문 확인하기`→`pojang.one/owner/orders?openExternalBrowser=1`.
+- **검증(Aligo testmode_yn='Y', 실발송·과금 0)**: 거절 UJ_0652 본문 → `code:0 type:AT scnt:1 fcnt:0`(트레일링 개행 없는 본문이 등록본과 정확 일치) · 점주 UJ_0642 본문+button_1 → 동일 `code:0 type:AT`. 두 워크플로 PUT 후 GET 재확인(active 유지, 노드/코드/path 반영).
+- **방법**: REST surgical patch(`n8n-api.sh railway GET→in-memory patch→PUT`, body=name/nodes/connections/settings만, settings는 화이트리스트 추출=`{executionOrder}`). Railway PUT 즉시 라이브.
+- **거절 통지 ON 완료(같은 세션)**: Vercel production env `ENABLE_CUSTOMER_REJECT_NOTIFY=true` 추가(REST API, CLI는 구버전이라 행 → 토큰 직접 사용) + 운영 배포(`9cbdc37`)를 **같은 SHA로 재배포**(`dpl_4w1F`, env는 다음 배포부터 적용되므로 필수, 미커밋 working-tree는 안 섞임) → READY·`www.pojang.one` 200. 이제 점주가 거절하면 손님 UJ_0652 알림톡 실발송.
+- **정정(중요)**: 운영 배포가 `9cbdc37`(HEAD)이므로 **`owner_phone` 코드(commit `55061b7`)는 이미 prod에 배포됨** — 이전 CLAUDE.md/기록의 "owner_phone 미배포"는 stale. 따라서 점주 알림톡 수신번호는 `owner_phone`(설정 시) 우선·미설정 시 `storenumber` 폴백으로 **이미 정상 동작**. 남은 건 기존 점주들이 가게설정에서 휴대폰을 입력하는 것뿐.
+- **남은 일**: ① 점주 알림톡은 **즉시 라이브**(다음 실주문부터 SMS→알림톡 `UJ_0642`). ② 실주문 1건 회귀 관찰(거절→손님 UJ_0652 / 신규주문→점주 UJ_0642 도착·버튼 동작). ③ 점주 휴대폰(`owner_phone`) 미입력 점주 안내(유선 `storenumber`만 있으면 알림톡 불착→SMS폴백도 유선 불착).
+
+## 2026-06-29 — 손님 알림톡 주문내역에 단가 추가(라이브 patch) + 신규 템플릿 2개 확정·파일화
+
+세션 흐름: /next 보고 → 알림톡 템플릿 등록 범위 축소 결정 → 손님 주문내역 가격표기 라이브 반영 → 신규 템플릿 2개 파일 정리.
+
+- **등록 범위 축소(사용자 결정)**: 픽업 **시간변경 보류**, **거절은 필수**로 유지. 문제 주문은 점주가 손님에게 직접 연락. → 카카오 신규 등록 = **거절(고객) + 점주 신규주문 알림 2개**만(확정은 기존 `UI_8730` 재사용, 추가 0).
+- **손님 알림톡 `주문내역`에 단가 추가 (라이브)**: n8n 고객 워크플로 `3OdyLnA9plF1gBRv` Build 노드 jsCode 한 줄을 `수량` → `수량*단가원`으로. 결과 `짬뽕(곱빼기) 2*8,000원, 짜장면 1*6,000원`(띄어쓰기 없음, 개당 단가). payload엔 `price` 이미 존재(`owner.orders.tsx:220`)·`won()` 헬퍼 재사용 → **앱/템플릿 변경 불필요**(`#{주문내역}` 변수 내용만 바뀜=재승인 X).
+- **방법(중요·재발방지)**: 운영 워크플로 일부 노드만 고칠 땐 **REST API surgical patch**(`agent_mcps/n8n-mcp/n8n-api.sh railway GET→in-memory patch→PUT`, body=name/nodes/connections/settings만). SDK `update_workflow`(전체 재작성·credential strip 위험) 회피. Railway는 PUT 즉시 라이브(active 유지)·재검증으로 새 jsCode 반영 확인. 이 지식은 `~/project/n8n_lessons.md`에 이미 있었으나 착수 시 grep 누락이 원인 → **프로젝트 CLAUDE.md에 `### n8n 워크플로 수정` 절(워크플로 ID 2개+헬퍼+"착수 시 grep") 추가** + 프로젝트 메모리 `n8n-rest-surgical-patch.md` 신설.
+- **신규 템플릿 2개 파일화(등록용 복사본)**: `알림톡_템플릿/주문거절안내.md` 신규(이모지 뺀 거절 본문, 사용자가 `문의: #{가게전화}` 추가 → 변수 4개 가게명·거절사유·주문내역·가게전화/버튼 없음) · `사장님주문알림.md` 버튼 라벨 `주문 확인/수락`→**`주문 확인하기`**로 변경(버튼은 화면 열기일 뿐 수락 아님 → 거절 버튼 별도 추가 안 함, 둘 다 웹에서). 둘 다 정보성/기본형.
+- **카카오 "대체문자" 불필요 확정**: n8n이 send→60초→history/detail rslt 검증→실패 시 LMS 폴백을 이미 직접 수행. 플랫폼 대체문자 켜면 이중 발송 위험. 알리고는 send 시 `failover=Y`+`fmessage` 보내야 발동하는데 우리 Send 노드는 안 보냄 → 등록돼도 자동발송 안 됨(무해). → 건너뛰거나 무시.
+- **남은 일(외부)**: 거절·점주 템플릿 카카오 등록·승인 → tpl_code 2개 → ① 고객 워크플로 `notificationType` Switch(confirmed/rejected) + `ENABLE_CUSTOMER_REJECT_NOTIFY=true` ② 점주 `kakao_order_store_sms`(`vgbsEofC9kLMJQ7i`) SMS→알림톡 전환(같은 가격포맷·버튼 포함). 코드 미커밋(CLAUDE.md·사장님주문알림.md M).
+
+## 2026-06-29 (오후) — 첫 테스트 고객(우마이돈) 계정·메뉴 시딩 + 점주 카카오 로그인 버튼 숨김
+
+세션 흐름: 첫 고객 메뉴판 사진(우마이돈 돈가스) 받음 → 앱 표현가능 범위 진단 → 계정/메뉴 결정 → 셀프가입 실패 원인 규명 → admin 생성으로 우회 → 전체 시딩·운영검증.
+
+- **첫 고객 온보딩 시작(우마이돈)**: "1호 고객은 내가 계정·메뉴판까지 다 만들어 사용가능 형태로 인계" 방침. 메뉴판 사진(`_원본/260629_테스트고객_우마이돈_메뉴판.jpg`)을 앱 데이터모델에 매핑 — 세트5(우·마·이·생·돈), 단품11(수량별 별도 메뉴=A안), 반반이세트(이·생)는 옵션그룹(택1·price_delta 0). 소스 현금/카드 정책은 결제기능 없는 앱이라 **소개문구 텍스트로만** 수용.
+- **셀프가입 실패 원인 = 가짜 이메일**: 사용자가 `/join`에서 `umaidon@test.com`으로 가입 시도 → "회원가입 안 됨". 원인은 `@test.com`이 메일 수신 불가 → "Confirm email" ON 상태라 인증 불가/로그인 차단(혹은 Invalid email 거부). 코드(`join.tsx` signUp)는 정상. 카카오 숨김과 무관.
+- **해결 = 서비스롤 admin 생성(우회)**: 셀프가입·SMTP 의존 대신 `SUPABASE_SERVICE_ROLE_KEY`로 `auth.admin.createUser({email_confirm:true})`. 멱등 시딩 스크립트(scratchpad, 1회용 — 프로젝트엔 미커밋)로 ① 계정 `umaidon@test.com`/`umaidon23`(인증완료, `profile_id=fee52d20-a5b2-4965-bab3-45d04353496a`) ② profiles(상호 우마이돈·슬러그 `umaidon`·전화 01081749970·소개문구·role owner·prep 15분) ③ store_hours 전요일 09:00~18:00 ④ menuItem 16 + 반반이세트 옵션그룹/옵션. 운영검증: `https://www.pojang.one/umaidon` HTTP 200 + 메뉴 노출 확인.
+- **인계 방식(정본)**: 같은 계정의 **이메일만 고객 이메일로 변경**(admin, 메일 없이)하면 `profile_id` 불변 → 메뉴 그대로 승계. **고객 재가입 금지**(새 profile_id = 데이터 분리). 카카오 가입도 별도계정 되니 금지.
+- **점주 카카오 로그인/회원가입 버튼 숨김**(`login.tsx`·`join.tsx`, `{false && (...)}`로 divider+버튼 래핑, OAuth 배선·콜백 보존): 수동 인계 단계에선 인계받은 점주가 카카오로 누르면 빈 새 계정 생성되는 footgun → 차단. 셀프가입 단계 가면 `false→true`로 재노출. typecheck 통과. **미커밋·미배포**.
+- **보안 Q 답변(코드변경 없음)**: "회원가입 시 devtools 네트워크에 id/pw 평문 노출 정상?" → 정상. 본인 브라우저의 송신 요청을 보는 것이고 전송은 HTTPS/TLS 암호화, 서버(Supabase)는 bcrypt 해시 저장. 클라이언트 사전해시 불필요(오히려 무의미).
+- **미커밋 상태**: `join.tsx`·`login.tsx`(카카오 숨김)·`CLAUDE.md`(P3 펜딩 추가)·`progress.md`. 계정/메뉴는 운영 DB에 이미 라이브(코드 배포와 무관).
+
 ## 2026-06-28 (밤) — 픽업 예약 모델(B) 전체 구현 (손님 픽업시간 선택 + 점주 확정/시간변경/거절)
 
 프로세스 재검토 결론 → **모델 B(손님이 결제화면에서 픽업시간 직접 선택)** 채택·구현. 사용자 확정 3옵션: 슬롯 10분 / 점주 못 맞추면 시간변경+통보 / 당일만.
