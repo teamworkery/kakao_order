@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Form, useRevalidator } from "react-router";
 import { redirect } from "react-router";
 import { makeSSRClient, browserClient } from "~/supa_clients";
+import { displayOrderNo } from "~/lib/order-no";
 import {
   type OrderStatus,
   STATUS_LABELS,
@@ -18,6 +19,7 @@ import {
 /** ---- Types ---- */
 type OrderRow = {
   id: string; // alias of order_id
+  order_no: string | null;
   phoneNumber: string | null;
   totalAmount: number | null;
   createdat: string | null;
@@ -340,7 +342,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const dataQuery = client
     .from("order")
     .select(
-      "id:order_id, phoneNumber, totalAmount, createdat, profile_id, status, estimated_pickup_time, requested_pickup_time, cancel_reason"
+      "id:order_id, order_no, phoneNumber, totalAmount, createdat, profile_id, status, estimated_pickup_time, requested_pickup_time, cancel_reason"
     )
     .eq("profile_id", user.id)
     .gte("createdat", dateFrom)
@@ -943,7 +945,7 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
                           onClick={() => setOpenId(o.id)}
                         >
                           <div className="col-span-1 font-bold text-foreground">
-                            #{short(o.id)}
+                            {displayOrderNo(o.order_no, o.createdat, o.id)}
                           </div>
                           <div className="col-span-2 flex flex-col">
                             <span className="font-bold text-foreground text-sm">
@@ -1008,7 +1010,7 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
                           <div className="flex items-start justify-between mb-2">
                             <div className="flex items-center gap-2">
                               <span className="font-bold text-foreground">
-                                #{short(o.id)}
+                                {displayOrderNo(o.order_no, o.createdat, o.id)}
                               </span>
                               {o.status && (
                                 <span
@@ -1113,7 +1115,10 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
             <div className="px-4 md:px-6 py-4 border-b border-border flex items-center justify-between bg-card sticky top-0">
               <div className="flex flex-col">
                 <h3 className="text-lg md:text-xl font-bold text-foreground">
-                  주문 #{short(openId)}
+                  주문 {(() => {
+                    const o = orders.find((x) => x.id === openId);
+                    return displayOrderNo(o?.order_no, o?.createdat, openId);
+                  })()}
                 </h3>
                 <span className="text-sm text-muted-foreground">
                   {orders.find((o) => o.id === openId)?.createdat

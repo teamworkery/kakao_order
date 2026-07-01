@@ -238,6 +238,7 @@ export type Database = {
           estimated_pickup_time: string | null
           notes: string | null
           order_id: string
+          order_no: string | null
           phoneNumber: string | null
           profile_id: string | null
           requested_pickup_time: string | null
@@ -252,6 +253,7 @@ export type Database = {
           estimated_pickup_time?: string | null
           notes?: string | null
           order_id?: string
+          order_no?: string | null
           phoneNumber?: string | null
           profile_id?: string | null
           requested_pickup_time?: string | null
@@ -266,6 +268,7 @@ export type Database = {
           estimated_pickup_time?: string | null
           notes?: string | null
           order_id?: string
+          order_no?: string | null
           phoneNumber?: string | null
           profile_id?: string | null
           requested_pickup_time?: string | null

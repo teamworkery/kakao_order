@@ -2,6 +2,7 @@ import { Link } from "react-router";
 import { Button } from "~/common/components/ui/button";
 import { makeSSRClient } from "~/supa_clients";
 import { STATUS_LABELS, STATUS_COLORS, type OrderStatus } from "~/lib/order-status";
+import { displayOrderNo } from "~/lib/order-no";
 import type { LoaderFunctionArgs } from "react-router";
 
 interface OrderItem {
@@ -13,18 +14,21 @@ interface OrderItem {
   } | null;
 }
 
+interface StoreInfo {
+  storename: string | null;
+  storenumber: string | null;
+  name: string | null; // 가게 주소(slug)
+}
+
 interface OrderData {
   order_id: string;
+  order_no: string | null;
   phoneNumber: string | null;
   totalAmount: number | null;
   status: OrderStatus | null;
   createdat: string | null;
   estimated_pickup_time: string | null;
-  profile: {
-    storename: string | null;
-    storenumber: string | null;
-    name: string | null;
-  } | null;
+  profile_id: string | null;
 }
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -32,29 +36,31 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const orderId = url.searchParams.get("orderId");
 
   if (!orderId) {
-    return { order: null, items: [] };
+    return { order: null, items: [], store: null };
   }
 
   const { client } = makeSSRClient(request);
 
-  // 주문 정보 조회 (가게 정보 포함)
+  // 주문 정보 조회
   const { data: order } = await client
     .from("order")
-    .select(`
-      order_id,
-      phoneNumber,
-      totalAmount,
-      status,
-      createdat,
-      estimated_pickup_time,
-      profile:profile_id (
-        storename,
-        storenumber,
-        name
-      )
-    `)
+    .select(
+      "order_id, order_no, phoneNumber, totalAmount, status, createdat, estimated_pickup_time, profile_id"
+    )
     .eq("order_id", orderId)
     .maybeSingle();
+
+  // 가게 정보는 공개 뷰(public_stores)에서 조회 — profiles 직접조회는 RLS로 막혀
+  // 로그인 손님(점주 아님)에게 storename이 null로 나오던 문제 해결
+  let store: StoreInfo | null = null;
+  if (order?.profile_id) {
+    const { data: s } = await client
+      .from("public_stores")
+      .select("storename, storenumber, name")
+      .eq("profile_id", order.profile_id)
+      .maybeSingle();
+    store = (s as StoreInfo) || null;
+  }
 
   // 주문 아이템 조회
   const { data: items } = await client
@@ -72,16 +78,20 @@ export async function loader({ request }: LoaderFunctionArgs) {
   return {
     order: order as OrderData | null,
     items: (items as OrderItem[]) || [],
+    store,
   };
 }
 
 interface LoaderData {
   order: OrderData | null;
   items: OrderItem[];
+  store: StoreInfo | null;
 }
 
 export default function OrderSuccessPage({ loaderData }: { loaderData: LoaderData }) {
-  const { order, items } = loaderData;
+  const { order, items, store } = loaderData;
+  const storeSlug = store?.name || null;
+  const backToStore = storeSlug ? `/${storeSlug}` : "/";
 
   if (!order) {
     return (
@@ -180,15 +190,15 @@ export default function OrderSuccessPage({ loaderData }: { loaderData: LoaderDat
           <div className="space-y-2">
             <div className="flex items-center gap-3">
               <span className="material-symbols-outlined text-muted-foreground">store</span>
-              <span className="text-foreground/80">{order.profile?.storename || "가게 이름 없음"}</span>
+              <span className="text-foreground/80">{store?.storename || "가게"}</span>
             </div>
-            {order.profile?.storenumber && (
+            {store?.storenumber && (
               <a
-                href={`tel:${order.profile.storenumber}`}
+                href={`tel:${store.storenumber}`}
                 className="flex items-center gap-3 text-primary hover:underline"
               >
                 <span className="material-symbols-outlined text-muted-foreground">call</span>
-                <span>{order.profile.storenumber}</span>
+                <span>{store.storenumber}</span>
               </a>
             )}
           </div>
@@ -198,7 +208,7 @@ export default function OrderSuccessPage({ loaderData }: { loaderData: LoaderDat
         <div className="bg-card rounded-xl shadow-sm overflow-hidden">
           <div className="p-4 border-b border-border">
             <h3 className="font-bold text-foreground">주문 내역</h3>
-            <p className="text-xs text-muted-foreground mt-1">주문번호: {order.order_id.slice(0, 8)}</p>
+            <p className="text-xs text-muted-foreground mt-1">주문번호: {displayOrderNo(order.order_no, order.createdat, order.order_id)}</p>
           </div>
           <div className="divide-y divide-border">
             {items.map((item: OrderItem) => (
@@ -240,10 +250,10 @@ export default function OrderSuccessPage({ loaderData }: { loaderData: LoaderDat
               내 주문 내역 보기
             </Button>
           </Link>
-          <Link to="/" className="block">
+          <Link to={backToStore} className="block">
             <Button className="w-full min-h-[52px]" size="lg">
-              <span className="material-symbols-outlined mr-2">home</span>
-              홈으로 돌아가기
+              <span className="material-symbols-outlined mr-2">storefront</span>
+              가게로 돌아가기
             </Button>
           </Link>
         </div>

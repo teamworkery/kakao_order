@@ -5,6 +5,7 @@ import { redirect } from "react-router";
 import type { LoaderFunctionArgs } from "react-router";
 import { makeSSRClient, browserClient } from "~/supa_clients";
 import { STATUS_LABELS, STATUS_COLORS, type OrderStatus, isActiveStatus } from "~/lib/order-status";
+import { displayOrderNo } from "~/lib/order-no";
 import { Button } from "~/common/components/ui/button";
 
 interface OrderItem {
@@ -18,6 +19,7 @@ interface OrderItem {
 
 interface OrderData {
   order_id: string;
+  order_no: string | null;
   phoneNumber: string | null;
   totalAmount: number | null;
   status: OrderStatus | null;
@@ -62,16 +64,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
     .from("order")
     .select(`
       order_id,
+      order_no,
       phoneNumber,
       totalAmount,
       status,
       createdat,
       estimated_pickup_time,
-      profile:profile_id (
-        storename,
-        storenumber,
-        name
-      ),
+      profile_id,
       orderitem (
         id,
         quantity,
@@ -85,15 +84,39 @@ export async function loader({ request }: LoaderFunctionArgs) {
     .order("createdat", { ascending: false })
     .limit(20);
 
+  // 가게 정보는 공개 뷰(public_stores)에서 조회 — profiles 직접조회는 RLS로 막혀
+  // 손님 화면에 가게명이 안 뜨던 문제 해결
+  const storeIds = Array.from(
+    new Set((orders || []).map((o) => (o as any).profile_id).filter(Boolean))
+  ) as string[];
+  const storeMap = new Map<
+    string,
+    { storename: string | null; storenumber: string | null; name: string | null }
+  >();
+  if (storeIds.length > 0) {
+    const { data: stores } = await client
+      .from("public_stores")
+      .select("profile_id, storename, storenumber, name")
+      .in("profile_id", storeIds);
+    for (const s of stores || []) {
+      storeMap.set((s as any).profile_id, {
+        storename: (s as any).storename ?? null,
+        storenumber: (s as any).storenumber ?? null,
+        name: (s as any).name ?? null,
+      });
+    }
+  }
+
   // N+1 쿼리 해결: JOIN으로 가져온 데이터를 변환
   const ordersWithItems: OrderData[] = (orders || []).map((order) => ({
     order_id: order.order_id,
+    order_no: (order as any).order_no ?? null,
     phoneNumber: order.phoneNumber,
     totalAmount: order.totalAmount,
     status: order.status,
     createdat: order.createdat,
     estimated_pickup_time: order.estimated_pickup_time,
-    profile: order.profile,
+    profile: storeMap.get((order as any).profile_id) ?? null,
     items: ((order as any).orderitem as OrderItem[]) || [],
   }));
 
@@ -314,7 +337,9 @@ export default function CustomerOrdersPage({ loaderData }: { loaderData: LoaderR
                           <p className="font-bold text-foreground">
                             {order.profile?.storename || "가게"}
                           </p>
-                          <p className="text-xs text-muted-foreground">{formatDate(order.createdat)}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatDate(order.createdat)} · 주문번호 {displayOrderNo(order.order_no, order.createdat, order.order_id)}
+                          </p>
                         </div>
                         <p className="font-bold text-primary">
                           ₩{order.totalAmount?.toLocaleString() || 0}

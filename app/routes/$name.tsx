@@ -472,6 +472,7 @@ export default function OrderPage({
   const [showPhoneModal, setShowPhoneModal] = useState(needsPhoneNumber);
   const [phoneInput, setPhoneInput] = useState("");
   const [showOrderConfirmModal, setShowOrderConfirmModal] = useState(false);
+  const [showCartModal, setShowCartModal] = useState(false);
   const [optionModalItem, setOptionModalItem] = useState<MenuItemWithCategory | null>(null);
   const [optionSel, setOptionSel] = useState<Record<string, string[]>>({});
   const [optionQty, setOptionQty] = useState(1);
@@ -786,13 +787,13 @@ export default function OrderPage({
     [todayHours, prepTime, nowMs]
   );
 
-  // 선택한 픽업 시각이 더 이상 유효 슬롯이 아니면 해제
+  // 픽업 시각 기본값 = 가장 이른 슬롯("약 N분 후"). 선택이 비었거나 더 이상
+  // 유효하지 않으면 자동으로 가장 이른 슬롯으로 맞춘다. (손님이 원하면 드롭다운에서 변경)
   useEffect(() => {
-    if (!pickupTime) return;
-    const stillValid = pickupSlots.slots.some(
-      (s) => s.toISOString() === pickupTime
-    );
-    if (!stillValid) setPickupTime("");
+    if (pickupSlots.slots.length === 0) return;
+    const stillValid =
+      !!pickupTime && pickupSlots.slots.some((s) => s.toISOString() === pickupTime);
+    if (!stillValid) setPickupTime(pickupSlots.slots[0].toISOString());
   }, [pickupSlots, pickupTime]);
 
   // 영업 상태 확인 - useMemo로 메모이제이션
@@ -1054,6 +1055,93 @@ export default function OrderPage({
                 저장하고 계속하기
               </button>
             </Form>
+          </div>
+        </div>
+      )}
+
+      {/* 장바구니 미리보기 모달 — 담은 내역 확인/수량조정 (주문 확정 아님) */}
+      {showCartModal && (
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-card w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-xl max-h-[85vh] flex flex-col">
+            <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+              <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary">shopping_cart</span>
+                장바구니
+              </h2>
+              <button
+                onClick={() => setShowCartModal(false)}
+                className="text-muted-foreground hover:text-foreground p-1"
+                aria-label="닫기"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-5 py-4">
+              {orderItems.length === 0 ? (
+                <div className="py-10 text-center text-muted-foreground text-sm">
+                  담은 메뉴가 없습니다.
+                </div>
+              ) : (
+                <div className="divide-y divide-border">
+                  {orderItems.map((item) => (
+                    <div key={item.id} className="py-3 flex justify-between items-start gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-foreground">{item.name}</p>
+                        {item.options && item.options.length > 0 && (
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {item.options.map((o) => o.optionName).join(", ")}
+                          </p>
+                        )}
+                        <p className="text-sm text-muted-foreground mt-0.5">
+                          {formatPrice(item.price)}원
+                        </p>
+                        <div className="inline-flex items-center bg-muted rounded-lg h-8 mt-2 p-0.5">
+                          <button
+                            type="button"
+                            onClick={() => adjustLine(item.id, -1)}
+                            className="size-7 flex items-center justify-center rounded-md hover:bg-card"
+                            aria-label="수량 감소"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">remove</span>
+                          </button>
+                          <span className="w-8 text-center text-sm font-semibold tabular-nums">
+                            {item.quantity}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => adjustLine(item.id, 1)}
+                            className="size-7 flex items-center justify-center rounded-md hover:bg-card"
+                            aria-label="수량 증가"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">add</span>
+                          </button>
+                        </div>
+                      </div>
+                      <p className="font-bold text-foreground tabular-nums whitespace-nowrap">
+                        {formatPrice(item.price * item.quantity)}원
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 border-t border-border">
+              <div className="flex justify-between items-center mb-3">
+                <span className="font-bold text-foreground/80">합계</span>
+                <span className="text-xl font-bold text-primary tabular-nums">
+                  {formatPrice(totalAmount)}원
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCartModal(false)}
+                className="w-full py-3 rounded-xl bg-muted text-foreground font-medium hover:bg-muted/80 transition-colors min-h-[48px]"
+              >
+                계속 담기
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1727,12 +1815,13 @@ export default function OrderPage({
                     required
                     className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background text-foreground focus:border-primary focus:ring-1 focus:ring-primary outline-none"
                   >
-                    <option value="">시간 선택</option>
-                    {pickupSlots.slots.map((s) => {
+                    {pickupSlots.slots.map((s, i) => {
                       const iso = s.toISOString();
                       return (
                         <option key={iso} value={iso}>
-                          {formatKoreanTime(s)}
+                          {i === 0
+                            ? `약 ${prepTime}분 후 (${formatKoreanTime(s)})`
+                            : formatKoreanTime(s)}
                         </option>
                       );
                     })}
@@ -1757,6 +1846,21 @@ export default function OrderPage({
                     {formatPrice(totalAmount)}원
                   </span>
                 </div>
+                {/* 장바구니 미리보기 버튼 — 담은 주문내역 상세 */}
+                <button
+                  type="button"
+                  onClick={() => setShowCartModal(true)}
+                  disabled={orderItems.length === 0}
+                  className="relative shrink-0 size-12 rounded-lg border border-border bg-background flex items-center justify-center text-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  aria-label="장바구니 보기"
+                >
+                  <span className="material-symbols-outlined text-[22px]">shopping_cart</span>
+                  {orderItems.length > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-white text-[10px] font-bold tabular-nums">
+                      {orderItems.reduce((sum, item) => sum + item.quantity, 0)}
+                    </span>
+                  )}
+                </button>
                 <Form method="post" className="flex-1" onSubmit={handleSubmit}>
                   <input
                     type="hidden"
