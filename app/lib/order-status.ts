@@ -5,9 +5,10 @@ export type OrderStatus = Database["public"]["Enums"]["kakao_order"];
 // 상태 전환 규칙: 각 상태에서 이동 가능한 다음 상태들
 export const STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   PENDING: ["ACCEPT", "CANCEL"],
-  ACCEPT: ["PREPARING", "CANCEL"],
-  PREPARING: ["READY", "CANCEL"],
-  READY: ["COMPLETED"],
+  // 점주가 접수 후 곧바로 완료 처리하거나(중간 단계 생략) 취소할 수 있게 허용
+  ACCEPT: ["PREPARING", "READY", "COMPLETED", "CANCEL"],
+  PREPARING: ["READY", "COMPLETED", "CANCEL"],
+  READY: ["COMPLETED", "CANCEL"],
   COMPLETED: ["REFUNDED"],
   CANCEL: [],
   REFUNDED: [],

@@ -1580,7 +1580,7 @@ export default function AdminMenuPage() {
           </label>
         </div>
         <div className="flex items-center justify-end gap-8">
-          <nav className="hidden lg:flex items-center gap-6">
+          <nav className="flex items-center gap-3 sm:gap-6">
             <a
               className="text-foreground hover:text-primary transition-colors text-sm font-medium leading-normal"
               href="/admin"
@@ -1593,12 +1593,17 @@ export default function AdminMenuPage() {
             >
               주문
             </a>
-            <a
+            <button
+              type="button"
+              onClick={() =>
+                document
+                  .getElementById("store-info-section")
+                  ?.scrollIntoView({ behavior: "smooth", block: "start" })
+              }
               className="text-foreground hover:text-primary transition-colors text-sm font-medium leading-normal"
-              href="#"
             >
               설정
-            </a>
+            </button>
           </nav>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
@@ -1613,13 +1618,14 @@ export default function AdminMenuPage() {
               <input type="hidden" name="actionType" value="logout" />
               <button
                 type="submit"
-                className="flex items-center justify-center rounded-full size-9 bg-yellow-400 text-[#3c1e1e] hover:bg-yellow-500 transition-colors"
-                title="카카오로 로그인됨"
+                className="flex items-center gap-1.5 px-3 h-9 rounded-lg border border-border text-foreground text-sm font-medium hover:bg-muted transition-colors"
+                title="로그아웃"
                 disabled={isSubmitting}
               >
-                <span className="material-symbols-outlined text-[20px]">
-                  chat_bubble
+                <span className="material-symbols-outlined text-[18px]">
+                  logout
                 </span>
+                <span>로그아웃</span>
               </button>
             </Form>
           </div>

@@ -152,6 +152,9 @@ export async function action({ request }: Route.ActionArgs) {
       notificationType = "rejected";
     }
 
+    // silent=true (목록 빠른 취소, 노쇼 등): 상태만 바꾸고 고객 알림 없음
+    const silent = form.get("silent") === "true";
+
     // 내 가게 주문만 상태 변경
     const { error: upErr } = await client
       .from("order")
@@ -237,9 +240,10 @@ export async function action({ request }: Route.ActionArgs) {
     // 준비되기 전엔 보내면 안 된다(현 n8n은 무조건 '확정' 템플릿을 보내 거절에 오발송).
     // → 카카오 템플릿 승인 + n8n Switch 완료 후 Vercel env `ENABLE_CUSTOMER_REJECT_NOTIFY=true`로 켠다.
     const notifyCustomer =
-      newStatus === "ACCEPT" ||
-      (newStatus === "CANCEL" &&
-        process.env.ENABLE_CUSTOMER_REJECT_NOTIFY === "true");
+      !silent &&
+      (newStatus === "ACCEPT" ||
+        (newStatus === "CANCEL" &&
+          process.env.ENABLE_CUSTOMER_REJECT_NOTIFY === "true"));
     if (notifyCustomer) {
       const hookUrl = process.env.N8N_WEBHOOK_URL;
       if (hookUrl) {
@@ -908,9 +912,9 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
                 <div className="col-span-1">주문번호</div>
                 <div className="col-span-2">시간</div>
                 <div className="col-span-2">고객</div>
-                <div className="col-span-4">메뉴</div>
+                <div className="col-span-3">메뉴</div>
                 <div className="col-span-1 text-right">금액</div>
-                <div className="col-span-2 text-center">상태</div>
+                <div className="col-span-3 text-center">상태 / 처리</div>
               </div>
 
               {/* Table Body / Card List */}
@@ -949,14 +953,10 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
                           </div>
                           <div className="col-span-2 flex flex-col">
                             <span className="font-bold text-foreground text-sm">
-                              {o.createdat
-                                ? fmtKST(o.createdat).split(" ")[1]
-                                : "-"}
+                              {o.createdat ? fmtKstTime(o.createdat) : "-"}
                             </span>
                             <span className="text-xs text-primary font-medium">
-                              {o.createdat
-                                ? fmtKST(o.createdat).split(" ")[0]
-                                : ""}
+                              {o.createdat ? fmtKstDate(o.createdat) : ""}
                             </span>
                           </div>
                           <div className="col-span-2 flex flex-col">
@@ -964,7 +964,7 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
                               {o.phoneNumber ?? "-"}
                             </span>
                           </div>
-                          <div className="col-span-4 text-sm text-muted-foreground truncate pr-4">
+                          <div className="col-span-3 text-sm text-muted-foreground truncate pr-4">
                             <span className="font-medium text-foreground">
                               {menuSummaryMap.get(o.id) || "-"}
                             </span>
@@ -977,17 +977,17 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
                                 {o.estimated_pickup_time
                                   ? "픽업 확정 "
                                   : "픽업 요청 "}
-                                {fmtKST(
+                                {fmtKstTime(
                                   (o.estimated_pickup_time ||
                                     o.requested_pickup_time)!
-                                ).split(" ")[1]}
+                                )}
                               </span>
                             )}
                           </div>
                           <div className="col-span-1 text-right font-bold text-primary text-sm">
                             {o.totalAmount?.toLocaleString() ?? "-"}원
                           </div>
-                          <div className="col-span-2 flex justify-center">
+                          <div className="col-span-3 flex flex-col items-center justify-center gap-1.5">
                             {o.status && (
                               <span
                                 className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${STATUS_COLORS[o.status].bg} ${STATUS_COLORS[o.status].text}`}
@@ -995,6 +995,7 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
                                 {STATUS_LABELS[o.status]}
                               </span>
                             )}
+                            <QuickActions o={o} />
                           </div>
                         </div>
 
@@ -1029,9 +1030,7 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
                               <span className="material-symbols-outlined text-base">
                                 schedule
                               </span>
-                              {o.createdat
-                                ? fmtKST(o.createdat).split(" ")[1]
-                                : "-"}
+                              {o.createdat ? fmtKstTime(o.createdat) : "-"}
                             </span>
                             <span className="flex items-center gap-1">
                               <span className="material-symbols-outlined text-base">
@@ -1046,15 +1045,21 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
                                 event_available
                               </span>
                               {o.estimated_pickup_time ? "픽업 확정 " : "픽업 요청 "}
-                              {fmtKST(
+                              {fmtKstTime(
                                 (o.estimated_pickup_time ||
                                   o.requested_pickup_time)!
-                              ).split(" ")[1]}
+                              )}
                             </div>
                           )}
                           <div className="text-sm text-foreground/80 truncate">
                             {menuSummaryMap.get(o.id) || "-"}
                           </div>
+                          {o.status &&
+                            (o.status === "PENDING" || isActiveStatus(o.status)) && (
+                              <div className="mt-3 flex justify-end">
+                                <QuickActions o={o} />
+                              </div>
+                            )}
                         </div>
                       </div>
                     ) : null
@@ -1122,7 +1127,7 @@ export default function OwnerOrdersPage({ loaderData }: Route.ComponentProps) {
                 </h3>
                 <span className="text-sm text-muted-foreground">
                   {orders.find((o) => o.id === openId)?.createdat
-                    ? fmtKST(orders.find((o) => o.id === openId)!.createdat!)
+                    ? `${fmtKstDate(orders.find((o) => o.id === openId)!.createdat!)} ${fmtKstTime(orders.find((o) => o.id === openId)!.createdat!)}`
                     : "오늘 주문됨"}
                 </span>
               </div>
@@ -1456,6 +1461,91 @@ function short(id: string) {
 function fmtKST(iso: string) {
   const d = new Date(iso);
   return d.toLocaleString("ko-KR", { timeZone: "Asia/Seoul", hour12: false });
+}
+// KST 날짜/시간 분리 표기 (기존 fmtKST(...).split(" ")는 ko-KR 포맷 때문에 월/시간이
+// 뒤섞여 잘못 나왔음 → 명시적 헬퍼로 교체)
+function fmtKstDate(iso: string) {
+  return new Date(iso).toLocaleDateString("ko-KR", {
+    timeZone: "Asia/Seoul",
+    month: "long",
+    day: "numeric",
+  });
+}
+function fmtKstTime(iso: string) {
+  return new Date(iso).toLocaleTimeString("ko-KR", {
+    timeZone: "Asia/Seoul",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+// 목록에서 바로 쓰는 빠른 처리 버튼:
+//  - PENDING: [접수] (손님 요청 픽업시간 그대로 확정, 고객 확정 알림톡 발송)
+//  - 진행중(ACCEPT/PREPARING/READY): [완료] / [취소](상태만 변경, silent — 고객 자동안내 없음)
+//  픽업시간 조정·거절(사유 안내)은 행을 눌러 상세에서 처리.
+function QuickActions({ o }: { o: OrderRow }) {
+  if (!o.status) return null;
+  const stop = (e: { stopPropagation: () => void }) => e.stopPropagation();
+  if (o.status === "PENDING") {
+    return (
+      <Form method="post" replace onClick={stop}>
+        <input type="hidden" name="actionType" value="updateStatus" />
+        <input type="hidden" name="orderId" value={o.id} />
+        <input type="hidden" name="newStatus" value="ACCEPT" />
+        <button
+          type="submit"
+          onClick={stop}
+          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/90 transition-colors"
+        >
+          <span className="material-symbols-outlined text-[16px]">check_circle</span>
+          접수
+        </button>
+      </Form>
+    );
+  }
+  if (isActiveStatus(o.status)) {
+    return (
+      <div className="flex gap-1.5" onClick={stop}>
+        <Form method="post" replace onClick={stop}>
+          <input type="hidden" name="actionType" value="updateStatus" />
+          <input type="hidden" name="orderId" value={o.id} />
+          <input type="hidden" name="newStatus" value="COMPLETED" />
+          <button
+            type="submit"
+            onClick={stop}
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-success/15 text-success text-xs font-bold hover:bg-success/25 border border-success/30 transition-colors"
+          >
+            <span className="material-symbols-outlined text-[16px]">task_alt</span>
+            완료
+          </button>
+        </Form>
+        <Form method="post" replace onClick={stop}>
+          <input type="hidden" name="actionType" value="updateStatus" />
+          <input type="hidden" name="orderId" value={o.id} />
+          <input type="hidden" name="newStatus" value="CANCEL" />
+          <input type="hidden" name="silent" value="true" />
+          <button
+            type="submit"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (
+                !confirm(
+                  "이 주문을 취소할까요?\n상태만 '취소됨'으로 바뀌고, 고객 자동 안내는 없습니다."
+                )
+              )
+                e.preventDefault();
+            }}
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-destructive/10 text-destructive text-xs font-bold hover:bg-destructive/20 border border-destructive/20 transition-colors"
+          >
+            <span className="material-symbols-outlined text-[16px]">cancel</span>
+            취소
+          </button>
+        </Form>
+      </div>
+    );
+  }
+  return null;
 }
 function toLocalInputValue(iso: string) {
   const d = new Date(iso);
