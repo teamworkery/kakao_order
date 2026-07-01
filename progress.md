@@ -1,5 +1,17 @@
 # progress
 
+## 2026-07-01 (오후) — 손님/점주 주문 UX 5건 + 간편 주문번호(order_no) 도입
+
+세션 흐름: 사용자가 주문 완료 화면·주문내역·픽업·장바구니 관련 5건 지목(+검토용 2건은 다음작업으로) → 코드+DB(migration 006) → Playwright(umaidon) 검증.
+
+- **① 주문완료 화면 가게명 누락 수정**: `customer/order-success.tsx`가 `order`→`profile:profile_id(...)` 조인으로 가게명을 읽어 **로그인 손님(점주 아님)에겐 RLS로 storename=null**("가게 이름 없음") → **`public_stores` 뷰로 profile_id 조회**로 전환. `customer/orders.tsx`도 같은 근본원인 → distinct profile_id들을 public_stores로 한 번에 조회해 map으로 주입(가게명 표시).
+- **② 간편 주문번호 `order_no`(YYMMDD-NN)**: UUID 대신 사람이 읽는 번호. **migration 006**(운영 DB 적용·검증) = `order.order_no text` 컬럼 + **BEFORE INSERT 트리거**(KST 하루·가게별 순번, advisory lock으로 레이스 방지) + 기존 7건 백필(예: `260109-01..05`, `260701-01`). 표시 헬퍼 `app/lib/order-no.ts`(정본=order_no, 없으면 `YYMMDD-XXXX` 폴백). order-success/customer.orders/owner.orders 3곳 표시를 `#{short(uuid)}`→`displayOrderNo(...)`로. database.types 수동 반영(typegen CLI 부재).
+- **③ 홈→가게 복귀**: order-success "홈으로 돌아가기"(→`/`) → **"가게로 돌아가기"(→`/{slug}`)**. slug는 public_stores.name에서. (주문 못 찾은 상태에선 slug 모름 → 기존 홈 유지)
+- **④ 픽업 기본값 "약 N분 후"**: 손님 결제 픽업 select 기본 선택을 **가장 이른 슬롯(=지금+가게 기본조리시간)**으로 자동 세팅, 첫 옵션 라벨 `약 {prepTime}분 후 (시:분)`. 나머지 슬롯은 그대로 드롭다운 선택 가능. 기본값 자동채움으로 `canOrder`의 픽업필수도 충족. (`$name.tsx` 기본선택 effect + 라벨)
+- **⑤ 장바구니 미리보기**: 결제바 `주문하기` 옆에 장바구니 아이콘(수량 배지)+클릭 시 **미리보기 모달**(담은 라인·수량조정 `adjustLine`·합계·"계속 담기"). 주문확정과 별개(확정은 기존 주문확인 모달).
+- **검증(Playwright, umaidon 실계정)**: 점주목록 `260701-01` 표시 · order-success 우마이돈+260701-01+가게로돌아가기(가게이름없음 없음) · 픽업 옵션[0]=`약 15분 후 (오전 11:40)`·기본값 채워짐 · 장바구니 모달 오픈. typecheck·build 통과.
+- **다음작업으로 남긴 검토 2건(미착수)**: ⓐ 사장님 admin QR 셀프 다운로드 ⓑ 픽업 예약 옵트아웃("지금 주문만 받기" 설정). CLAUDE.md §다음 작업 [active·P3] 2건.
+
 ## 2026-07-01 — admin 가게관리 UI 12건 수정 + 대기분(카카오숨김·디자인톤·거절템플릿) 일괄 배포
 
 세션 흐름: 사용자가 admin(`/admin`) 가게관리 화면 문제 12건 지목 → 코드 파악 → 일괄 수정 → typecheck/build → Playwright(umaidon 실계정 로그인)로 실화면 검증 → 대기 중이던 미커밋분과 함께 커밋·prod 배포.
